@@ -18,3 +18,5 @@ data/deep_geometric_prior_data
 data/NSP_dataset
 data/scene_reconstruction
 data/ShapeNetNSP
+sanitychecks/out/
+/*.mp4

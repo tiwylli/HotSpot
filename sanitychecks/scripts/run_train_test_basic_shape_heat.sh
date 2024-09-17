@@ -3,7 +3,7 @@ DIR=$(dirname $(dirname $(dirname "$(readlink -f "$0")")))  # Should point to yo
 echo "If $DIR is not the correct path for your repository, set it manually at the variable DIR"
 cd $DIR/sanitychecks/ # To call python scripts correctly
 
-LOGDIR='./log/' #change to your desired log directory
+LOGDIR='./out/log/' #change to your desired log directory
 IDENTIFIER='my_experiment'
 mkdir -p $LOGDIR
 FILE=`basename "$0"`
