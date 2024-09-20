@@ -6,6 +6,7 @@ import utils.visualizations as vis
 from abc import ABC, abstractmethod
 from matplotlib.path import Path
 import torch
+import scipy
 
 
 class BasicShape2D(data.Dataset):
@@ -38,7 +39,7 @@ class BasicShape2D(data.Dataset):
         xx, yy = np.meshgrid(x, y)
         xx, yy = xx.ravel(), yy.ravel()
         self.grid_points = np.stack([xx, yy], axis=1).astype("f")
-        self.nonmnfld_points = self.get_nonmnfld_points()
+        self.nonmnfld_points, self.nonmnfld_pdfs = self.get_nonmnfld_points_and_pdfs()
 
         # Compute gt mnfld normals
         self.mnfld_n = self.get_mnfld_n()
@@ -144,23 +145,27 @@ class BasicShape2D(data.Dataset):
 
         return (0, 0, pad_left, pad_right, pad_top, pad_bottom)
 
-    def get_nonmnfld_points(self):
+    def get_nonmnfld_points_and_pdfs(self):
         if self.sample_type == "grid":
             nonmnfld_points = self.grid_points
+            nonmnfld_pdfs = np.ones_like(nonmnfld_points) / (4 * self.grid_res**2)
         elif self.sample_type == "uniform":
             nonmnfld_points = np.random.uniform(
                 -self.grid_range, self.grid_range, size=(self.grid_res * self.grid_res, 2)
             ).astype(np.float32)
+            nonmnfld_pdfs = np.ones_like(nonmnfld_points) / (4 * self.grid_res**2)
         elif self.sample_type == "gaussian":
-            nonmnfld_points = self.sample_gaussian_noise_around_shape()
+            nonmnfld_points, nonmnfld_pdfs = self.sample_gaussian_noise_around_shape()
             idx = np.random.choice(range(nonmnfld_points.shape[1]), self.grid_res * self.grid_res)
             sample_idx = np.random.choice(
                 range(nonmnfld_points.shape[0]), self.grid_res * self.grid_res
             )
             nonmnfld_points = nonmnfld_points[sample_idx, idx]
+            nonmnfld_pdfs = nonmnfld_pdfs[sample_idx, idx]
         elif self.sample_type == "combined":
-            nonmnfld_points1 = self.sample_gaussian_noise_around_shape()
+            nonmnfld_points1, nonmnfld_pdfs1 = self.sample_gaussian_noise_around_shape()
             nonmnfld_points2 = self.grid_points
+            nonmnfld_pdfs2 = np.ones_like(nonmnfld_points2) / (4 * self.grid_res**2)
             idx1 = np.random.choice(
                 range(nonmnfld_points1.shape[1]), int(np.ceil(self.grid_res * self.grid_res / 2))
             )
@@ -174,9 +179,21 @@ class BasicShape2D(data.Dataset):
             nonmnfld_points = np.concatenate(
                 [nonmnfld_points1[sample_idx, idx1], nonmnfld_points2[idx2]], axis=0
             )
+            nonmnfld_pdfs = np.concatenate(
+                [nonmnfld_pdfs1[sample_idx, idx1], nonmnfld_pdfs2[idx2]], axis=0
+            )
+        elif self.sample_type == "laplace":
+            nonmnfld_points = self.sample_laplace_noise_around_shape()
+            idx = np.random.choice(range(nonmnfld_points.shape[1]), self.grid_res * self.grid_res)
+            sample_idx = np.random.choice(
+                range(nonmnfld_points.shape[0]), self.grid_res * self.grid_res
+            )
+            nonmnfld_points = nonmnfld_points[sample_idx, idx]
+            self.nonmnfld_probs = self.nonmnfld_probs[sample_idx, idx]
+            nonmnfld_pdfs = 0
         else:
             raise Warning("Unsupported non manfold sampling type {}".format(self.sample_type))
-        return nonmnfld_points
+        return nonmnfld_points, nonmnfld_pdfs
 
     def sample_gaussian_noise_around_shape(self):
         n_noisy_points = int(np.round(self.grid_res * self.grid_res / self.n_points))
@@ -185,10 +202,40 @@ class BasicShape2D(data.Dataset):
             [[self.sampling_std, 0], [0, self.sampling_std]],
             size=(self.n_samples, self.n_points, n_noisy_points),
         ).astype(np.float32)
+        nonmnfld_pdfs = scipy.stats.multivariate_normal.pdf(
+            noise, mean=[0, 0], cov=[[self.sampling_std, 0], [0, self.sampling_std]]
+        )
+        nonmnfld_pdfs = nonmnfld_pdfs.reshape(
+            [self.n_samples, -1, 1]
+        )  # shape: (n_samples, n_points * n_noisy_points, 1)
+        nonmnfld_points = np.tile(self.points[:, :, None, :], [1, 1, n_noisy_points, 1]) + noise
+        nonmnfld_points = nonmnfld_points.reshape(
+            [nonmnfld_points.shape[0], -1, nonmnfld_points.shape[-1]]
+        )  # shape: (n_samples, n_points * n_noisy_points, 2)
+        return nonmnfld_points, nonmnfld_pdfs
+
+    def sample_laplace_noise_around_shape(self, heat_lambda=100):
+        n_noisy_points = int(np.round(self.grid_res * self.grid_res / self.n_points))
+        laplace_noise = np.random.laplace(
+            0, 1 / heat_lambda, size=(self.n_samples, self.n_points, n_noisy_points, 1)
+        ).astype(np.float32)
+        angle = np.random.uniform(
+            0, 2 * np.pi, size=(self.n_samples, self.n_points, n_noisy_points, 1)
+        )
+        noise = np.concatenate(
+            [laplace_noise * np.cos(angle), laplace_noise * np.sin(angle)], axis=-1
+        )  # shape: (n_samples, n_points, n_noisy_points, 2)
         nonmnfld_points = np.tile(self.points[:, :, None, :], [1, 1, n_noisy_points, 1]) + noise
         nonmnfld_points = nonmnfld_points.reshape(
             [nonmnfld_points.shape[0], -1, nonmnfld_points.shape[-1]]
         )
+
+        self.nonmnfld_probs = (heat_lambda / 2) * np.exp(
+            -np.abs(laplace_noise) * heat_lambda
+        )  # heat_lambda = 1 / laplace_lambda
+        self.nonmnfld_probs *= 1 / (2 * np.pi)
+        self.nonmnfld_probs = self.nonmnfld_probs.reshape([self.n_samples, -1, 1])
+
         return nonmnfld_points
 
     def generate_batch_indices(self):
@@ -214,6 +261,7 @@ class BasicShape2D(data.Dataset):
             "nonmnfld_dist": nonmnfld_dist,
             "nonmnfld_n": self.nonmnfld_n[nonmnfld_idx],
             "nonmnfld_points": self.nonmnfld_points[nonmnfld_idx],
+            "nonmnfld_pdfs": self.nonmnfld_pdfs[nonmnfld_idx],
         }
 
     def __len__(self):

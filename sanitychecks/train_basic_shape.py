@@ -36,6 +36,8 @@ args = sc_args.get_args()
     encoder_type,
     model_dirpath,
     inter_loss_type,
+    loss_weights,
+    heat_lambda,
 ) = (
     args.gpu_idx,
     args.nl,
@@ -55,6 +57,8 @@ args = sc_args.get_args()
     args.encoder_type,
     args.model_dirpath,
     args.inter_loss_type,
+    args.loss_weights,
+    args.heat_lambda,
 )
 
 # set up backup and logging
@@ -107,10 +111,11 @@ SINR.to(device)
 
 # get loss
 criterion = Loss(
-    weights=[3e3, 1e2, 1e2, 5e1, 1e2],
+    weights=args.loss_weights,
     loss_type=loss_type,
     div_decay=args.div_decay,
     div_type=args.div_type,
+    heat_lambda=args.heat_lambda,
 )
 
 num_batches = len(train_dataloader)
@@ -140,12 +145,13 @@ for epoch in range(num_epochs):
         # with torch.cuda.amp.autocast():
         SINR.train()
 
-        mnfld_points, normals_gt, nonmnfld_dist_gt, nonmnfld_points, nonmnfld_n_gt = (
+        mnfld_points, normals_gt, nonmnfld_dist_gt, nonmnfld_points, nonmnfld_n_gt, nonmnfld_pdfs = (
             data["points"].to(device),
             data["mnfld_n"].to(device),
             data["nonmnfld_dist"].to(device),
             data["nonmnfld_points"].to(device),
             data["nonmnfld_n"].to(device),
+            data["nonmnfld_pdfs"].to(device),
         )
 
         mnfld_points.requires_grad_()
@@ -157,6 +163,7 @@ for epoch in range(num_epochs):
             output_pred=output_pred,
             mnfld_points=mnfld_points,
             nonmnfld_points=nonmnfld_points,
+            nonmnfld_pdfs=nonmnfld_pdfs,
             mnfld_n_gt=normals_gt,
         )
 
@@ -166,10 +173,11 @@ for epoch in range(num_epochs):
         # utils.log_weight_hist(log_writer_train, epoch, batch_idx, num_batches, SINR.decoder.fc_block.net[:], batch_size)
         if batch_idx % 25 == 0:
             weights = criterion.weights
+            print(weights)
             utils.log_string("Weights: {}, lr={:.3e}".format(weights, lr), log_file)
             utils.log_string(
                 "Epoch: {} [{:4d}/{} ({:.0f}%)] Loss: {:.5f} = L_Mnfld: {:.5f} + "
-                "L_NonMnfld: {:.5f} + L_Nrml: {:.5f} + L_Eknl: {:.5f} + L_Div: {:.5f}".format(
+                "L_NonMnfld: {:.5f} + L_Nrml: {:.5f} + L_Eknl: {:.5f} + L_Div: {:.5f} + L_Heat: {:.5f}".format(
                     epoch,
                     batch_idx * batch_size,
                     len(train_set),
@@ -180,12 +188,13 @@ for epoch in range(num_epochs):
                     weights[2] * loss_dict["normals_loss"].item(),
                     weights[3] * loss_dict["eikonal_term"].item(),
                     weights[4] * loss_dict["div_loss"].item(),
+                    weights[6] * loss_dict["heat_term"].item(),
                 ),
                 log_file,
             )
             utils.log_string(
                 "Epoch: {} [{:4d}/{} ({:.0f}%)] Unweighted L_s : L_Mnfld: {:.5f},  "
-                "L_NonMnfld: {:.5f},  L_Nrml: {:.5f},  L_Eknl: {:.5f},  L_Div: {:.5f}".format(
+                "L_NonMnfld: {:.5f},  L_Nrml: {:.5f},  L_Eknl: {:.5f},  L_Div: {:.5f},  L_Heat: {:.5f}".format(
                     epoch,
                     batch_idx * batch_size,
                     len(train_set),
@@ -195,6 +204,7 @@ for epoch in range(num_epochs):
                     loss_dict["normals_loss"].item(),
                     loss_dict["eikonal_term"].item(),
                     loss_dict["div_loss"].item(),
+                    loss_dict["heat_term"].item(),
                 ),
                 log_file,
             )
@@ -207,6 +217,7 @@ for epoch in range(num_epochs):
         criterion.update_div_weight(
             epoch * n_samples + batch_idx, num_epochs * n_samples, args.div_decay_params
         )
+        # criterion.update_heat_weight(epoch * n_samples + batch_idx, num_epochs * n_samples, 5e-1, 5e-3)
 
         # save last model
         if batch_idx == num_batches - 1:

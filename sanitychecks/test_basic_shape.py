@@ -34,6 +34,8 @@ args = sc_args.get_test_args()
     encoder_type,
     model_dirpath,
     inter_loss_type,
+    loss_weights,
+    heat_lambda,
 ) = (
     args.gpu_idx,
     args.nl,
@@ -51,12 +53,14 @@ args = sc_args.get_test_args()
     args.encoder_type,
     args.model_dirpath,
     args.inter_loss_type,
+    args.loss_weights,
+    args.heat_lambda,
 )
 
 n_samples = 1
 n_points = 128
 args.n_point_total = 1024
-plot_second_derivs = True
+plot_second_derivs = False
 # plot_second_derivs = False
 
 # get data loaders
@@ -90,7 +94,7 @@ output_dir = os.path.join(logdir, "vis")
 os.makedirs(output_dir, exist_ok=True)
 # get loss
 criterion = Loss(
-    weights=[3e3, 1e2, 1e2, 5e1, 1e1],  # sdf, intern, normal, eikonal, div
+    weights=args.loss_weights,  # sdf, intern, normal, eikonal, div, latent, heat
     loss_type=loss_type,
     div_decay=args.div_decay,
     div_type=args.div_type,
@@ -110,7 +114,7 @@ grid_points = test_set.grid_points
 
 for epoch in args.epoch_n:
     model_filename = os.path.join(model_dir, "model_%d.pth" % (epoch))
-    SINR.load_state_dict(torch.load(model_filename, map_location=device))
+    SINR.load_state_dict(torch.load(model_filename, map_location=device, weights_only=True))
     SINR.to(device)
 
     print("Converting implicit to level set for shape {} epoch {}".format(args.shape_type, epoch))
@@ -125,25 +129,34 @@ for epoch in args.epoch_n:
         mnfld_n_gt=normals_gt,
     )
 
-    x_grid, y_grid, z_grid, z_diff, eikonal_term, grid_div, grid_curl = utils.compute_deriv_props(
-        SINR.decoder, output_pred["latent"], z_gt=test_set.dist_img, device=device
+    x_grid, y_grid, z_grid, z_diff, eikonal_term, grid_div, grid_curl, grid_heat = (
+        utils.compute_deriv_props(
+            SINR.decoder,
+            output_pred["latent"],
+            z_gt=test_set.dist_img,
+            heat_lambda=heat_lambda,
+            device=device,
+        )
     )
 
-    contour_img, curl_img, eikonal_img, div_image, z_diff_img = vis.plot_contour_div_props(
-        x_grid,
-        y_grid,
-        z_grid,
-        mnfld_points,
-        z_diff,
-        eikonal_term,
-        grid_div,
-        grid_curl,
-        example_idx=0,
-        n_gt=normals_gt,
-        n_pred=n_pred,
-        nonmnfld_points=None,
-        title_text="Epoch " + str(epoch),
-        plot_second_derivs=plot_second_derivs,
+    contour_img, curl_img, eikonal_img, div_image, z_diff_img, heat_img = (
+        vis.plot_contour_div_props(
+            x_grid,
+            y_grid,
+            z_grid,
+            mnfld_points,
+            z_diff,
+            eikonal_term,
+            grid_div,
+            grid_curl,
+            grid_heat,
+            example_idx=0,
+            n_gt=normals_gt,
+            n_pred=n_pred,
+            nonmnfld_points=None,
+            title_text="Epoch " + str(epoch),
+            plot_second_derivs=plot_second_derivs,
+        )
     )
     # save the generated images
     im = Image.fromarray(contour_img)
@@ -157,3 +170,5 @@ for epoch in args.epoch_n:
         # im.save(os.path.join(output_dir, "curl_" + str(epoch).zfill(6) + ".png"))
         im = Image.fromarray(div_image)
         im.save(os.path.join(output_dir, "div_" + str(epoch).zfill(6) + ".png"))
+    im = Image.fromarray(heat_img)
+    im.save(os.path.join(output_dir, "heat_" + str(epoch).zfill(6) + ".png"))

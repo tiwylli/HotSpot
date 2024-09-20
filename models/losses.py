@@ -56,6 +56,25 @@ def full_div(points, grads):
     return div
 
 
+def heat_loss(points, preds, grads=None, sample_pdfs=None, heat_lambda=100, in_mnfld=False):
+    if grads is None:
+        grads = torch.autograd.grad(
+            outputs=preds,
+            inputs=points,
+            grad_outputs=torch.ones_like(preds),
+            create_graph=True,
+            retain_graph=True,
+        )[0]
+    heat = torch.exp(-heat_lambda * preds.abs())
+    if not in_mnfld:
+        loss = (0.5 * heat**2 * (grads.norm(2, dim=-1) ** 2 + 1))
+    else:
+        loss = (0.5 * heat**2 * (grads.norm(2, dim=-1) ** 2 + 1)) - heat
+    # loss /= sample_pdfs
+    loss = loss.sum()
+
+    return loss
+
 class Loss(nn.Module):
     def __init__(
         self,
@@ -63,15 +82,18 @@ class Loss(nn.Module):
         loss_type="siren",
         div_decay="none",
         div_type="dir_l1",
+        heat_lambda=100,
     ):
         super().__init__()
         self.weights = weights  # sdf, intern, normal, eikonal, div
         self.loss_type = loss_type
         self.div_decay = div_decay
         self.div_type = div_type
+        self.heat_lambda = heat_lambda
         self.use_div = True if "div" in self.loss_type else False
+        self.use_heat = True if "heat" in self.loss_type else False
 
-    def forward(self, output_pred, mnfld_points, nonmnfld_points, mnfld_n_gt=None):
+    def forward(self, output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs=None, mnfld_n_gt=None):
         dims = mnfld_points.shape[-1]
         device = mnfld_points.device
 
@@ -140,6 +162,31 @@ class Loss(nn.Module):
         # inter term
         inter_term = torch.exp(-1e2 * torch.abs(non_manifold_pred)).mean()
 
+        # heat term
+        heat_term = torch.tensor([0.0], device=mnfld_points.device)
+        # print("nonmnfld_pdf.shape:", nonmnfld_pdfs.shape)
+        # print("mnfld_points.shape:", mnfld_points.shape)
+        # print("nonmnfld_points.shape:", nonmnfld_points.shape)
+        if self.use_heat and self.weights[6] > 0.0:
+            heat_term = heat_loss(
+                points=nonmnfld_points,
+                preds=non_manifold_pred,
+                grads=nonmnfld_grad,
+                sample_pdfs=None,
+                heat_lambda=self.heat_lambda,
+                in_mnfld=False,
+            ) 
+            + heat_loss(
+                points=mnfld_points,
+                preds=manifold_pred,
+                grads=mnfld_grad,
+                sample_pdfs=None,
+                heat_lambda=self.heat_lambda,
+                in_mnfld=True,
+            )
+            heat_term /= nonmnfld_points.reshape(-1, 2).shape[0] + mnfld_points.reshape(-1, 2).shape[0]
+            # heat_term /= nonmnfld_points.reshape(-1, 2).shape[0]
+
         #########################################
         # Losses
         #########################################
@@ -187,6 +234,12 @@ class Loss(nn.Module):
                 + self.weights[3] * eikonal_term
                 + self.weights[4] * div_loss
             )
+        elif self.loss_type == "igr_wo_n_w_heat":
+            loss = (
+                self.weights[0] * sdf_term
+                + self.weights[3] * eikonal_term
+                + self.weights[6] * heat_term
+            )
         else:
             raise Warning("unrecognized loss type")
 
@@ -202,6 +255,7 @@ class Loss(nn.Module):
             "eikonal_term": eikonal_term,
             "normals_loss": normal_term,
             "div_loss": div_loss,
+            "heat_term": heat_term,
         }, mnfld_grad
 
     def update_div_weight(self, current_iteration, n_iterations, params=None):
@@ -251,3 +305,11 @@ class Loss(nn.Module):
             pass
         else:
             raise Warning("unsupported div decay value")
+
+
+    def update_heat_weight(self, current_iteration, n_iterations, w_start, w_end):
+        # Exponentially decrease weight from w_start to w_end
+        new_weight = w_start * (w_end / w_start) ** (current_iteration / n_iterations)
+
+        self.weights[6] = new_weight
+        

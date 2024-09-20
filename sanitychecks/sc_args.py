@@ -147,8 +147,11 @@ def add_args(parser):
         "--loss_weights",
         nargs="+",
         type=float,
-        default=[3e3, 1e2, 1e2, 5e1, 1e1],
-        help="loss terms weights sdf | inter | normal | eikonal | div",
+        default=[3e3, 1e2, 1e2, 5e1, 1e1, 0, 1e-1],
+        help="loss terms weights sdf | inter | normal | eikonal | div | latent | heat",
+    )
+    parser.add_argument(
+        "--heat_lambda", type=float, default=1e-2, help="heat loss weight for eikonal loss"
     )
     return parser
 
@@ -202,7 +205,7 @@ def get_test_args():
     test_opt = parser.parse_args()
 
     param_filename = os.path.join(test_opt.logdir, "trained_models/", "params.pth")
-    train_opt = torch.load(param_filename)
+    train_opt = torch.load(param_filename, weights_only=False)
 
     (
         test_opt.nl,
@@ -224,6 +227,8 @@ def get_test_args():
         test_opt.div_type,
         test_opt.div_clamp,
         test_opt.decoder_n_hidden_layers,
+        test_opt.loss_weights,
+        test_opt.heat_lambda,
     ) = (
         train_opt.nl,
         train_opt.latent_size,
@@ -244,6 +249,8 @@ def get_test_args():
         train_opt.div_type,
         train_opt.div_clamp,
         train_opt.decoder_n_hidden_layers,
+        train_opt.loss_weights,
+        train_opt.heat_lambda,
     )
 
     test_opt.n_point_total = train_opt.n_points

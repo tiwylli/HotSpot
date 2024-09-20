@@ -79,7 +79,7 @@ nonmnfld_points.requires_grad_()
 output_pred = SINR(nonmnfld_points, mnfld_pnts=None)
 
 x_grid, y_grid, z_grid, z_diff, eikonal_term, grid_div, grid_curl = utils.compute_deriv_props(
-    SINR.decoder, output_pred["latent"], z_gt=test_set.dist_img, device=device
+    SINR.decoder, output_pred["latent"], z_gt=test_set.dist_img, heat_lambda=None, device=device
 )
 
 contour_img, curl_img, eikonal_img, div_image, z_diff_img = vis.plot_init_contour_div_props(

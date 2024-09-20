@@ -2,9 +2,10 @@
 DIR=$(dirname $(dirname $(dirname "$(readlink -f "$0")")))  # Should point to your DiGS path
 echo "If $DIR is not the correct path for your repository, set it manually at the variable DIR"
 cd $DIR/sanitychecks/ # To call python scripts correctly
-
-LOGDIR='./out/log/' #change to your desired log directory
-IDENTIFIER='my_experiment'
+OUTDIR='./out/'
+IDENTIFIER='heat_plusMnfldLoss'
+LOGDIRNAME=${OUTDIR}${IDENTIFIER}'/'
+LOGDIR=${LOGDIRNAME}'log/' #change to your desired log directory
 mkdir -p $LOGDIR
 FILE=`basename "$0"`
 cp scripts/$FILE $LOGDIR # saves copy of this script so you know the args used
@@ -20,8 +21,8 @@ INIT_TYPE='mfgi' #siren | geometric_sine | geometric_relu | mfgi
 NEURON_TYPE='quadratic' #linear | quadratic
 ### LOSS HYPER-PARAMETERS ###
 #############################
-LOSS_TYPE='siren_wo_n_w_div' # 'siren_wo_n_w_div' | 'siren_wo_n' | 'siren_w_div' | 'siren'
-LOSS_WEIGHTS=(3e3 1e2 1e2 5e1 1e2)
+LOSS_TYPE='igr_wo_n_w_heat' # 'siren_wo_n_w_div' | 'siren_wo_n' | 'siren_w_div' | 'siren'
+LOSS_WEIGHTS=(3e3 1e2 1e2 5e1 1e2 0 3e3) # sdf, inter, normal, eikonal, div, latent, heat
 DIV_TYPE='dir_l1' # 'dir_l1' | 'dir_l2' | 'full_l1' | 'full_l2'
 DIVDECAY='linear' # 'linear' | 'quintic' | 'step'
 DECAY_PARAMS=(1e2 0.2 1e2 0.4 0.0 0.0)
@@ -42,10 +43,14 @@ GRAD_CLIP_NORM=10.0
 ### TESTING ARGUMENTS ###
 #################################
 EPOCHS_N_EVAL=($(seq 0 100 9900)) # use this to generate images of different iterations
+# EPOCHS_N_EVAL=($(seq 0 100 900)) # use this to generate images of different iterations
 
-for SHAPE in 'L' 'circle' 'snowflake'
+HEAT_LAMBDA=8
+
+# for SHAPE in 'L'
+for SHAPE in 'circle' 'snowflake'
 do
-  LOGDIR=${LOGDIRNAME}${NONMNFLD_SAMPLE_TYPE}'_sampling_'${GRID_RES}'/'${SHAPE}'/'${IDENTIFIER}'/'
-  python3 train_basic_shape.py --logdir $LOGDIR --shape_type $SHAPE --grid_res $GRID_RES --loss_type $LOSS_TYPE --inter_loss_type 'exp' --num_epochs $NEPOCHS --gpu_idx $GPU --n_samples $NSAMPLES --n_points $NPOINTS --batch_size $BATCH_SIZE --lr ${LR} --nonmnfld_sample_type $NONMNFLD_SAMPLE_TYPE --decoder_n_hidden_layers $LAYERS  --decoder_hidden_dim $DECODER_HIDDEN_DIM --div_decay $DIVDECAY --div_decay_params ${DECAY_PARAMS[@]} --div_type $DIV_TYPE --init_type ${INIT_TYPE} --neuron_type ${NEURON_TYPE} --nl ${NL} --sphere_init_params ${SPHERE_INIT_PARAMS[@]} --loss_weights ${LOSS_WEIGHTS[@]} --grad_clip_norm ${GRAD_CLIP_NORM[@]}
+  LOGDIR=${LOGDIRNAME}${NONMNFLD_SAMPLE_TYPE}'_sampling_'${GRID_RES}'/'${SHAPE}'/'
+  python3 train_basic_shape.py --logdir $LOGDIR --shape_type $SHAPE --grid_res $GRID_RES --loss_type $LOSS_TYPE --inter_loss_type 'exp' --num_epochs $NEPOCHS --gpu_idx $GPU --n_samples $NSAMPLES --n_points $NPOINTS --batch_size $BATCH_SIZE --lr ${LR} --nonmnfld_sample_type $NONMNFLD_SAMPLE_TYPE --decoder_n_hidden_layers $LAYERS  --decoder_hidden_dim $DECODER_HIDDEN_DIM --div_decay $DIVDECAY --div_decay_params ${DECAY_PARAMS[@]} --div_type $DIV_TYPE --init_type ${INIT_TYPE} --neuron_type ${NEURON_TYPE} --nl ${NL} --sphere_init_params ${SPHERE_INIT_PARAMS[@]} --loss_weights ${LOSS_WEIGHTS[@]} --grad_clip_norm ${GRAD_CLIP_NORM[@]} --heat_lambda ${HEAT_LAMBDA}
   python3 test_basic_shape.py --logdir $LOGDIR --gpu_idx $GPU --epoch_n "${EPOCHS_N_EVAL[@]}"
 done

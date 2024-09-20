@@ -138,7 +138,7 @@ def compute_props(decoder, latent, z_gt, device):
 
     return x, y, z_np, z_diff
 
-def compute_deriv_props(decoder, latent, z_gt, device):
+def compute_deriv_props(decoder, latent, z_gt, heat_lambda, device):
 
     # compute derivative properties on a grid
     res = z_gt.shape[1]
@@ -159,7 +159,8 @@ def compute_deriv_props(decoder, latent, z_gt, device):
     grid_curl = (dx[:, 1] - dy[:, 0]).cpu().detach().numpy().reshape(x.shape[0], x.shape[0])
 
     # compute eikonal term (gradient magnitude)
-    eikonal_term = ((grid_grad.norm(2, dim=-1) - 1) ** 2).cpu().detach().numpy().reshape(x.shape[0], x.shape[0])
+    # eikonal_term = ((grid_grad.norm(2, dim=-1) - 1) ** 2).cpu().detach().numpy().reshape(x.shape[0], x.shape[0])
+    eikonal_term = np.zeros_like(z_np)
 
     # compute divergence
     grid_div = (dx[:, 0] + dy[:, 1]).detach().cpu().numpy().reshape(x.shape[0], x.shape[0])
@@ -167,7 +168,9 @@ def compute_deriv_props(decoder, latent, z_gt, device):
     #plot z difference image
     z_diff = np.abs(np.abs(np.reshape(z_np, [res, res])) - np.abs(z_gt)).reshape(x.shape[0], x.shape[0])
 
-    return x, y, z_np, z_diff, eikonal_term, grid_div, grid_curl
+    heat = torch.exp(-heat_lambda * z.abs()).cpu().detach().numpy().reshape(x.shape[0], x.shape[0])
+
+    return x, y, z_np, z_diff, eikonal_term, grid_div, grid_curl, heat
 
 
 def get_2d_grid_uniform(resolution=100, range=1.2, device=None):

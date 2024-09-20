@@ -332,7 +332,7 @@ def plot_contour_props(x_grid, y_grid, z_grid, clean_points,
 
 
 def plot_contour_div_props(x_grid, y_grid, z_grid, clean_points,
-                           z_diff, eikonal_term, grid_div, grid_curl,
+                           z_diff, eikonal_term, grid_div, grid_curl, grid_heat,
                            example_idx=0, n_gt=None, n_pred=None,
                            show_ax=True, show_bar=True, title_text='', colorscale='Geyser',
                            nonmnfld_points=None, marker_size=10,
@@ -397,11 +397,13 @@ def plot_contour_div_props(x_grid, y_grid, z_grid, clean_points,
                                   font=dict(family='Sherif', size=24, color='red'))
                        )
 
+    # plot sdf image
     fig1 = go.Figure(data=traces, layout=layout)
     offline.plot(fig1, auto_open=False)
     dist_img = utils.plotly_fig2array(fig1)
     print("Finished computing sign distance image")
-    # plot eikonal
+
+    # plot eikonal image
     if clean_points is not None:
         traces = [clean_points_scatter]
     traces.append(go.Contour(x=x_grid, y=y_grid, z=eikonal_term,
@@ -417,7 +419,8 @@ def plot_contour_div_props(x_grid, y_grid, z_grid, clean_points,
     offline.plot(fig3, auto_open=False)
     eikonal_img = utils.plotly_fig2array(fig3)
     print("Finished computing eikonal image")
-    #plot z difference image
+
+    # plot z difference image
     if clean_points is not None:
         traces = [clean_points_scatter]
     traces.append(go.Contour(x=x_grid, y=y_grid, z=z_diff,
@@ -433,8 +436,9 @@ def plot_contour_div_props(x_grid, y_grid, z_grid, clean_points,
     offline.plot(fig5, auto_open=False)
     z_diff_img = utils.plotly_fig2array(fig5)
     print("Finished computing gt distance image")
+
     if plot_second_derivs:
-        #plot divergence
+        # plot divergence
         if clean_points is not None:
             traces = [clean_points_scatter]
         traces.append(go.Contour(x=x_grid, y=y_grid, z=np.clip(grid_div, -10, 10),
@@ -473,7 +477,22 @@ def plot_contour_div_props(x_grid, y_grid, z_grid, clean_points,
     else:
         # div_img, z_diff_img, curl_img = np.zeros_like(dist_img), np.zeros_like(dist_img), np.zeros_like(dist_img)
         div_img, curl_img = np.zeros_like(div_img), np.zeros_like(dist_img)
-    return dist_img, curl_img, eikonal_img, div_img, z_diff_img
+
+    # plot heat image
+    traces = go.Contour(x=x_grid, y=y_grid, z=grid_heat,
+                             colorscale=colorscale,
+                             contours=dict(
+                                 start=-1,
+                                 end=1,
+                                 size=0.025,
+                             ), showscale=show_bar
+                             )
+    fig6 = go.Figure(data=traces, layout=layout)
+    offline.plot(fig6, auto_open=False)
+    heat_img = utils.plotly_fig2array(fig6)
+    print("Finished computing heat image")
+
+    return dist_img, curl_img, eikonal_img, div_img, z_diff_img, heat_img
 
 
 def plot_init_contour_div_props(x_grid, y_grid, z_grid, clean_points,
