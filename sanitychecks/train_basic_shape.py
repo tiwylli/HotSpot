@@ -8,6 +8,7 @@ import torch
 import utils.visualizations as vis
 import numpy as np
 import models.Net as Net
+import models.Heat as HeatNet
 from models.losses import Loss
 import torch.nn.parallel
 import torch.optim as optim
@@ -38,6 +39,10 @@ args = sc_args.get_args()
     inter_loss_type,
     loss_weights,
     heat_lambda,
+    nonmnfld_sample_type,
+    nonmnfld_sample_std2,
+    n_random_samples,
+    grid_range,
 ) = (
     args.gpu_idx,
     args.nl,
@@ -59,6 +64,10 @@ args = sc_args.get_args()
     args.inter_loss_type,
     args.loss_weights,
     args.heat_lambda,
+    args.nonmnfld_sample_type,
+    args.nonmnfld_sample_std2,
+    args.n_random_samples,
+    args.grid_range,
 )
 
 # set up backup and logging
@@ -71,7 +80,7 @@ os.system("cp %s %s" % ("../models/losses.py", logdir))  # backup the losses fil
 torch.manual_seed(0)  # change random seed for training set (so it will be different from test set
 np.random.seed(0)
 train_set = basic_shape_dataset2d.get2D_dataset(
-    n_points, n_samples, args.grid_res, args.nonmnfld_sample_type, shape_type=args.shape_type
+    n_points, n_samples, args.grid_res, nonmnfld_sample_type, nonmnfld_sample_std2, n_random_samples, grid_range, shape_type=args.shape_type
 )
 train_dataloader = torch.utils.data.DataLoader(
     train_set, batch_size=batch_size, shuffle=True, num_workers=2, pin_memory=True
@@ -92,6 +101,7 @@ SINR = Net.Network(
     decoder_n_hidden_layers=args.decoder_n_hidden_layers,
     init_type=args.init_type,
 )
+# SINR = HeatNet.Net()
 if args.parallel:
     if device.type == "cuda":
         SINR = torch.nn.DataParallel(SINR)
@@ -122,6 +132,8 @@ num_batches = len(train_dataloader)
 refine_flag = True
 grid_points = train_set.grid_points
 
+# n_resamples = 
+
 # Train the shape implicit neural representation
 train_time_running_mean = 0
 train_time_running_sum = 0
@@ -135,7 +147,7 @@ for epoch in range(num_epochs):
     for batch_idx, data in enumerate(train_dataloader):
 
         # save model before update
-        if batch_idx % 50 == 0:
+        if batch_idx % 100 == 0:
             utils.log_string(
                 "saving model to file :{}".format("model_%d.pth" % (batch_idx)), log_file
             )
@@ -145,7 +157,14 @@ for epoch in range(num_epochs):
         # with torch.cuda.amp.autocast():
         SINR.train()
 
-        mnfld_points, normals_gt, nonmnfld_dist_gt, nonmnfld_points, nonmnfld_n_gt, nonmnfld_pdfs = (
+        (
+            mnfld_points,
+            normals_gt,
+            nonmnfld_dist_gt,
+            nonmnfld_points,
+            nonmnfld_n_gt,
+            nonmnfld_pdfs,
+        ) = (
             data["points"].to(device),
             data["mnfld_n"].to(device),
             data["nonmnfld_dist"].to(device),
@@ -217,6 +236,9 @@ for epoch in range(num_epochs):
         criterion.update_div_weight(
             epoch * n_samples + batch_idx, num_epochs * n_samples, args.div_decay_params
         )
+        # criterion.update_heat_lambda(
+        #     epoch * n_samples + batch_idx, num_epochs * n_samples, heat_lambda, 100
+        # )
         # criterion.update_heat_weight(epoch * n_samples + batch_idx, num_epochs * n_samples, 5e-1, 5e-3)
 
         # save last model

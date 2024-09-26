@@ -16,19 +16,40 @@ class BasicShape2D(data.Dataset):
         self,
         n_points,
         n_samples=128,
-        res=128,
+        grid_res=128,
         sample_type="grid",
-        sapmling_std=0.005,
+        sampling_std=0.005,
+        n_random_samples=1024,
         grid_range=1.2,
+        batch_size=32,
     ):
 
+        print("n_points:", n_points)
+        print("n_samples:", n_samples)
+        print("grid_res:", grid_res)
+        print("sample_type:", sample_type)
+        print("sampling_std:", sampling_std)
+        print("n_random_sample:", n_random_samples)
+        print("batch_size:", batch_size)
+        print("grid_range:", grid_range)
+        
         self.grid_range = grid_range
         self.n_points = n_points
         self.n_samples = n_samples
-        self.grid_res = res
+        self.grid_res = grid_res
         self.sample_type = sample_type  # grid | gaussian | combined
-        self.sampling_std = sapmling_std
+        self.sampling_std = sampling_std
+        self.n_random_samples = n_random_samples
+        self.batch_size = batch_size
         # Generate shape
+
+        n_samples = self.n_points
+        if "grid" in self.sample_type:
+            n_samples += self.grid_res**2
+        if self.sample_type != "grid":
+            n_samples += self.n_random_samples
+
+        self.n_batchs = int(np.ceil(n_samples / self.batch_size))
 
         self.points = self.get_mnfld_points()
 
@@ -45,14 +66,20 @@ class BasicShape2D(data.Dataset):
         self.mnfld_n = self.get_mnfld_n()
 
         self.grid_dist, self.grid_n = self.get_points_distances_and_normals(self.grid_points)
+        # self.nonmnfld_dist, self.nonmnfld_n = self.get_points_distances_and_normals(
+        #     self.nonmnfld_points
+        # ) # For grid sample, shape: (grid_res ** 2,), (grid_res ** 2, 2)
         self.nonmnfld_dist, self.nonmnfld_n = self.get_points_distances_and_normals(
-            self.nonmnfld_points
+            self.nonmnfld_points.reshape(-1, self.nonmnfld_points.shape[-1])
         )
+        self.nonmnfld_dist = np.reshape(self.nonmnfld_dist, self.nonmnfld_points.shape[:-1])
+        self.nonmnfld_n = np.reshape(self.nonmnfld_n, self.nonmnfld_points.shape)
+
         self.dist_img = np.reshape(self.grid_dist, [self.grid_res, self.grid_res])
 
         self.point_idxs = np.arange(self.points.shape[1])
         self.grid_points_idxs = np.arange(self.grid_points.shape[0])
-        self.nonmnfld_points_idxs = np.arange(self.nonmnfld_points.shape[0])
+        self.nonmnfld_points_idxs = np.arange(self.nonmnfld_points.shape[-2])
         self.sample_probs = np.ones_like(self.grid_points_idxs) / self.grid_points.shape[0]
 
         self.generate_batch_indices()
@@ -148,12 +175,12 @@ class BasicShape2D(data.Dataset):
     def get_nonmnfld_points_and_pdfs(self):
         if self.sample_type == "grid":
             nonmnfld_points = self.grid_points
-            nonmnfld_pdfs = np.ones_like(nonmnfld_points) / (4 * self.grid_res**2)
+            nonmnfld_pdfs = np.ones(nonmnfld_points.shape[:-1] + (1,)) / (4 * self.grid_range**2)
         elif self.sample_type == "uniform":
             nonmnfld_points = np.random.uniform(
-                -self.grid_range, self.grid_range, size=(self.grid_res * self.grid_res, 2)
+                -self.grid_range, self.grid_range, size=(self.n_samples, self.n_random_samples, 2)
             ).astype(np.float32)
-            nonmnfld_pdfs = np.ones_like(nonmnfld_points) / (4 * self.grid_res**2)
+            nonmnfld_pdfs = np.ones(nonmnfld_points.shape[:-1] + (1,)) / (4 * self.grid_range**2)
         elif self.sample_type == "gaussian":
             nonmnfld_points, nonmnfld_pdfs = self.sample_gaussian_noise_around_shape()
             idx = np.random.choice(range(nonmnfld_points.shape[1]), self.grid_res * self.grid_res)
@@ -163,9 +190,20 @@ class BasicShape2D(data.Dataset):
             nonmnfld_points = nonmnfld_points[sample_idx, idx]
             nonmnfld_pdfs = nonmnfld_pdfs[sample_idx, idx]
         elif self.sample_type == "combined":
+            nonmnfld_points = self.grid_points
+            nonmnfld_pdfs = np.ones(nonmnfld_points.shape[:-1] + (1,)) / (4 * self.grid_range**2)
             nonmnfld_points1, nonmnfld_pdfs1 = self.sample_gaussian_noise_around_shape()
+            n_points1 = nonmnfld_points1.shape[1]
             nonmnfld_points2 = self.grid_points
-            nonmnfld_pdfs2 = np.ones_like(nonmnfld_points2) / (4 * self.grid_res**2)
+            nonmnfld_pdfs2 = np.ones(nonmnfld_points2.shape[:-1] + (1,)) / (4 * self.grid_range**2)
+            n_points2 = nonmnfld_points2.shape[0]
+            # print(n_points1, n_points2)
+            nonmnfld_pdfs1 *= n_points1 / (
+                n_points1 + n_points2
+            )  # shape: (n_samples, n_points1 * n_noisy_points, 1)
+            nonmnfld_pdfs2 *= n_points2 / (
+                n_points1 + n_points2
+            )  # shape: (n_samples, n_points2, 1)
             idx1 = np.random.choice(
                 range(nonmnfld_points1.shape[1]), int(np.ceil(self.grid_res * self.grid_res / 2))
             )
@@ -191,6 +229,68 @@ class BasicShape2D(data.Dataset):
             nonmnfld_points = nonmnfld_points[sample_idx, idx]
             self.nonmnfld_probs = self.nonmnfld_probs[sample_idx, idx]
             nonmnfld_pdfs = 0
+        elif self.sample_type == "central_gaussian":
+            n_samples = self.grid_res * self.grid_res
+            nonmnfld_points = np.random.multivariate_normal(
+                [0, 0],
+                [[self.sampling_std, 0], [0, self.sampling_std]],
+                size=(self.n_samples, n_samples),
+            ).astype(np.float32)
+            nonmnfld_pdfs = scipy.stats.multivariate_normal.pdf(
+                nonmnfld_points, mean=[0, 0], cov=[[self.sampling_std, 0], [0, self.sampling_std]]
+            ).reshape([self.n_samples, -1, 1])
+            idx = np.random.choice(range(nonmnfld_points.shape[1]), self.grid_res * self.grid_res)
+            sample_idx = np.random.choice(
+                range(nonmnfld_points.shape[0]), self.grid_res * self.grid_res
+            )
+            nonmnfld_points = nonmnfld_points[sample_idx, idx]
+            nonmnfld_pdfs = nonmnfld_pdfs[sample_idx, idx]
+        elif self.sample_type == "grid_central_gaussian":
+            nonmnfld_points1, nonmnfld_pdfs1 = self.sample_central_gaussian(
+                n_random_sample=self.n_random_samples
+            )  # shape: (n_samples, n_random_samples, 2), (n_samples, n_random_samples, 1)
+            n_points1 = nonmnfld_points1.shape[1]
+            # print(nonmnfld_points1.shape)
+            # print(nonmnfld_pdfs1.shape)
+
+            nonmnfld_points2 = self.grid_points[None, ...].repeat(
+                self.n_samples, axis=0
+            )  # shape: (n_samples, grid_res ** 2, 2)
+            nonmnfld_pdfs2 = np.ones(nonmnfld_points2.shape[:-1] + (1,)) / (
+                4 * self.grid_range**2
+            )  # shape: (n_samples, grid_res ** 2, 1)
+            n_points2 = nonmnfld_points2.shape[1]
+            # print(nonmnfld_points2.shape)
+            # print(nonmnfld_pdfs2.shape)
+
+            nonmnfld_pdfs1 *= n_points1 / (
+                n_points1 + n_points2
+            )  # shape: (n_samples, n_points1 * n_noisy_points, 1)
+            nonmnfld_pdfs2 *= n_points2 / (
+                n_points1 + n_points2
+            )  # shape: (n_samples, n_points2, 1)
+
+            nonmnfld_points = np.concatenate(
+                [nonmnfld_points1, nonmnfld_points2], axis=1
+            )  # shape: (n_samples, n_random_samples + grid_res ** 2, 2)
+            nonmnfld_pdfs = np.concatenate(
+                [nonmnfld_pdfs1, nonmnfld_pdfs2], axis=1
+            )  # shape: (n_samples, n_random_samples + grid_res ** 2, 1)
+            # n_points = nonmnfld_points.shape[1]
+
+            # # randomly sample points from the combined set for every sample
+            # idx = np.random.choice(range(n_points), int(n_points))
+
+            # nonmnfld_points = np.concatenate(
+            #     [nonmnfld_points1[sample_idx, idx1], nonmnfld_points2[idx2]], axis=0
+            # )
+            # nonmnfld_pdfs = np.concatenate(
+            #     [nonmnfld_pdfs1[sample_idx, idx1], nonmnfld_pdfs2[idx2]], axis=0
+            # )
+        elif self.sample_type == "central_laplace":
+            nonmnfld_points, nonmnfld_pdfs = self.sample_central_laplace(
+                n_random_sample=self.n_random_samples
+            )
         else:
             raise Warning("Unsupported non manfold sampling type {}".format(self.sample_type))
         return nonmnfld_points, nonmnfld_pdfs
@@ -212,6 +312,55 @@ class BasicShape2D(data.Dataset):
         nonmnfld_points = nonmnfld_points.reshape(
             [nonmnfld_points.shape[0], -1, nonmnfld_points.shape[-1]]
         )  # shape: (n_samples, n_points * n_noisy_points, 2)
+        return nonmnfld_points, nonmnfld_pdfs
+
+    def sample_central_gaussian(self, n_random_sample):
+        nonmnfld_points = np.random.multivariate_normal(
+            [0, 0],
+            [[self.sampling_std, 0], [0, self.sampling_std]],
+            size=(self.n_samples, n_random_sample),
+        ).astype(
+            np.float32
+        )  # shape: (n_samples, n_random_sample, 2)
+        nonmnfld_pdfs = scipy.stats.multivariate_normal.pdf(
+            nonmnfld_points, mean=[0, 0], cov=[[self.sampling_std, 0], [0, self.sampling_std]]
+        )  # shape: (n_samples, n_random_sample)
+        nonmnfld_pdfs = np.expand_dims(
+            nonmnfld_pdfs, axis=-1
+        )  # shape: (n_samples, n_random_sample, 1)
+        # idx = np.random.choice(range(nonmnfld_points.shape[1]), self.grid_res * self.grid_res)
+        # sample_idx = np.random.choice(
+        #     range(nonmnfld_points.shape[0]), self.grid_res * self.grid_res
+        # )
+        # nonmnfld_points = nonmnfld_points[sample_idx, idx]
+        # nonmnfld_pdfs = nonmnfld_pdfs[sample_idx, idx]
+
+        return nonmnfld_points, nonmnfld_pdfs
+
+    def sample_central_laplace(self, n_random_sample):
+        laplace_samples = np.random.laplace(0, self.sampling_std, size=(self.n_samples, n_random_sample)).astype(np.float32)  # shape: (n_samples, n_random_sample)
+        laplace_pdfs = scipy.stats.laplace.pdf(
+            laplace_samples, mean=0, cov=self.sampling_std
+        )  # shape: (n_samples, n_random_sample)
+
+        angle_samples = np.random.uniform(0, 2 * np.pi, size=(self.n_samples, n_random_sample)).astype(np.float32)  # shape: (n_samples, n_random_sample)
+        angle_pdfs = np.ones((self.n_samples, n_random_sample)) / (2 * np.pi)  # shape: (n_samples, n_random_sample)        
+
+        nonmnfld_points = np.concatenate(
+            [laplace_samples * np.cos(angle_samples), laplace_samples * np.sin(angle_samples)], axis=-1
+        )  # shape: (n_samples, n_random_sample, 2)
+        nonmnfld_pdfs = laplace_pdfs * angle_pdfs  # shape: (n_samples, n_random_sample)
+
+        nonmnfld_pdfs = np.expand_dims(
+            nonmnfld_pdfs, axis=-1
+        )  # shape: (n_samples, n_random_sample, 1)
+        # idx = np.random.choice(range(nonmnfld_points.shape[1]), self.grid_res * self.grid_res)
+        # sample_idx = np.random.choice(
+        #     range(nonmnfld_points.shape[0]), self.grid_res * self.grid_res
+        # )
+        # nonmnfld_points = nonmnfld_points[sample_idx, idx]
+        # nonmnfld_pdfs = nonmnfld_pdfs[sample_idx, idx]
+
         return nonmnfld_points, nonmnfld_pdfs
 
     def sample_laplace_noise_around_shape(self, heat_lambda=100):
@@ -238,30 +387,79 @@ class BasicShape2D(data.Dataset):
 
         return nonmnfld_points
 
+    def resample(self):
+        self.nonmnfld_points, self.nonmnfld_pdfs = self.get_nonmnfld_points_and_pdfs()
+
+        # Compute gt mnfld normals
+        self.mnfld_n = self.get_mnfld_n()
+
+        self.grid_dist, self.grid_n = self.get_points_distances_and_normals(self.grid_points)
+        # self.nonmnfld_dist, self.nonmnfld_n = self.get_points_distances_and_normals(
+        #     self.nonmnfld_points
+        # ) # For grid sample, shape: (grid_res ** 2,), (grid_res ** 2, 2)
+        self.nonmnfld_dist, self.nonmnfld_n = self.get_points_distances_and_normals(
+            self.nonmnfld_points.reshape(-1, self.nonmnfld_points.shape[-1])
+        )
+        self.nonmnfld_dist = np.reshape(self.nonmnfld_dist, self.nonmnfld_points.shape[:-1])
+        self.nonmnfld_n = np.reshape(self.nonmnfld_n, self.nonmnfld_points.shape)
+
+        self.dist_img = np.reshape(self.grid_dist, [self.grid_res, self.grid_res])
+
+        self.point_idxs = np.arange(self.points.shape[1])
+        self.grid_points_idxs = np.arange(self.grid_points.shape[0])
+        self.nonmnfld_points_idxs = np.arange(self.nonmnfld_points.shape[-2])
+        self.sample_probs = np.ones_like(self.grid_points_idxs) / self.grid_points.shape[0]
+
+        self.generate_batch_indices()
+
     def generate_batch_indices(self):
         mnfld_idx = []
         nonmnfld_idx = []
         for i in range(self.n_samples):
             mnfld_idx.append(np.random.choice(self.point_idxs, self.n_points))
-            nonmnfld_idx.append(np.random.choice(self.nonmnfld_points_idxs, self.n_points))
+            nonmnfld_idx.append(np.random.choice(self.nonmnfld_points_idxs, min(self.n_points, len(self.nonmnfld_points_idxs))))
         self.mnfld_idx = np.array(mnfld_idx)
         self.nonmnfld_idx = np.array(nonmnfld_idx)
 
     def __getitem__(self, index):
         nonmnfld_idx = self.nonmnfld_idx[index]
         mnfld_idx = self.mnfld_idx[index]
-        if self.nonmnfld_dist is not None:
+
+        # if self.nonmnfld_dist is not None:
+        #     nonmnfld_dist = self.nonmnfld_dist[index, nonmnfld_idx]
+        # else:
+        #     nonmnfld_dist = torch.tensor(0)
+
+        # if self.nonmnfld_n is not None:
+        #     nonmnfld_n = self.nonmnfld_n[index, nonmnfld_idx]
+        # else:
+        #     nonmnfld_n = torch.tensor(0)
+        
+        if len(self.nonmnfld_points.shape) == 2:
+            nonmnfld_points = self.nonmnfld_points[nonmnfld_idx]
+            nonmnfld_pdfs = self.nonmnfld_pdfs[nonmnfld_idx]
             nonmnfld_dist = self.nonmnfld_dist[nonmnfld_idx]
+            nonmnfld_n = self.nonmnfld_n[nonmnfld_idx]
         else:
-            nonmnfld_dist = torch.tensor(0)
+            nonmnfld_points = self.nonmnfld_points[index, nonmnfld_idx]
+            nonmnfld_pdfs = self.nonmnfld_pdfs[index, nonmnfld_idx]
+            nonmnfld_dist = self.nonmnfld_dist[index, nonmnfld_idx]
+            nonmnfld_n = self.nonmnfld_n[index, nonmnfld_idx]
+
+        # print(f"self.points.shape: {self.points.shape}")
+        # print(f"self.mnfld_n.shape: {self.mnfld_n.shape}")
+        # print(f"self.nonmnfld_dist.shape: {self.nonmnfld_dist.shape}")
+        # print(f"self.nonmnfld_n.shape: {self.nonmnfld_n.shape}")
+        # print(f"self.nonmnfld_points.shape: {self.nonmnfld_points.shape}")
+        # print(f"self.nonmnfld_pdfs.shape: {self.nonmnfld_pdfs.shape}")
 
         return {
             "points": self.points[index, mnfld_idx, :],
             "mnfld_n": self.mnfld_n[index, mnfld_idx, :],
             "nonmnfld_dist": nonmnfld_dist,
-            "nonmnfld_n": self.nonmnfld_n[nonmnfld_idx],
-            "nonmnfld_points": self.nonmnfld_points[nonmnfld_idx],
-            "nonmnfld_pdfs": self.nonmnfld_pdfs[nonmnfld_idx],
+            "nonmnfld_n": nonmnfld_n,
+            "nonmnfld_points": nonmnfld_points,
+            "nonmnfld_pdfs": nonmnfld_pdfs,
         }
 
     def __len__(self):
@@ -334,18 +532,23 @@ class Polygon(BasicShape2D):
                 t = np.repeat(t[None, :], self.n_samples, axis=0)
             else:
                 t = np.random.uniform(0, 1, [self.n_samples, points_per_segment[line_idx]])
+                # t = np.random.uniform(0, 1, [points_per_segment[line_idx]])
             p1 = np.array(self.vertices[self.lines["start_idx"][line_idx]])
             p2 = np.array(self.vertices[self.lines["end_idx"][line_idx]])
             points = np.concatenate([points, p1 + t[:, :, None] * (p2 - p1)], axis=1)
+            # points = np.concatenate([points, p1 + t[:, None] * (p2 - p1)], axis=0)
             self.point_normal = np.concatenate(
                 [
                     self.point_normal,
                     np.tile(
                         self.lines["nl"][line_idx][None, None, :],
                         [self.n_samples, points_per_segment[line_idx], 1],
+                        # self.lines["nl"][line_idx][None, :],
+                        # [points_per_segment[line_idx], 1],
                     ),
                 ],
                 axis=1,
+                # axis=0,
             )
         return points.astype("f")
 
@@ -442,6 +645,43 @@ class Polygon(BasicShape2D):
         return lines
 
 
+class Union(BasicShape2D):
+    def __init__(self, shapes=[]):
+        self.shapes = shapes
+
+        n_points = sum([shape.n_points for shape in shapes])
+        n_samples = shapes[0].n_samples
+        grid_res = shapes[0].grid_res
+        sample_type = shapes[0].sample_type
+        sampling_std = shapes[0].sampling_std
+        n_random_samples = shapes[0].n_random_samples
+        grid_range = shapes[0].grid_range
+        batch_size = shapes[0].batch_size
+        
+        BasicShape2D.__init__(self, n_points, n_samples, grid_res, sample_type, sampling_std, n_random_samples, grid_range, batch_size)
+
+    def get_mnfld_points(self):
+        points = []
+        for shape in self.shapes:
+            points.append(shape.get_mnfld_points())
+        return np.concatenate(points, axis=1)
+    
+    def get_mnfld_n(self):
+        normals = []
+        for shape in self.shapes:
+            normals.append(shape.get_mnfld_n())
+        return np.concatenate(normals, axis=1)
+
+    def get_points_distances_and_normals(self, points):
+        distances = []
+        normals = []
+        for shape in self.shapes:
+            d, n = shape.get_points_distances_and_normals(points)
+            distances.append(d)
+            normals.append(n)
+        return np.stack(distances).min(axis=0), np.stack(normals)[np.argmin(np.stack(distances), axis=0), range(points.shape[0])]
+
+
 def koch_line(start, end, factor):
     """
     Segments a line to Koch line, creating fractals.
@@ -536,6 +776,22 @@ def get_koch_points(degree, s=1.0):
     points = np.flipud(points)  # reorder the points clockwise
     return points
 
+def get_star_points(transform):
+    points = [(1.0, 0.0), (0.4045, 0.2939), (0.3090, 0.9511), (-0.1545, 0.4755), (-0.8090, 0.5878), (-0.5, 0.0), (-0.8090, -0.5878), (-0.1545, -0.4755), (0.3090, -0.9511), (0.4045, -0.2939)]
+    # transform points, transform is a 3x3 matrix
+    points = np.array(points)
+    points = np.concatenate([points, np.ones((points.shape[0], 1))], axis=1)
+    points = np.dot(transform, points.T).T
+    points = points[:, :2]
+    return points
+
+def get_hexagon_points(transform):
+    points = [(1.0, 0.0), (0.5000, 0.8660), (-0.5000, 0.8660), (-1.0, 0.0), (-0.5000, -0.8660), (0.5000, -0.8660)]
+    points = np.array(points)
+    points = np.concatenate([points, np.ones((points.shape[0], 1))], axis=1)
+    points = np.dot(transform, points.T).T
+    points = points[:, :2]
+    return points
 
 def get2D_dataset(*args, shape_type="circle"):
 
@@ -551,6 +807,14 @@ def get2D_dataset(*args, shape_type="circle"):
     elif shape_type == "snowflake":
         vertices = get_koch_points(degree=2, s=1.0)
         out_shape = Polygon(*args, vertices=vertices)
+    elif shape_type == "starAndHexagon":
+        # new_args = list(args)
+        # new_args.n_points //= 2
+        transform_star = np.array([[0.5, 0, -0.5], [0, 0.5, -0.5], [0, 0, 1]])        
+        transform_hexagon = np.array([[0.5, 0, 0.5], [0, 0.5, 0.5], [0, 0, 1]])
+        star_points = get_star_points(transform_star)
+        hexagon_points = get_hexagon_points(transform_hexagon)
+        out_shape = Union(shapes=[Polygon(*args, vertices=star_points), Polygon(*args, vertices=hexagon_points)])
     else:
         raise Warning("Unsupportaed shape")
 

@@ -8,6 +8,7 @@ import torch
 import utils.visualizations as vis
 import numpy as np
 import models.Net as Net
+import models.Heat as HeatNet
 from models.losses import Loss
 import torch.nn.parallel
 import utils.utils as utils
@@ -67,7 +68,7 @@ plot_second_derivs = False
 torch.manual_seed(seed)
 np.random.seed(seed)
 test_set = basic_shape_dataset2d.get2D_dataset(
-    n_points, n_samples, args.grid_res, args.nonmnfld_sample_type, shape_type=args.shape_type
+    n_points, n_samples, args.grid_res, args.nonmnfld_sample_type, args.nonmnfld_sample_std2, args.n_random_samples, shape_type=args.shape_type
 )
 test_dataloader = torch.utils.data.DataLoader(
     test_set, batch_size=batch_size, shuffle=False, num_workers=2, pin_memory=True
@@ -81,9 +82,11 @@ SINR = Net.Network(
     decoder_hidden_dim=args.decoder_hidden_dim,
     nl=args.nl,
     encoder_type="none",
+    neuron_type=args.neuron_type,
     decoder_n_hidden_layers=args.decoder_n_hidden_layers,
     init_type=args.init_type,
 )
+# SINR = HeatNet.Net()
 if args.parallel:
     if device.type == "cuda":
         SINR = torch.nn.DataParallel(SINR)
@@ -102,13 +105,21 @@ criterion = Loss(
 
 _, test_data = next(enumerate(test_dataloader))
 SINR.eval()
-mnfld_points, normals_gt, nonmnfld_dist_gt, nonmnfld_points, nonmnfld_n_gt = (
+mnfld_points, normals_gt, nonmnfld_dist_gt, nonmnfld_points, nonmnfld_n_gt, nonmnfld_pdfs = (
     test_data["points"].to(device),
     test_data["mnfld_n"].to(device),
     test_data["nonmnfld_dist"].to(device),
     test_data["nonmnfld_points"].to(device),
     test_data["nonmnfld_n"].to(device),
+    test_data["nonmnfld_pdfs"].to(device),
 )
+
+print(f"mnfld_points.shape: {mnfld_points.shape}")
+print(f"normals_gt.shape: {normals_gt.shape}")
+print(f"nonmnfld_dist_gt.shape: {nonmnfld_dist_gt.shape}")
+print(f"nonmnfld_points.shape: {nonmnfld_points.shape}")
+print(f"nonmnfld_n_gt.shape: {nonmnfld_n_gt.shape}")
+print(f"nonmnfld_pdfs.shape: {nonmnfld_pdfs.shape}")
 
 grid_points = test_set.grid_points
 
@@ -126,6 +137,7 @@ for epoch in args.epoch_n:
         output_pred=output_pred,
         mnfld_points=mnfld_points,
         nonmnfld_points=nonmnfld_points,
+        nonmnfld_pdfs=nonmnfld_pdfs,
         mnfld_n_gt=normals_gt,
     )
 

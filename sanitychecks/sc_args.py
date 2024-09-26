@@ -6,7 +6,6 @@ import numpy as np
 
 
 def add_args(parser):
-
     parser.add_argument("--gpu_idx", type=int, default=1, help="set < 0 to use CPU")
     parser.add_argument("--logdir", type=str, default="./log/siren_square", help="log directory")
     parser.add_argument("--seed", type=int, default=3627473, help="random seed")
@@ -125,6 +124,12 @@ def add_args(parser):
         help="how to sample points off the manifold - grid | gaussian | combined",
     )
     parser.add_argument(
+        "--nonmnfld_sample_std2",
+        type=float,
+        default=0.2,
+        help="standard deviation of the gaussian noise for non manifold points",
+    )
+    parser.add_argument(
         "--div_decay",
         type=str,
         default="none",
@@ -152,6 +157,12 @@ def add_args(parser):
     )
     parser.add_argument(
         "--heat_lambda", type=float, default=1e-2, help="heat loss weight for eikonal loss"
+    )
+    parser.add_argument(
+        "--n_random_samples", type=int, default=60001, help="number of random samples"
+    )
+    parser.add_argument(
+        "--grid_range", type=float, default=1.2, help="range of the grid to sample points"
     )
     return parser
 
@@ -229,6 +240,10 @@ def get_test_args():
         test_opt.decoder_n_hidden_layers,
         test_opt.loss_weights,
         test_opt.heat_lambda,
+        test_opt.nonmnfld_sample_type,
+        test_opt.nonmnfld_sample_std2,
+        test_opt.n_random_samples,
+        test_opt.neuron_type,
     ) = (
         train_opt.nl,
         train_opt.latent_size,
@@ -251,6 +266,10 @@ def get_test_args():
         train_opt.decoder_n_hidden_layers,
         train_opt.loss_weights,
         train_opt.heat_lambda,
+        train_opt.nonmnfld_sample_type,
+        train_opt.nonmnfld_sample_std2,
+        train_opt.n_random_samples,
+        train_opt.neuron_type,
     )
 
     test_opt.n_point_total = train_opt.n_points

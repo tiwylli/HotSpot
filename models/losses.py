@@ -56,7 +56,7 @@ def full_div(points, grads):
     return div
 
 
-def heat_loss(points, preds, grads=None, sample_pdfs=None, heat_lambda=100, in_mnfld=False):
+def heat_loss(points, preds, grads=None, sample_pdfs=None, heat_lambda=8, in_mnfld=False):
     if grads is None:
         grads = torch.autograd.grad(
             outputs=preds,
@@ -70,7 +70,9 @@ def heat_loss(points, preds, grads=None, sample_pdfs=None, heat_lambda=100, in_m
         loss = (0.5 * heat**2 * (grads.norm(2, dim=-1) ** 2 + 1))
     else:
         loss = (0.5 * heat**2 * (grads.norm(2, dim=-1) ** 2 + 1)) - heat
-    # loss /= sample_pdfs
+    if sample_pdfs is not None:
+        sample_pdfs = sample_pdfs.squeeze(-1)
+        loss /= sample_pdfs
     loss = loss.sum()
 
     return loss
@@ -172,20 +174,20 @@ class Loss(nn.Module):
                 points=nonmnfld_points,
                 preds=non_manifold_pred,
                 grads=nonmnfld_grad,
-                sample_pdfs=None,
+                sample_pdfs=nonmnfld_pdfs,
                 heat_lambda=self.heat_lambda,
                 in_mnfld=False,
             ) 
-            + heat_loss(
-                points=mnfld_points,
-                preds=manifold_pred,
-                grads=mnfld_grad,
-                sample_pdfs=None,
-                heat_lambda=self.heat_lambda,
-                in_mnfld=True,
-            )
-            heat_term /= nonmnfld_points.reshape(-1, 2).shape[0] + mnfld_points.reshape(-1, 2).shape[0]
-            # heat_term /= nonmnfld_points.reshape(-1, 2).shape[0]
+            # + heat_loss(
+            #     points=mnfld_points,
+            #     preds=manifold_pred,
+            #     grads=mnfld_grad,
+            #     sample_pdfs=None,
+            #     heat_lambda=self.heat_lambda,
+            #     in_mnfld=True,
+            # )
+            heat_term /= nonmnfld_points.reshape(-1, 2).shape[0]
+            # heat_term /= nonmnfld_points.reshape(-1, 2).shape[0] + mnfld_points.reshape(-1, 2).shape[0]
 
         #########################################
         # Losses
@@ -234,7 +236,13 @@ class Loss(nn.Module):
                 + self.weights[3] * eikonal_term
                 + self.weights[4] * div_loss
             )
-        elif self.loss_type == "igr_wo_n_w_heat":
+        elif self.loss_type == "igr_wo_eik_w_heat":
+            loss = (
+                self.weights[0] * sdf_term
+                # + self.weights[3] * eikonal_term
+                + self.weights[6] * heat_term
+            )
+        elif self.loss_type == "igr_w_heat":
             loss = (
                 self.weights[0] * sdf_term
                 + self.weights[3] * eikonal_term
@@ -313,3 +321,9 @@ class Loss(nn.Module):
 
         self.weights[6] = new_weight
         
+
+    def update_heat_lambda(self, current_iteration, n_iterations, start, end):
+        # Linearly increase weight from start to end
+        new_lambda = start + (end - start) * current_iteration / n_iterations
+
+        self.heat_lambda = new_lambda
