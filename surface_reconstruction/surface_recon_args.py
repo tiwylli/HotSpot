@@ -75,7 +75,7 @@ def get_test_args():
     test_opt = parser.parse_args()
     test_opt.logdir = os.path.join(test_opt.logdir, test_opt.file_name.split('.')[0])
     param_filename = os.path.join(test_opt.logdir, 'trained_models/params.pth')
-    train_opt = torch.load(param_filename)
+    train_opt = torch.load(param_filename, weights_only=False)
 
     test_opt.nl, test_opt.latent_size, test_opt.encoder_type, test_opt.n_iterations, test_opt.seed, \
         test_opt.decoder_hidden_dim, test_opt.encoder_hidden_dim, test_opt.decoder_n_hidden_layers, test_opt.init_type, test_opt.neuron_type \

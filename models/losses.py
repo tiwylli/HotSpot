@@ -157,6 +157,8 @@ class Loss(nn.Module):
                         torch.nn.functional.cosine_similarity(mnfld_grad, mnfld_n_gt, dim=-1)
                     )
                 ).mean()
+        else:
+            normal_term = torch.tensor([0.0], device=mnfld_points.device)
 
         # signed distance function term
         sdf_term = torch.abs(manifold_pred).mean()

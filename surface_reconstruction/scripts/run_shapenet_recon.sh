@@ -45,13 +45,13 @@ LR=5e-5
 GRAD_CLIP_NORM=10.0
 
 # For all shape classes use:
-for FOLDER_PATH in ${DATASET_PATH}/*/; do
-     FOLDER_NAME="$(basename "$FOLDER_PATH")"
+# for FOLDER_PATH in ${DATASET_PATH}/*/; do
+#      FOLDER_NAME="$(basename "$FOLDER_PATH")"
 # For subset, use e.g.,
-# for FOLDER_NAME in 'lamp'; do
+for FOLDER_NAME in 'lamp'; do
      FOLDER_PATH=${DATASET_PATH}/$FOLDER_NAME/
      echo $FOLDER_NAME
-     for FILE_PATH in 'd284b73d5983b60f51f77a6d7299806.ply'; do
+     for FILE_PATH in 'd1aed86c38d9ea6761462fc0fa9b0bb4.ply'; do
          FILENAME="$(basename "$FILE_PATH")"
          echo $FILENAME
          SCAN_PATH=$FOLDER_PATH

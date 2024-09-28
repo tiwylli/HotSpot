@@ -5,10 +5,10 @@ import glob
 import cv2
 import numpy as np
 
-for shape_name in ['starAndHexagon']:
+for shape_name in ['L']:
     # Define the directory path
-    dir_name = '/pv/StEik/sanitychecks/out/heat_lambda8_smallNet/grid_sampling_256/' + shape_name + '/vis'
-    output_name = shape_name + '_Heat_smallNet.mp4'
+    dir_name = '/pv/StEik/sanitychecks/out/heat_lambda8_newInitParam/uniform_sampling_2048-2024-09-26_18-35-31/' + shape_name + '/vis'
+    output_name = shape_name + '_Heat_lambda_30.mp4'
 
     # Find all matching files
     file_pattern = os.path.join(dir_name, 'sdf_*.png')

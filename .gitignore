@@ -20,3 +20,5 @@ data/scene_reconstruction
 data/ShapeNetNSP
 sanitychecks/out/
 /*.mp4
+/sanitychecks/*.png
+/sanitychecks/*.html

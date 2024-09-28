@@ -41,7 +41,7 @@ if args.parallel:
 
 model_dir = os.path.join(args.logdir, 'trained_models')
 trained_model_filename = os.path.join(model_dir, 'model.pth')
-Net.load_state_dict(torch.load(trained_model_filename, map_location=device))
+Net.load_state_dict(torch.load(trained_model_filename, map_location=device, weights_only=True))
 Net.to(device)
 latent = None
 
