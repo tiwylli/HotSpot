@@ -2,6 +2,7 @@
 import argparse
 import torch
 import os
+import numpy as np
 
 
 def get_train_args():
@@ -166,6 +167,13 @@ def get_test_args():
         "--export_mesh", type=bool, default=True, help="indicator to export mesh as ply file"
     )
     parser.add_argument("--dataset_path", type=str, default="", help="path to dataset folder")
+    parser.add_argument(
+        "--epoch_n",
+        type=int,
+        nargs="+",
+        default=np.arange(0, 10000, 100).tolist(),
+        help="epoch number to evaluate",
+    )
 
     test_opt = parser.parse_args()
     test_opt.logdir = os.path.join(test_opt.logdir, test_opt.file_name.split(".")[0])
@@ -184,6 +192,7 @@ def get_test_args():
         test_opt.init_type,
         test_opt.neuron_type,
         test_opt.heat_lambda,
+        test_opt.grid_range,
     ) = (
         train_opt.nl,
         train_opt.latent_size,
@@ -196,6 +205,7 @@ def get_test_args():
         train_opt.init_type,
         train_opt.neuron_type,
         train_opt.heat_lambda,
+        train_opt.grid_range,
     )
     test_opt.n_point_total = train_opt.n_points
 

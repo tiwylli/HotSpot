@@ -101,6 +101,7 @@ criterion = Loss(
     loss_type=loss_type,
     div_decay=args.div_decay,
     div_type=args.div_type,
+    heat_lambda=args.heat_lambda,
 )
 
 _, test_data = next(enumerate(test_dataloader))

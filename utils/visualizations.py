@@ -9,34 +9,43 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import os
 
-def plot_contours(x, y, z, colorscale='Geyser', fig=None):
-    # plots a contour image given hight map matrix (2d array)
-    layout = go.Layout(width=1200, height=1200,
-                       xaxis=dict(side="bottom", range=[-1, 1], ),
-                       yaxis=dict(side="left", range=[-1, 1], ),
-                       scene=dict(xaxis=dict(range=[-1, 1], autorange=False),
-                                  yaxis=dict(range=[-1, 1], autorange=False),
-                                  aspectratio=dict(x=1, y=1)),
-                       showlegend=False,
-                       title=dict(text='distance map', y=0.95, x=0.5, xanchor='center', yanchor='middle',
-                                  font=dict(family='Serif', size=24, color='red'))
-                       )
-    if fig is None:
-        traces = []
-    else:
-        traces = list(fig.data)
-    traces.append(go.Contour(x=x.flatten(), y=y.flatten(), z=z.flatten(),
+def plot_contours(x, y, z, colorscale='Geyser', show_scale=True, show_ax=True, title_text=''):
+    traces = []
+
+    # plot implicit function contour
+    traces.append(go.Contour(x=x, y=y, z=z,
                                colorscale=colorscale,
                                # autocontour=True,
                                contours=dict(
                                    start=-1,
                                    end=1,
                                    size=0.025,
-                               ),
+                               ), showscale=show_scale
                                ))  # contour trace
+    traces.append(go.Contour(x=x, y=y, z=z,
+                             contours=dict(start=0,  end=0, coloring='lines'),
+                             line=dict(width=3),
+                             showscale=False,
+                             colorscale=[[0, 'rgb(100, 100, 100)'], [1, 'rgb(100, 100, 100)']]))  # black bold zero line
 
-    fig = go.Figure(data=traces, layout=layout)
-    fig.show()
+    layout = go.Layout(width=800, height=800,
+                       xaxis=dict(side="bottom", range=[-1, 1], showgrid=show_ax, zeroline=show_ax, visible=show_ax),
+                       yaxis=dict(side="left", range=[-1, 1], showgrid=show_ax, zeroline=show_ax, visible=show_ax),
+                       scene=dict(xaxis=dict(range=[-1, 1], autorange=False),
+                                  yaxis=dict(range=[-1, 1], autorange=False),
+                                  aspectratio=dict(x=1, y=1)),
+                       showlegend=False,
+                       title=dict(text=title_text, y=0.95, x=0.5, xanchor='center', yanchor='middle',
+                                  font=dict(family='Sherif', size=24, color='red'))
+                       )
+
+    # plot sdf image
+    sdf_fig = go.Figure(data=traces, layout=layout)
+    offline.plot(sdf_fig, auto_open=False)
+    sdf_img = utils.plotly_fig2array(sdf_fig)
+    print("Finished computing sign distance image")
+
+    return sdf_img
 
 
 def plot_scatter(x, y):
@@ -329,6 +338,45 @@ def plot_contour_props(x_grid, y_grid, z_grid, clean_points,
     dist_img = utils.plotly_fig2array(fig1)
     print("Finished computing sign distance image")
     return dist_img
+
+    
+def plot_coutour(x_grid, y_grid, z_grid, colorscale='Geyser', show_bar=True, show_ax=True, title_text='default_title'):
+    traces = []
+
+    # plot implicit function contour
+    traces.append(go.Contour(x=x_grid, y=y_grid, z=z_grid,
+                               colorscale=colorscale,
+                               # autocontour=True,
+                               contours=dict(
+                                   start=-1,
+                                   end=1,
+                                   size=0.025,
+                               ), showscale=show_bar
+                               ))  # contour trace
+    traces.append(go.Contour(x=x_grid, y=y_grid, z=z_grid,
+                             contours=dict(start=0,  end=0, coloring='lines'),
+                             line=dict(width=3),
+                             showscale=False,
+                             colorscale=[[0, 'rgb(100, 100, 100)'], [1, 'rgb(100, 100, 100)']]))  # black bold zero line
+
+    layout = go.Layout(width=800, height=800,
+                       xaxis=dict(side="bottom", range=[-1, 1], showgrid=show_ax, zeroline=show_ax, visible=show_ax),
+                       yaxis=dict(side="left", range=[-1, 1], showgrid=show_ax, zeroline=show_ax, visible=show_ax),
+                       scene=dict(xaxis=dict(range=[-1, 1], autorange=False),
+                                  yaxis=dict(range=[-1, 1], autorange=False),
+                                  aspectratio=dict(x=1, y=1)),
+                       showlegend=False,
+                       title=dict(text=title_text, y=0.95, x=0.5, xanchor='center', yanchor='middle',
+                                  font=dict(family='Sherif', size=24, color='red'))
+                       )
+
+    # plot sdf image
+    sdf_fig = go.Figure(data=traces, layout=layout)
+    offline.plot(sdf_fig, auto_open=False)
+    sdf_img = utils.plotly_fig2array(sdf_fig)
+    print("Finished computing sign distance image")
+
+    return sdf_img
 
 
 def plot_contour_div_props(x_grid, y_grid, z_grid, clean_points,

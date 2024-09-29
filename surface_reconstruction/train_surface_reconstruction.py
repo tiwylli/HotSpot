@@ -160,10 +160,9 @@ for batch_idx, data in enumerate(train_dataloader):
     scheduler.step()
 
     # save model
-    # if batch_idx % 1000 == 0 :
-    # utils.log_string("saving model to file :generator_model.pth", log_file)
-    # torch.save(Net.state_dict(),
-    #             os.path.join(model_outdir, 'model.pth' ))
+    if batch_idx % 100 == 0:
+        utils.log_string("saving model to file :generator_model.pth", log_file)
+        torch.save(Net.state_dict(), os.path.join(model_outdir, f"model_{batch_idx}.pth"))
 # save model
 utils.log_string("saving model to file :generator_model.pth", log_file)
 torch.save(Net.state_dict(), os.path.join(model_outdir, "model.pth"))

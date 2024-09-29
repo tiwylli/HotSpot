@@ -34,7 +34,7 @@ DECAY_PARAMS=(1e2 0.2 1e2 0.4 0.0 0.0)
 ### DOMAIN HYPER-PARAMETERS ###
 ###############################
 GRID_RES=256
-TEST_GRID_RES=512
+TEST_GRID_RES=256
 NONMNFLD_SAMPLE_TYPE='grid'
 NPOINTS=15000
 GRID_RANGE=1.2
@@ -46,6 +46,7 @@ LR=5e-5
 GRAD_CLIP_NORM=10.0
 
 HEAT_LAMBDA=30
+EPOCHS_N_EVAL=($(seq 0 100 9900)) # use this to generate images of different iterations
 
 # For all shape classes use:
 # for FOLDER_PATH in ${DATASET_PATH}/*/; do
@@ -58,9 +59,9 @@ for FOLDER_NAME in 'lamp'; do
          FILENAME="$(basename "$FILE_PATH")"
          echo $FILENAME
          SCAN_PATH=$FOLDER_PATH
-         python3 train_surface_reconstruction.py --logdir $LOGDIR/$IDENTIFIER/$FOLDER_NAME --file_name $FILENAME --grid_res $GRID_RES --loss_type $LOSS_TYPE --gpu_idx $GPU --n_iterations $NITERATIONS --n_points $NPOINTS  --lr ${LR} --nonmnfld_sample_type $NONMNFLD_SAMPLE_TYPE --dataset_path $SCAN_PATH --decoder_n_hidden_layers $LAYERS --decoder_hidden_dim ${DECODER_HIDDEN_DIM} --div_decay $DIV_DECAY --div_decay_params ${DECAY_PARAMS[@]} --div_type $DIV_TYPE --init_type ${INIT_TYPE} --neuron_type ${NEURON_TYPE} --nl ${NL}  --sphere_init_params ${SPHERE_INIT_PARAMS[@]} --loss_weights ${LOSS_WEIGHTS[@]} --grad_clip_norm ${GRAD_CLIP_NORM[@]} --heat_lambda ${HEAT_LAMBDA} --grid_range ${GRID_RANGE}
-         python3 test_surface_reconstruction.py --logdir $LOGDIR/$IDENTIFIER/$FOLDER_NAME --file_name $FILENAME --export_mesh 1 --dataset_path $SCAN_PATH --grid_res $TEST_GRID_RES --gpu_idx $GPU
+        #  python3 train_surface_reconstruction.py --logdir $LOGDIR/$IDENTIFIER/$FOLDER_NAME --file_name $FILENAME --grid_res $GRID_RES --loss_type $LOSS_TYPE --gpu_idx $GPU --n_iterations $NITERATIONS --n_points $NPOINTS  --lr ${LR} --nonmnfld_sample_type $NONMNFLD_SAMPLE_TYPE --dataset_path $SCAN_PATH --decoder_n_hidden_layers $LAYERS --decoder_hidden_dim ${DECODER_HIDDEN_DIM} --div_decay $DIV_DECAY --div_decay_params ${DECAY_PARAMS[@]} --div_type $DIV_TYPE --init_type ${INIT_TYPE} --neuron_type ${NEURON_TYPE} --nl ${NL}  --sphere_init_params ${SPHERE_INIT_PARAMS[@]} --loss_weights ${LOSS_WEIGHTS[@]} --grad_clip_norm ${GRAD_CLIP_NORM[@]} --heat_lambda ${HEAT_LAMBDA} --grid_range ${GRID_RANGE}
+         python3 test_surface_reconstruction.py --logdir $LOGDIR/$IDENTIFIER/$FOLDER_NAME --file_name $FILENAME --export_mesh 1 --dataset_path $SCAN_PATH --grid_res $TEST_GRID_RES --gpu_idx $GPU --epoch_n "${EPOCHS_N_EVAL[@]}"
      done
  done
 
-python3 compute_metrics_shapenet.py --logdir $LOGDIR$IDENTIFIER --dataset_path $DATASET_PATH --raw_dataset_path $RAW_DATASET_PATH --div_type $DIV_TYPE --neuron_type ${NEURON_TYPE} --decoder_n_hidden_layers $LAYERS --decoder_hidden_dim ${DECODER_HIDDEN_DIM} --nl ${NL}
+# python3 compute_metrics_shapenet.py --logdir $LOGDIR$IDENTIFIER --dataset_path $DATASET_PATH --raw_dataset_path $RAW_DATASET_PATH --div_type $DIV_TYPE --neuron_type ${NEURON_TYPE} --decoder_n_hidden_layers $LAYERS --decoder_hidden_dim ${DECODER_HIDDEN_DIM} --nl ${NL}
