@@ -185,6 +185,7 @@ for batch_idx, data in enumerate(train_dataloader):
             show_ax=True,
             title_text=f"SDF, epoch {batch_idx}",
             grid_range=args.vis_grid_range,
+            contour_interval=args.vis_contour_interval,
         )
         # Save the generated images
         img = Image.fromarray(sdf_contour_img)

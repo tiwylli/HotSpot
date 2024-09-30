@@ -8,11 +8,8 @@ import numpy as np
 def get_train_args():
     parser = configargparse.ArgParser(description="Local implicit functions experiment.")
     parser.add_argument("--config", is_config_file=True, help="Config file path.")
-
+    # Dataset
     parser.add_argument("--task", type=str, default="3d", help="3d | 2d.")
-    parser.add_argument("--gpu_idx", type=int, default=0, help="Set < 0 to use CPU.")
-    parser.add_argument("--log_dir", type=str, default="./log/debug", help="Log directory.")
-    parser.add_argument("--seed", type=int, default=3627473, help="Random seed.")
     parser.add_argument(
         "--data_dir",
         type=str,
@@ -31,16 +28,36 @@ def get_train_args():
         default="",
         help="Name of file to reconstruct (within the dataset path).",
     )
+    # - 2D basic shape dataset
+    parser.add_argument(
+        "--shape_type", type=str, default="L", help="shape dataset to load circle | square | L "
+    )
+    # Training
+    parser.add_argument("--gpu_idx", type=int, default=0, help="Set < 0 to use CPU.")
+    parser.add_argument("--log_dir", type=str, default="./log/debug", help="Log directory.")
+    parser.add_argument("--seed", type=int, default=3627473, help="Random seed.")
     parser.add_argument(
         "--n_iterations",
         type=int,
         default=5000,
         help="Number of iterations in the generated train and test set.",
     )
-    parser.add_argument(
-        "--model_dir", type=str, default="./models", help="Path to model directory for backup."
-    )
     parser.add_argument("--parallel", type=int, default=False, help="Use data parallel.")
+    parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate.")
+    parser.add_argument(
+        "--grad_clip_norm", type=float, default=10.0, help="Value to clip gradients to."
+    )
+    parser.add_argument(
+        "--batch_size", type=int, default=1, help="Number of samples in a minibatch."
+    )
+    parser.add_argument(
+        "--n_points", type=int, default=30000, help="Number of points in each point cloud."
+    )
+    parser.add_argument(
+        "--num_workers", type=int, default=4, help="Number of workers for dataloader."
+    )
+
+    # Visualization and logging
     parser.add_argument(
         "--results_path",
         type=str,
@@ -59,25 +76,20 @@ def get_train_args():
         default=100,
         help="Number of iterations between logging.",
     )
-
-    # 2D basic shape dataset parameters
     parser.add_argument(
-        "--shape_type", type=str, default="L", help="shape dataset to load circle | square | L "
-    )
-
-    # Training parameters
-    parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate.")
-    parser.add_argument(
-        "--grad_clip_norm", type=float, default=10.0, help="Value to clip gradients to."
+        "--vis_grid_range",
+        type=float,
+        default=1.2,
+        help="Range of the grid to sample points while visualizing.",
     )
     parser.add_argument(
-        "--batch_size", type=int, default=1, help="Number of samples in a minibatch."
+        "--vis_grid_res", type=int, default=512, help="Grid resolution for reconstruction."
     )
     parser.add_argument(
-        "--n_points", type=int, default=30000, help="Number of points in each point cloud."
-    )
-    parser.add_argument(
-        "--num_workers", type=int, default=4, help="Number of workers for dataloader."
+        "--vis_contour_interval",
+        type=float,
+        default=0.05,
+        help="Interval for level set visualization.",
     )
 
     # Network architecture and loss
@@ -107,7 +119,6 @@ def get_train_args():
         help="Radius and scaling.",
     )
     parser.add_argument("--neuron_type", type=str, default="quadratic", help="Type of neuron.")
-
     parser.add_argument(
         "--encoder_type", type=str, default="none", help="Type of encoder: none | pointnet."
     )
@@ -159,17 +170,10 @@ def get_train_args():
     parser.add_argument(
         "--heat_lambda", type=float, default=30, help="Heat loss weight for eikonal loss."
     )
-    parser.add_argument(
-        "--n_random_samples", type=int, default=4096, help="Number of random samples."
-    )
+
+    # Sampling
     parser.add_argument(
         "--grid_range", type=float, default=1.2, help="Range of the grid to sample points."
-    )
-    parser.add_argument(
-        "--vis_grid_range",
-        type=float,
-        default=1.2,
-        help="Range of the grid to sample points while visualizing.",
     )
     parser.add_argument(
         "--nonmnfld_sample_std2",
@@ -178,8 +182,14 @@ def get_train_args():
         help="Standard deviation of the gaussian distribution to sample points off the manifold.",
     )
     parser.add_argument(
-        "--vis_grid_res", type=int, default=512, help="Grid resolution for reconstruction."
+        "--n_random_samples", type=int, default=4096, help="Number of random samples."
     )
+
+    # Misc
+    parser.add_argument(
+        "--model_dir", type=str, default="./models", help="Path to model directory for backup."
+    )
+
     args = parser.parse_args()
     return args
 

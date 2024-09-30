@@ -11,9 +11,15 @@ import os
 
 
 def plot_contours(
-    x, y, z, colorscale="Geyser", show_scale=True, show_ax=True, title_text="", grid_range=1.2
+    x, y, z, colorscale="Geyser", show_scale=True, show_ax=True, title_text="", grid_range=1.2, contour_interval=0.05
 ):
     traces = []
+
+    # Decide contour start and end based on the range of the implicit function
+    z_abs_max = np.abs(z).max()
+    z_abs_max = 0.5 * np.ceil(2 * z_abs_max)
+    contour_start = -z_abs_max
+    contour_end = z_abs_max
 
     # Plot implicit function contour
     traces.append(
@@ -24,11 +30,28 @@ def plot_contours(
             colorscale=colorscale,
             #    autocontour=True,
             contours=dict(
-                start=-1,
-                end=1,
-                size=0.025,
+                start=contour_start,
+                end=contour_end,
+                size=contour_interval,
             ),
             showscale=show_scale,
+        )
+    )
+    # Black bold zero line
+    traces.append(
+        go.Contour(
+            x=x,
+            y=y,
+            z=z,
+            contours=dict(
+                start=contour_start,
+                end=contour_end,
+                size=contour_interval * 10,
+                coloring="lines",
+            ),
+            line=dict(width=2),
+            showscale=False,
+            colorscale=[[0, "rgb(100, 100, 100)"], [1, "rgb(100, 100, 100)"]],
         )
     )
     # Black bold zero line
@@ -40,7 +63,7 @@ def plot_contours(
             contours=dict(start=0, end=0, coloring="lines"),
             line=dict(width=3),
             showscale=False,
-            colorscale=[[0, "rgb(100, 100, 100)"], [1, "rgb(100, 100, 100)"]],
+            colorscale=[[0, "rgb(50, 50, 50)"], [1, "rgb(50, 50, 50)"]],
         )
     )
 
