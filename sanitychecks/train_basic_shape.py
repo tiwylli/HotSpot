@@ -7,7 +7,7 @@ import basic_shape_dataset2d
 import torch
 import utils.visualizations as vis
 import numpy as np
-import models.Net as Net
+import models.Net as model
 import models.Heat as HeatNet
 from models.losses import Loss
 import torch.nn.parallel
@@ -91,7 +91,7 @@ np.random.seed(seed)
 # get model
 device = torch.device("cuda:" + str(gpu_idx) if (torch.cuda.is_available()) else "cpu")
 
-SINR = Net.Network(
+SINR = model.Network(
     latent_size=latent_size,
     in_dim=2,
     decoder_hidden_dim=args.decoder_hidden_dim,
@@ -165,11 +165,11 @@ for epoch in range(num_epochs):
             nonmnfld_n_gt,
             nonmnfld_pdfs,
         ) = (
-            data["points"].to(device),
-            data["mnfld_n"].to(device),
+            data["mnfld_points"].to(device),
+            data["mnfld_normals"].to(device),
             data["nonmnfld_dist"].to(device),
             data["nonmnfld_points"].to(device),
-            data["nonmnfld_n"].to(device),
+            data["nonmnfld_normals"].to(device),
             data["nonmnfld_pdfs"].to(device),
         )
 
@@ -204,9 +204,9 @@ for epoch in range(num_epochs):
                     loss_dict["loss"].item(),
                     weights[0] * loss_dict["sdf_term"].item(),
                     weights[1] * loss_dict["inter_term"].item(),
-                    weights[2] * loss_dict["normals_loss"].item(),
+                    weights[2] * loss_dict["normal_term"].item(),
                     weights[3] * loss_dict["eikonal_term"].item(),
-                    weights[4] * loss_dict["div_loss"].item(),
+                    weights[4] * loss_dict["div_term"].item(),
                     weights[6] * loss_dict["heat_term"].item(),
                 ),
                 log_file,
@@ -220,9 +220,9 @@ for epoch in range(num_epochs):
                     100.0 * batch_idx / len(train_dataloader),
                     loss_dict["sdf_term"].item(),
                     loss_dict["inter_term"].item(),
-                    loss_dict["normals_loss"].item(),
+                    loss_dict["normal_term"].item(),
                     loss_dict["eikonal_term"].item(),
-                    loss_dict["div_loss"].item(),
+                    loss_dict["div_term"].item(),
                     loss_dict["heat_term"].item(),
                 ),
                 log_file,

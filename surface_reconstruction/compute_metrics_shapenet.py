@@ -12,14 +12,14 @@ import surface_recon_args
 import torch
 import recon_dataset as dataset
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import models.Net as Net
+import models.Net as model
 device = torch.device("cuda")
 args = surface_recon_args.get_train_args()
-Net = Net.Network(latent_size=0, in_dim=3, decoder_hidden_dim=args.decoder_hidden_dim, nl=args.nl, encoder_type='none',
+model = model.Network(latent_size=0, in_dim=3, decoder_hidden_dim=args.decoder_hidden_dim, nl=args.nl, encoder_type='none',
                    decoder_n_hidden_layers=args.decoder_n_hidden_layers, neuron_type=args.neuron_type, init_type='mfgi')
 
 
-dataset_path = args.dataset_path
+dataset_path = args.data_dir
 raw_dataset_path = args.raw_dataset_path
 mesh_path = args.logdir
 
@@ -119,12 +119,12 @@ for shape_class in order:
         test_set = dataset.ReconDataset(gt_shape_path, n_points*n_samples, n_samples=1, res=grid_res, sample_type='grid',
                                 requires_dist=False)
         cp, scale, bbox = test_set.cp, test_set.scale, test_set.bbox
-        Net.load_state_dict(torch.load(gt_shape_weights_path, map_location=device))
-        Net.to(device)
+        model.load_state_dict(torch.load(gt_shape_weights_path, map_location=device))
+        model.to(device)
 
         eval_points = (gen_points - cp) / scale
         eval_points = torch.tensor(eval_points, device=device, dtype=torch.float32)
-        res = Net.decoder(eval_points)
+        res = model.decoder(eval_points)
 
         pred_occupancies = (res.reshape(-1)<0).int().detach().cpu().numpy()
         iou = (occupancies & pred_occupancies).sum() / (occupancies | pred_occupancies).sum()

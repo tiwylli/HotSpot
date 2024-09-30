@@ -1,0 +1,30 @@
+[model_hyperparameters]
+decoder_n_hidden_layers = 5
+decoder_hidden_dim = 128
+nl = "softplus"                 # 'sine' | 'relu' | 'softplus'
+sphere_init_params = [1.6, 0.1]
+init_type = "geometric_relu"    # 'siren' | 'geometric_sine' | 'geometric_relu' | 'mfgi'
+neuron_type = "linear"          # 'linear' | 'quadratic'
+
+[loss_hyperparameters]
+loss_type = "igr_wo_eik_w_heat"                                # 'siren_wo_n_w_div' | 'siren_wo_n' | 'siren_w_div' | 'siren'
+loss_weights = [3000.0, 100.0, 100.0, 50.0, 100.0, 0.0, 500.0]
+div_type = "dir_l1"                                            # 'dir_l1' | 'dir_l2' | 'full_l1' | 'full_l2'
+div_decay = "linear"                                           # 'linear' | 'quintic' | 'step'
+div_decay_params = [100.0, 0.2, 100.0, 0.4, 0.0, 0.0]
+
+[domain_hyperparameters]
+grid_res = 256
+vis_grid_res = 256
+nonmnfld_sample_type = "grid"
+n_iterations = 15000
+grid_range = 1.2
+vis_grid_range = 3
+
+[training_hyperparameters]
+task = "3d"
+n_iterations = 10000
+gpu_idx = 0
+lr = 5e-5
+grad_clip_norm = 10.0
+heat_lambda = 30.0

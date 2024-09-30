@@ -8,7 +8,7 @@ import basic_shape_dataset2d
 import torch
 import utils.visualizations as vis
 import numpy as np
-import models.Net as Net
+import models.Net as model
 import utils.utils as utils
 from PIL import Image
 import argparse
@@ -56,7 +56,7 @@ test_dataloader = torch.utils.data.DataLoader(
 # get model
 device = torch.device("cuda:" + str(args.gpu_idx) if (torch.cuda.is_available()) else "cpu")
 
-SINR = Net.Network(
+SINR = model.Network(
     latent_size=0,
     in_dim=2,
     decoder_hidden_dim=args.decoder_hidden_dim,

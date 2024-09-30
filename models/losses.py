@@ -95,7 +95,7 @@ class Loss(nn.Module):
         self.use_div = True if "div" in self.loss_type else False
         self.use_heat = True if "heat" in self.loss_type else False
 
-    def forward(self, output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs=None, mnfld_n_gt=None):
+    def forward(self, output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs=None, mnfld_normals_gt=None):
         dims = mnfld_points.shape[-1]
         device = mnfld_points.device
 
@@ -108,7 +108,7 @@ class Loss(nn.Module):
         latent_reg = output_pred["latent_reg"]
         latent = output_pred["latent"]
 
-        div_loss = torch.tensor([0.0], device=mnfld_points.device)
+        div_term = torch.tensor([0.0], device=mnfld_points.device)
 
         # compute gradients for div (divergence), curl and curv (curvature)
         if manifold_pred is not None:
@@ -138,7 +138,7 @@ class Loss(nn.Module):
                     "unsupported divergence type. only suuports dir_l1, dir_l2, full_l1, full_l2"
                 )
 
-            div_loss = nonmnfld_divergence_term.mean()  # + mnfld_divergence_term.mean()
+            div_term = nonmnfld_divergence_term.mean()  # + mnfld_divergence_term.mean()
 
         # eikonal term
         eikonal_term = eikonal_loss(nonmnfld_grad, mnfld_grad=mnfld_grad, eikonal_type="abs")
@@ -147,14 +147,14 @@ class Loss(nn.Module):
         latent_reg_term = latent_rg_loss(latent_reg, device)
 
         # normal term
-        if mnfld_n_gt is not None:
+        if mnfld_normals_gt is not None:
             if "igr" in self.loss_type:
-                normal_term = ((mnfld_grad - mnfld_n_gt).abs()).norm(2, dim=1).mean()
+                normal_term = ((mnfld_grad - mnfld_normals_gt).abs()).norm(2, dim=1).mean()
             else:
                 normal_term = (
                     1
                     - torch.abs(
-                        torch.nn.functional.cosine_similarity(mnfld_grad, mnfld_n_gt, dim=-1)
+                        torch.nn.functional.cosine_similarity(mnfld_grad, mnfld_normals_gt, dim=-1)
                     )
                 ).mean()
         else:
@@ -227,7 +227,7 @@ class Loss(nn.Module):
                 + self.weights[1] * inter_term
                 + self.weights[2] * normal_term
                 + self.weights[3] * eikonal_term
-                + self.weights[4] * div_loss
+                + self.weights[4] * div_term
             )
         elif (
             self.loss_type == "siren_wo_n_w_div"
@@ -236,7 +236,7 @@ class Loss(nn.Module):
                 self.weights[0] * sdf_term
                 + self.weights[1] * inter_term
                 + self.weights[3] * eikonal_term
-                + self.weights[4] * div_loss
+                + self.weights[4] * div_term
             )
         elif self.loss_type == "igr_wo_eik_w_heat":
             loss = (
@@ -263,8 +263,8 @@ class Loss(nn.Module):
             "inter_term": inter_term,
             "latent_reg_term": latent_reg_term,
             "eikonal_term": eikonal_term,
-            "normals_loss": normal_term,
-            "div_loss": div_loss,
+            "normal_term": normal_term,
+            "div_term": div_term,
             "heat_term": heat_term,
         }, mnfld_grad
 

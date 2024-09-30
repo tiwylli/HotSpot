@@ -32,7 +32,7 @@ def add_args(parser):
         help="refine model from this epoch, " "0 for training from scratch",
     )
     parser.add_argument(
-        "--model_dirpath",
+        "--model_dir",
         type=str,
         default="/mnt/3.5TB_WD/PycharmProjects/ZeroCurlShapes/models",
         help="path to model directory for backup",

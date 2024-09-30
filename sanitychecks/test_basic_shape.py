@@ -7,7 +7,7 @@ import basic_shape_dataset2d
 import torch
 import utils.visualizations as vis
 import numpy as np
-import models.Net as Net
+import models.Net as model
 import models.Heat as HeatNet
 from models.losses import Loss
 import torch.nn.parallel
@@ -76,7 +76,7 @@ test_dataloader = torch.utils.data.DataLoader(
 # get model
 device = torch.device("cuda:" + str(gpu_idx) if (torch.cuda.is_available()) else "cpu")
 
-SINR = Net.Network(
+SINR = model.Network(
     latent_size=latent_size,
     in_dim=2,
     decoder_hidden_dim=args.decoder_hidden_dim,
@@ -107,11 +107,11 @@ criterion = Loss(
 _, test_data = next(enumerate(test_dataloader))
 SINR.eval()
 mnfld_points, normals_gt, nonmnfld_dist_gt, nonmnfld_points, nonmnfld_n_gt, nonmnfld_pdfs = (
-    test_data["points"].to(device),
-    test_data["mnfld_n"].to(device),
+    test_data["mnfld_points"].to(device),
+    test_data["mnfld_normals"].to(device),
     test_data["nonmnfld_dist"].to(device),
     test_data["nonmnfld_points"].to(device),
-    test_data["nonmnfld_n"].to(device),
+    test_data["nonmnfld_normals"].to(device),
     test_data["nonmnfld_pdfs"].to(device),
 )
 

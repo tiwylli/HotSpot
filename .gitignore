@@ -22,3 +22,4 @@ sanitychecks/out/
 /*.mp4
 /sanitychecks/*.png
 /sanitychecks/*.html
+/surface_reconstruction/out/

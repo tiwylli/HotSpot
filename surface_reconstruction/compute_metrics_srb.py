@@ -10,8 +10,8 @@ import surface_recon_args
 
 args = surface_recon_args.get_train_args()
 
-scan_path = os.path.join(args.dataset_path, "scans")
-gt_path = os.path.join(args.dataset_path, "ground_truth")
+scan_path = os.path.join(args.data_dir, "scans")
+gt_path = os.path.join(args.data_dir, "ground_truth")
 mesh_path = args.results_path
 
 # Or set manually
