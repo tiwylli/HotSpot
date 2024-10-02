@@ -170,6 +170,32 @@ def get_train_args():
     parser.add_argument(
         "--heat_lambda", type=float, default=30, help="Heat loss weight for eikonal loss."
     )
+    parser.add_argument(
+        "--heat_decay",
+        type=str,
+        default=None,
+        help="Heat term importance decay: none | step | linear.",
+    )
+    parser.add_argument(
+        "--heat_decay_params",
+        nargs="+",
+        type=float,
+        default=[],
+        help="Heat coefficient decay parameters.",
+    )
+    parser.add_argument(
+        "--heat_lambda_decay",
+        type=str,
+        default=None,
+        help="Heat lambda importance decay: none | step | linear.",
+    )
+    parser.add_argument(
+        "--heat_lambda_decay_params",
+        nargs="+",
+        type=float,
+        default=[],
+        help="Heat lambda decay parameters.",
+    )
 
     # Sampling
     parser.add_argument(

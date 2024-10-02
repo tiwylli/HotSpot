@@ -17,7 +17,8 @@ def plot_contours(
 
     # Decide contour start and end based on the range of the implicit function
     z_abs_max = np.abs(z).max()
-    z_abs_max = 0.5 * np.ceil(2 * z_abs_max)
+    z_abs_max = 10 * contour_interval * np.ceil(z_abs_max / 10 / contour_interval)
+    print(f"scale: {z_abs_max}")
     contour_start = -z_abs_max
     contour_end = z_abs_max
 

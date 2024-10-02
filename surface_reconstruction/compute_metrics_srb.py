@@ -6,9 +6,10 @@ import trimesh
 from scipy.spatial import cKDTree as KDTree
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-import surface_recon_args
+# import surface_recon_args as parser
+import parser
 
-args = surface_recon_args.get_train_args()
+args = parser.get_train_args()
 
 scan_path = os.path.join(args.data_dir, "scans")
 gt_path = os.path.join(args.data_dir, "ground_truth")

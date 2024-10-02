@@ -7,8 +7,10 @@ import numpy as np
 
 for shape_name in ['L']:
     # Define the directory path
-    dir_name = '/pv/StEik/sanitychecks/out/heat_lambda8_newInitParam/uniform_sampling_2048-2024-09-26_18-35-31/' + shape_name + '/vis'
-    output_name = shape_name + '_Heat_lambda_30.mp4'
+    # dir_name = '/pv/StEik/sanitychecks/out/heat_lambda8_newInitParam/uniform_sampling_2048-2024-09-26_18-35-31/' + shape_name + '/vis'
+    # output_name = shape_name + '_Heat_lambda_30.mp4'
+    dir_name = '/pv/StEik/surface_reconstruction/out/ShapeNet/SPIN_w_eik/lamp/d1aed86c38d9ea6761462fc0fa9b0bb4/vis'
+    output_name = 'lamp_SPIN_w_eik.mp4'
 
     # Find all matching files
     file_pattern = os.path.join(dir_name, 'sdf_*.png')

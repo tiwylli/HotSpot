@@ -6,16 +6,17 @@ import recon_dataset as dataset
 import torch
 import numpy as np
 import models.Net as model
+import models.Heat as heatModel
 from models.losses import Loss
 import torch.nn.parallel
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 import utils.utils as utils
-import argparser
+import surface_reconstruction.parser as parser
 import utils.visualizations as vis
 from PIL import Image
 
-args = argparser.get_train_args()
+args = parser.get_train_args()
 
 file_path = os.path.join(args.data_dir, args.file_name)
 log_dir = os.path.join(args.log_dir, args.file_name.split(".")[0])
@@ -31,7 +32,14 @@ torch.manual_seed(0)  # change random seed for training set (so it will be diffe
 np.random.seed(0)
 if args.task == "3d":
     train_set = dataset.ReconDataset(
-        file_path, args.n_points, args.n_iterations, args.grid_res, args.nonmnfld_sample_type
+        file_path=file_path,
+        n_points=args.n_points,
+        n_samples=args.n_iterations,
+        grid_res=args.grid_res,
+        grid_range=args.grid_range,
+        sample_type=args.nonmnfld_sample_type,
+        sampling_std2=args.nonmnfld_sample_std2,
+        n_random_samples=args.n_random_samples,
     )
     in_dim = 3
 elif args.task == "2d":
@@ -59,17 +67,19 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_idx)
 device = torch.device("cuda")
 
-model = model.Network(
-    latent_size=args.latent_size,
-    in_dim=in_dim,
-    decoder_hidden_dim=args.decoder_hidden_dim,
-    nl=args.nl,
-    encoder_type=args.encoder_type,
-    decoder_n_hidden_layers=args.decoder_n_hidden_layers,
-    init_type=args.init_type,
-    neuron_type=args.neuron_type,
-    sphere_init_params=args.sphere_init_params,
-)
+# model = model.Network(
+#     latent_size=args.latent_size,
+#     in_dim=in_dim,
+#     decoder_hidden_dim=args.decoder_hidden_dim,
+#     nl=args.nl,
+#     encoder_type=args.encoder_type,
+#     decoder_n_hidden_layers=args.decoder_n_hidden_layers,
+#     init_type=args.init_type,
+#     neuron_type=args.neuron_type,
+#     sphere_init_params=args.sphere_init_params,
+# )
+# Uncomment to use small model
+model = heatModel.Net(radius_init=args.sphere_init_params[1])
 model.to(device)
 if args.parallel:
     if device.type == "cuda":
@@ -86,6 +96,8 @@ criterion = Loss(
     div_decay=args.div_decay,
     div_type=args.div_type,
     heat_lambda=args.heat_lambda,
+    heat_decay=args.heat_decay,
+    heat_lambda_decay=args.heat_lambda_decay,
 )
 num_batches = len(train_dataloader)
 
@@ -94,10 +106,11 @@ for batch_idx, data in enumerate(train_dataloader):
     model.zero_grad()
     model.train()
 
-    mnfld_points, mnfld_n_gt, nonmnfld_points = (
+    mnfld_points, mnfld_n_gt, nonmnfld_points, nonmnfld_pdfs = (
         data["mnfld_points"].to(device),
         data["mnfld_normals"].to(device),
         data["nonmnfld_points"].to(device),
+        data["nonmnfld_pdfs"].to(device),
     )
 
     mnfld_points.requires_grad_()
@@ -105,7 +118,7 @@ for batch_idx, data in enumerate(train_dataloader):
 
     output_pred = model(nonmnfld_points, mnfld_points)
 
-    loss_dict, _ = criterion(output_pred, mnfld_points, nonmnfld_points, None, mnfld_n_gt)
+    loss_dict, _ = criterion(output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs, mnfld_n_gt)
     lr = torch.tensor(optimizer.param_groups[0]["lr"])
     loss_dict["lr"] = lr
     utils.log_losses(log_writer_train, batch_idx, num_batches, loss_dict)
@@ -119,6 +132,7 @@ for batch_idx, data in enumerate(train_dataloader):
     # Log training stats and svae model
     if batch_idx % args.log_interval == 0:
         weights = criterion.weights
+        utils.log_string(f"Current heat lambda: {criterion.heat_lambda}", log_file)
         utils.log_string("Weights: {}, lr={:.3e}".format(weights, lr), log_file)
         utils.log_string(
             "Iteration: {:4d}/{} ({:.0f}%) Loss: {:.5f} = L_Mnfld: {:.5f} + "
@@ -151,6 +165,21 @@ for batch_idx, data in enumerate(train_dataloader):
             ),
             log_file,
         )
+        # utils.log_string(
+        #     "Iteration: {:4d}/{} ({:.0f}%) Mean unweighted L_s : L_Mnfld: {:.5f},  "
+        #     "L_NonMnfld: {:.5f},  L_Nrml: {:.5f},  L_Eknl: {:.5f},  L_Div: {:.5f},  L_Heat: {:.5f}".format(
+        #         batch_idx,
+        #         len(train_set),
+        #         100.0 * batch_idx / len(train_dataloader),
+        #         loss_dict["sdf_term"].item(),
+        #         loss_dict["inter_term"].item(),
+        #         loss_dict["normal_term"].item(),
+        #         loss_dict["eikonal_term"].item() / (2 * args.grid_range) ** in_dim,
+        #         loss_dict["div_term"].item(),
+        #         loss_dict["heat_term"].item() / (2 * args.grid_range) ** in_dim,
+        #     ),
+        #     log_file,
+        # )
         # Save model
         utils.log_string(f"saving model to file model_{batch_idx}.pth", log_file)
         torch.save(model.state_dict(), os.path.join(model_outdir, f"model_{batch_idx}.pth"))
@@ -159,9 +188,9 @@ for batch_idx, data in enumerate(train_dataloader):
     # Visualize SDF
     if batch_idx % args.vis_interval == 0:
         utils.log_string(f"Visualizing epoch {batch_idx}", log_file)
-        x, y = np.linspace(-args.vis_grid_range, args.vis_grid_range, args.vis_grid_res), np.linspace(
+        x, y = np.linspace(
             -args.vis_grid_range, args.vis_grid_range, args.vis_grid_res
-        )
+        ), np.linspace(-args.vis_grid_range, args.vis_grid_range, args.vis_grid_res)
         meshgrid = np.meshgrid(x, y)
         meshgrid = np.stack(meshgrid, axis=-1)
         if in_dim == 3:
@@ -179,7 +208,10 @@ for batch_idx, data in enumerate(train_dataloader):
         sdf_contour_img = vis.plot_contours(
             x=x,
             y=y,
-            z=mnfld_points_pred.detach().cpu().numpy().reshape(args.vis_grid_res, args.vis_grid_res),
+            z=mnfld_points_pred.detach()
+            .cpu()
+            .numpy()
+            .reshape(args.vis_grid_res, args.vis_grid_res),
             colorscale="Geyser",
             show_scale=True,
             show_ax=True,
@@ -194,6 +226,11 @@ for batch_idx, data in enumerate(train_dataloader):
 
     if "div" in args.loss_type:
         criterion.update_div_weight(batch_idx, args.n_iterations, args.div_decay_params)
+    if args.heat_lambda_decay is not None:
+        criterion.update_heat_lambda(batch_idx, args.n_iterations, args.heat_lambda_decay_params)
+    if args.heat_decay is not None:
+        criterion.update_heat_weight(batch_idx, args.n_iterations, args.heat_decay_params)
+    
     scheduler.step()
 
 # Save final model

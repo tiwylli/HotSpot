@@ -173,14 +173,14 @@ class BasicShape2D(data.Dataset):
         return (0, 0, pad_left, pad_right, pad_top, pad_bottom)
 
     def get_nonmnfld_points_and_pdfs(self):
+        nonmnfld_pdfs = 1 / (4 * self.grid_range**2)
+        nonmnfld_pdfs = np.array([nonmnfld_pdfs])
         if self.sample_type == "grid":
             nonmnfld_points = self.grid_points
-            nonmnfld_pdfs = np.ones(nonmnfld_points.shape[:-1] + (1,)) / (4 * self.grid_range**2)
         elif self.sample_type == "uniform":
             nonmnfld_points = np.random.uniform(
-                -self.grid_range, self.grid_range, size=(self.n_samples, self.n_random_samples, 2)
+                -self.grid_range, self.grid_range, size=(self.n_random_samples, 2)
             ).astype(np.float32)
-            nonmnfld_pdfs = np.ones(nonmnfld_points.shape[:-1] + (1,)) / (4 * self.grid_range**2)
         elif self.sample_type == "gaussian":
             nonmnfld_points, nonmnfld_pdfs = self.sample_gaussian_noise_around_shape()
             idx = np.random.choice(range(nonmnfld_points.shape[1]), self.grid_res * self.grid_res)
@@ -422,8 +422,8 @@ class BasicShape2D(data.Dataset):
         self.nonmnfld_idx = np.array(nonmnfld_idx)
 
     def __getitem__(self, index):
-        nonmnfld_idx = self.nonmnfld_idx[index]
-        mnfld_idx = self.mnfld_idx[index]
+        # nonmnfld_idx = self.nonmnfld_idx[index]
+        # mnfld_idx = self.mnfld_idx[index]
 
         # if self.nonmnfld_dist is not None:
         #     nonmnfld_dist = self.nonmnfld_dist[index, nonmnfld_idx]
@@ -434,17 +434,26 @@ class BasicShape2D(data.Dataset):
         #     nonmnfld_n = self.nonmnfld_n[index, nonmnfld_idx]
         # else:
         #     nonmnfld_n = torch.tensor(0)
+        mnfld_points = self.get_mnfld_points()
+        mnfld_normals = self.get_mnfld_n()
+
+        nonmnfld_points, nonmnfld_pdfs = self.get_nonmnfld_points_and_pdfs()
+        nonmnfld_dist, nonmnfld_n = self.get_points_distances_and_normals(
+            nonmnfld_points.reshape(-1, nonmnfld_points.shape[-1])
+        )
+        nonmnfld_dist = np.reshape(nonmnfld_dist, nonmnfld_points.shape[:-1])
+        nonmnfld_n = np.reshape(nonmnfld_n, nonmnfld_points.shape)
         
-        if len(self.nonmnfld_points.shape) == 2:
-            nonmnfld_points = self.nonmnfld_points[nonmnfld_idx]
-            nonmnfld_pdfs = self.nonmnfld_pdfs[nonmnfld_idx]
-            nonmnfld_dist = self.nonmnfld_dist[nonmnfld_idx]
-            nonmnfld_n = self.nonmnfld_n[nonmnfld_idx]
-        else:
-            nonmnfld_points = self.nonmnfld_points[index, nonmnfld_idx]
-            nonmnfld_pdfs = self.nonmnfld_pdfs[index, nonmnfld_idx]
-            nonmnfld_dist = self.nonmnfld_dist[index, nonmnfld_idx]
-            nonmnfld_n = self.nonmnfld_n[index, nonmnfld_idx]
+        # if len(self.nonmnfld_points.shape) == 2:
+        #     nonmnfld_points = self.nonmnfld_points[nonmnfld_idx]
+        #     nonmnfld_pdfs = self.nonmnfld_pdfs[nonmnfld_idx]
+        #     nonmnfld_dist = self.nonmnfld_dist[nonmnfld_idx]
+        #     nonmnfld_n = self.nonmnfld_n[nonmnfld_idx]
+        # else:
+        #     nonmnfld_points = self.nonmnfld_points[index, nonmnfld_idx]
+        #     nonmnfld_pdfs = self.nonmnfld_pdfs[index, nonmnfld_idx]
+        #     nonmnfld_dist = self.nonmnfld_dist[index, nonmnfld_idx]
+        #     nonmnfld_n = self.nonmnfld_n[index, nonmnfld_idx]
 
         # print(f"self.points.shape: {self.points.shape}")
         # print(f"self.mnfld_n.shape: {self.mnfld_n.shape}")
@@ -454,8 +463,8 @@ class BasicShape2D(data.Dataset):
         # print(f"self.nonmnfld_pdfs.shape: {self.nonmnfld_pdfs.shape}")
 
         return {
-            "mnfld_points": self.points[index, mnfld_idx, :],
-            "mnfld_normals": self.mnfld_n[index, mnfld_idx, :],
+            "mnfld_points": mnfld_points,
+            "mnfld_normals": mnfld_normals,
             "nonmnfld_dist": nonmnfld_dist,
             "nonmnfld_normals": nonmnfld_n,
             "nonmnfld_points": nonmnfld_points,
@@ -523,32 +532,32 @@ class Polygon(BasicShape2D):
             n = self.lines["nl"][l1_idx] + self.lines["nl"][l2_idx]
             self.point_normal.append(n / np.linalg.norm(n))
             points.append(point)
-        points = np.repeat(np.array(points)[None, :], self.n_samples, axis=0)
-        self.point_normal = np.repeat(np.array(self.point_normal)[None, :], self.n_samples, axis=0)
+        # points = np.repeat(np.array(points)[None, :], self.n_samples, axis=0)
+        # self.point_normal = np.repeat(np.array(self.point_normal)[None, :], self.n_samples, axis=0)
 
         for line_idx in range(len(self.lines["A"])):
             if self.line_sample_type == "uniform":
                 t = np.linspace(0, 1, points_per_segment[line_idx] + 1, endpoint=False)[1:]
-                t = np.repeat(t[None, :], self.n_samples, axis=0)
+                # t = np.repeat(t[None, :], self.n_samples, axis=0)
             else:
-                t = np.random.uniform(0, 1, [self.n_samples, points_per_segment[line_idx]])
-                # t = np.random.uniform(0, 1, [points_per_segment[line_idx]])
+                # t = np.random.uniform(0, 1, [self.n_samples, points_per_segment[line_idx]])
+                t = np.random.uniform(0, 1, [points_per_segment[line_idx]])
             p1 = np.array(self.vertices[self.lines["start_idx"][line_idx]])
             p2 = np.array(self.vertices[self.lines["end_idx"][line_idx]])
-            points = np.concatenate([points, p1 + t[:, :, None] * (p2 - p1)], axis=1)
-            # points = np.concatenate([points, p1 + t[:, None] * (p2 - p1)], axis=0)
+            # points = np.concatenate([points, p1 + t[:, :, None] * (p2 - p1)], axis=1)
+            points = np.concatenate([points, p1 + t[:, None] * (p2 - p1)], axis=0)
             self.point_normal = np.concatenate(
                 [
                     self.point_normal,
                     np.tile(
-                        self.lines["nl"][line_idx][None, None, :],
-                        [self.n_samples, points_per_segment[line_idx], 1],
-                        # self.lines["nl"][line_idx][None, :],
-                        # [points_per_segment[line_idx], 1],
+                        # self.lines["nl"][line_idx][None, None, :],
+                        # [self.n_samples, points_per_segment[line_idx], 1],
+                        self.lines["nl"][line_idx][None, :],
+                        [points_per_segment[line_idx], 1],
                     ),
                 ],
-                axis=1,
-                # axis=0,
+                # axis=1,
+                axis=0,
             )
         return points.astype("f")
 
@@ -649,28 +658,28 @@ class Union(BasicShape2D):
     def __init__(self, shapes=[]):
         self.shapes = shapes
 
-        n_points = sum([shape.n_points for shape in shapes])
-        n_samples = shapes[0].n_samples
-        grid_res = shapes[0].grid_res
-        sample_type = shapes[0].sample_type
-        sampling_std = shapes[0].sampling_std
-        n_random_samples = shapes[0].n_random_samples
-        grid_range = shapes[0].grid_range
-        batch_size = shapes[0].batch_size
+        self.n_points = sum([shape.n_points for shape in shapes])
+        self.n_samples = shapes[0].n_samples
+        self.grid_res = shapes[0].grid_res
+        self.sample_type = shapes[0].sample_type
+        self.sampling_std = shapes[0].sampling_std
+        self.n_random_samples = shapes[0].n_random_samples
+        self.grid_range = shapes[0].grid_range
+        self.batch_size = shapes[0].batch_size
         
-        BasicShape2D.__init__(self, n_points, n_samples, grid_res, sample_type, sampling_std, n_random_samples, grid_range, batch_size)
+        # BasicShape2D.__init__(self, n_points, n_samples, grid_res, sample_type, sampling_std, n_random_samples, grid_range, batch_size)
 
     def get_mnfld_points(self):
         points = []
         for shape in self.shapes:
             points.append(shape.get_mnfld_points())
-        return np.concatenate(points, axis=1)
+        return np.concatenate(points, axis=-2)
     
     def get_mnfld_n(self):
         normals = []
         for shape in self.shapes:
             normals.append(shape.get_mnfld_n())
-        return np.concatenate(normals, axis=1)
+        return np.concatenate(normals, axis=-2)
 
     def get_points_distances_and_normals(self, points):
         distances = []
@@ -814,7 +823,9 @@ def get2D_dataset(*args, shape_type="circle"):
         transform_hexagon = np.array([[0.5, 0, 0.5], [0, 0.5, 0.5], [0, 0, 1]])
         star_points = get_star_points(transform_star)
         hexagon_points = get_hexagon_points(transform_hexagon)
-        out_shape = Union(shapes=[Polygon(*args, vertices=star_points), Polygon(*args, vertices=hexagon_points)])
+        new_args = list(args)
+        new_args[0] = new_args[0] // 2
+        out_shape = Union(shapes=[Polygon(*new_args, vertices=star_points), Polygon(*new_args, vertices=hexagon_points)])
     else:
         raise Warning("Unsupportaed shape")
 

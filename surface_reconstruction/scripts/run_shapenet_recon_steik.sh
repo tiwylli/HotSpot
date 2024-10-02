@@ -1,10 +1,10 @@
 ROOT_DIR=$(dirname $(dirname $(dirname "$(readlink -f "$0")")))'/'
 MODEL_DIR=$ROOT_DIR'models'
 THIS_FILE=$(basename "$0")
-TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
+# TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
 
-CONFIG_DIR=$ROOT_DIR'surface_reconstruction/configs/shapenet.toml' # change to your config file path
-IDENTIFIER='SPIN_w_eik'                                             # change to your desired identifier
+CONFIG_DIR=$ROOT_DIR'surface_reconstruction/configs/shapenet_steik.toml' # change to your config file path
+IDENTIFIER='STEIK_sirenInit'                                             # change to your desired identifier
 DATASET_DIR=$ROOT_DIR'data/NSP_dataset/'                           # change to your dataset path
 LOG_DIR='./out/ShapeNet/'                                          # change to your desired log path
 mkdir -p $LOG_DIR

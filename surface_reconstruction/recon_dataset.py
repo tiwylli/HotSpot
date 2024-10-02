@@ -7,6 +7,7 @@ import scipy.spatial as spatial
 from abc import ABC, abstractmethod
 import torch
 import open3d as o3d
+import scipy
 
 
 class ReconDataset(data.Dataset):
@@ -17,21 +18,23 @@ class ReconDataset(data.Dataset):
         file_path,
         n_points,
         n_samples=128,
-        res=128,
+        grid_res=128,
         sample_type="grid",
-        sapmling_std=0.005,
+        sampling_std2=0.005,
         requires_dist=False,
         requires_curvatures=False,
         grid_range=1.1,
+        n_random_samples=4096,
     ):
 
         self.file_path = file_path
         self.n_points = n_points
         self.n_samples = n_samples
-        self.grid_res = res
+        self.grid_res = grid_res
         self.sample_type = sample_type  # grid | gaussian | combined
-        self.sampling_std = sapmling_std
+        self.sampling_std2 = sampling_std2
         self.requires_dist = requires_dist
+        self.n_random_samples = n_random_samples
         self.nonmnfld_dist, self.nonmnfld_n, self.mnfld_curvs = None, None, None
         self.requires_curvatures = (
             requires_curvatures  # assumes a subdirectory names "estimated props" in dataset path
@@ -53,7 +56,7 @@ class ReconDataset(data.Dataset):
         xx, yy, zz = np.meshgrid(x, y, z)
         xx, yy, zz = xx.ravel(), yy.ravel(), zz.ravel()
         self.grid_points = np.stack([xx, yy, zz], axis=1).astype("f")
-        self.nonmnfld_points = self.get_nonmnfld_points()
+        self.nonmnfld_points, self.nonmnfld_pdfs = self.get_nonmnfld_points_and_pdfs()
 
         self.point_idxs = np.arange(self.points.shape[0], dtype=np.int32)
         self.nonmnfld_points_idxs = np.arange(self.nonmnfld_points.shape[0], dtype=np.int32)
@@ -81,14 +84,16 @@ class ReconDataset(data.Dataset):
 
         return points, normals
 
-    def get_nonmnfld_points(self):
+    def get_nonmnfld_points_and_pdfs(self):
+        nonmnfld_pdfs = 1 / (8 * self.grid_range**3)
+        nonmnfld_pdfs = np.array([nonmnfld_pdfs])
         if self.sample_type == "grid":
             nonmnfld_points = self.grid_points
         elif self.sample_type == "uniform":
             nonmnfld_points = np.random.uniform(
                 -self.grid_range,
                 self.grid_range,
-                size=(self.grid_res * self.grid_res * self.grid_res, 3),
+                size=(self.n_random_samples, 3),
             ).astype(np.float32)
         elif self.sample_type == "gaussian":
             nonmnfld_points = self.sample_gaussian_noise_around_shape()
@@ -113,15 +118,40 @@ class ReconDataset(data.Dataset):
             nonmnfld_points = np.concatenate(
                 [nonmnfld_points1[sample_idx, idx1], nonmnfld_points2[idx2]], axis=0
             )
+        elif self.sample_type == "central_gaussian":
+            nonmnfld_points = np.random.multivariate_normal(
+                [0, 0, 0],
+                [
+                    [self.sampling_std2, 0, 0],
+                    [0, self.sampling_std2, 0],
+                    [0, 0, self.sampling_std2],
+                ],
+                size=(self.n_random_samples),
+            ).astype(np.float32)
+            nonmnfld_pdfs = scipy.stats.multivariate_normal.pdf(
+                nonmnfld_points,
+                mean=[0, 0, 0],
+                cov=[
+                    [self.sampling_std2, 0, 0],
+                    [0, self.sampling_std2, 0],
+                    [0, 0, self.sampling_std2],
+                ],
+            ).reshape([-1, 1])
+            # idx = np.random.choice(range(nonmnfld_points.shape[1]), self.grid_res * self.grid_res)
+            # sample_idx = np.random.choice(
+            #     range(nonmnfld_points.shape[0]), self.grid_res * self.grid_res
+            # )
+            # nonmnfld_points = nonmnfld_points[sample_idx, idx]
+            # nonmnfld_pdfs = nonmnfld_pdfs[sample_idx, idx]
         else:
             raise Warning("Unsupported non manfold sampling type")
-        return nonmnfld_points
+        return nonmnfld_points, nonmnfld_pdfs
 
     def sample_gaussian_noise_around_shape(self):
         n_noisy_points = int(np.round(self.grid_res * self.grid_res / self.n_points))
         noise = np.random.multivariate_normal(
             [0, 0, 0],
-            [[self.sampling_std, 0, 0], [0, self.sampling_std, 0], [0, 0, self.sampling_std]],
+            [[self.sampling_std2, 0, 0], [0, self.sampling_std2, 0], [0, 0, self.sampling_std2]],
             size=(self.points.shape[0], n_noisy_points),
         ).astype(np.float32)
         nonmnfld_points = np.tile(self.points[:, None, :], [1, n_noisy_points, 1]) + noise
@@ -151,16 +181,13 @@ class ReconDataset(data.Dataset):
         mnfld_points = self.points[mnfld_idx]  # (n_points, 3)
         mnfld_normals = self.mnfld_n[mnfld_idx]  # (n_points, 3)
 
-        nonmnfld_points = np.random.uniform(
-            -self.grid_range, self.grid_range, size=(self.n_points, 3)
-        ).astype(
-            np.float32
-        )  # (n_points, 3)
+        nonmnfld_points, nonmnfld_pdfs = self.get_nonmnfld_points_and_pdfs()
 
         return {
             "mnfld_points": mnfld_points,
             "mnfld_normals": mnfld_normals,
             "nonmnfld_points": nonmnfld_points,
+            "nonmnfld_pdfs": nonmnfld_pdfs,
         }
 
     def __len__(self):

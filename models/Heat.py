@@ -60,15 +60,17 @@ class Net(nn.Module):
     def _initialize_weights(self):
         self.decoder._initialize_weights()
 
-    def forward(self, non_mnfld_pnts, mnfld_pnts):
+    def forward(self, non_mnfld_pnts, mnfld_pnts=None):
         batch_size = non_mnfld_pnts.shape[0]
 
         nonmanifold_pnts_pred = self.decoder(
             non_mnfld_pnts.view(-1, non_mnfld_pnts.shape[-1])
         ).reshape(batch_size, -1)
-        manifold_pnts_pred = self.decoder(
-            mnfld_pnts.view(-1, mnfld_pnts.shape[-1])
-        ).reshape(batch_size, -1)
+        manifold_pnts_pred = None
+        if mnfld_pnts is not None:
+            manifold_pnts_pred = self.decoder(
+                mnfld_pnts.view(-1, mnfld_pnts.shape[-1])
+            ).reshape(batch_size, -1)
 
         return {
             "manifold_pnts_pred": manifold_pnts_pred,
