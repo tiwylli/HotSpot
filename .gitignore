@@ -23,3 +23,7 @@ sanitychecks/out/
 /sanitychecks/*.png
 /sanitychecks/*.html
 /surface_reconstruction/out/
+/surface_reconstruction/*.png
+/surface_reconstruction/*.html
+/surface_reconstruction/debug.py
+/out/

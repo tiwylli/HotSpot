@@ -1,11 +1,11 @@
 ROOT_DIR=$(dirname $(dirname $(dirname "$(readlink -f "$0")")))'/'
 MODEL_DIR=$ROOT_DIR'models'
 THIS_FILE=$(basename "$0")
-TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
+# TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
 
 CONFIG_DIR=$ROOT_DIR'surface_reconstruction/configs/basic_shapes.toml' # change to your config file path
-IDENTIFIER='starAndHexagon'                                                   # change to your desired identifier
-LOG_DIR='./out/BasicShapes/'                                           # change to your desired log path
+IDENTIFIER='test_temp'                                                   # change to your desired identifier
+LOG_DIR=$ROOT_DIR'out/BasicShapes/'                                           # change to your desired log path
 mkdir -p $LOG_DIR
 
 for SHAPE_TYPE in 'starAndHexagon'; do # shapes: 'L', 'circle', 'snowflake', 'starAndHexagon'

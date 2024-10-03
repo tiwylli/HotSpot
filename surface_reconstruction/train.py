@@ -1,7 +1,7 @@
 import os, sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import basic_shape_dataset2d
+from dataset import shape_2d
 import recon_dataset as dataset
 import torch
 import numpy as np
@@ -43,15 +43,15 @@ if args.task == "3d":
     )
     in_dim = 3
 elif args.task == "2d":
-    train_set = basic_shape_dataset2d.get2D_dataset(
-        args.n_points,
-        args.n_iterations,
-        args.grid_res,
-        args.nonmnfld_sample_type,
-        args.nonmnfld_sample_std2,
-        args.n_random_samples,
-        args.grid_range,
-        args.batch_size,
+    train_set = shape_2d.get2D_dataset(
+        n_points=args.n_points,
+        n_samples=args.n_iterations,
+        grid_res=args.grid_res,
+        grid_range=args.grid_range,
+        sample_type=args.nonmnfld_sample_type,
+        sampling_std=args.nonmnfld_sample_std2,
+        n_random_samples=args.n_random_samples,
+        resample=True,
         shape_type=args.shape_type,
     )
     in_dim = 2
