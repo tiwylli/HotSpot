@@ -24,8 +24,8 @@ log_dir = os.path.join(args.log_dir, args.file_name.split(".")[0])
 # set up logging
 log_file, log_writer_train, log_writer_test, model_outdir = utils.setup_logdir(log_dir, args)
 os.system("cp %s %s" % (__file__, log_dir))  # backup the current training file
-os.system("cp %s %s" % ("../models/Net.py", log_dir))  # backup the models files
-os.system("cp %s %s" % ("../models/losses.py", log_dir))  # backup the losses files
+os.system("cp %s %s" % ("./models/Net.py", log_dir))  # backup the models files
+os.system("cp %s %s" % ("./models/losses.py", log_dir))  # backup the losses files
 
 # Set up dataloader
 torch.manual_seed(0)  # change random seed for training set (so it will be different from test set

@@ -18,6 +18,7 @@ data/deep_geometric_prior_data
 data/NSP_dataset
 data/scene_reconstruction
 data/ShapeNetNSP
+/data
 sanitychecks/out/
 /*.mp4
 /sanitychecks/*.png
@@ -27,3 +28,4 @@ sanitychecks/out/
 /surface_reconstruction/*.html
 /surface_reconstruction/debug.py
 /out/
+/*.html

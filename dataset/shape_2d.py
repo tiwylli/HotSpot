@@ -445,15 +445,16 @@ def get2D_dataset(
         vertices = get_koch_points(degree=2, s=1.0)
         out_shape = Polygon(*args, vertices=vertices)
     elif shape_type == "starAndHexagon":
-        # new_args = list(args)
-        # new_args.n_points //= 2
         transform_star = np.array([[0.5, 0, -0.5], [0, 0.5, -0.5], [0, 0, 1]])
         transform_hexagon = np.array([[0.5, 0, 0.5], [0, 0.5, 0.5], [0, 0, 1]])
         star_points = get_star_points(transform_star)
         hexagon_points = get_hexagon_points(transform_hexagon)
-        args[0] //= 2
+        args[0] //= 5
         out_shape = Union(
             shapes=[
+                Polygon(*args, vertices=star_points),
+                Polygon(*args, vertices=star_points),
+                Polygon(*args, vertices=star_points),
                 Polygon(*args, vertices=star_points),
                 Polygon(*args, vertices=hexagon_points),
             ]

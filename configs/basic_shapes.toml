@@ -1,0 +1,44 @@
+[paths]
+model_dir = "models"
+
+[network]
+decoder_n_hidden_layers = 5
+decoder_hidden_dim = 128
+nl = "relu"                 # 'sine' | 'relu' | 'softplus'
+sphere_init_params = [1.6, 1.0]
+init_type = "geometric_relu"    # 'siren' | 'geometric_sine' | 'geometric_relu' | 'mfgi'
+neuron_type = "linear"          # 'linear' | 'quadratic'
+
+[loss]
+loss_type = "igr_w_heat" # 'siren_wo_n_w_div' | 'siren_wo_n' | 'siren_w_div' | 'siren'
+loss_weights = [ 500, 0, 0, 0.1, 0, 0, 2] # sdf, inter, normal, eikonal, div, latent, heat
+div_type = "dir_l1" # 'dir_l1' | 'dir_l2' | 'full_l1' | 'full_l2'
+div_decay = "linear" # 'linear' | 'quintic' | 'step'
+div_decay_params = [100.0, 0.2, 100.0, 0.4, 0.0, 0.0]
+# heat_decay = "linear" # 'linear' | 'quintic' | 'step'
+# heat_decay_params = [1, 0.2, 1, 0.4, 0.1, 0.1]
+# heat_lambda_decay = "linear" # 'linear' | 'quintic' | 'step'
+# heat_lambda_decay_params = [0.1, 0.4, 10.0, 0.6, 10.0, 10.0]
+
+[sampling]
+grid_res = 256
+nonmnfld_sample_type = "uniform"
+n_random_samples = 4096
+n_points = 15000
+grid_range = 1.2
+nonmnfld_sample_std2 = 0.09
+
+[training]
+task = "2d"
+n_iterations = 10000
+gpu_idx = 0
+lr = 5e-5
+grad_clip_norm = 10.0
+heat_lambda = 10.0
+vis_interval = 100
+log_interval = 100
+
+[visualization]
+vis_grid_res = 256
+vis_grid_range = 1.2
+vis_contour_interval = 0.025

@@ -1,7 +1,7 @@
 import os, sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import basic_shape_dataset2d
+from dataset import shape_2d
 import recon_dataset as dataset
 import torch
 import numpy as np
@@ -12,7 +12,7 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 import utils.utils as utils
-import utils.parser as parser
+import surface_reconstruction.parser as parser
 import utils.visualizations as vis
 from PIL import Image
 
@@ -24,8 +24,8 @@ log_dir = os.path.join(args.log_dir, args.file_name.split(".")[0])
 # set up logging
 log_file, log_writer_train, log_writer_test, model_outdir = utils.setup_logdir(log_dir, args)
 os.system("cp %s %s" % (__file__, log_dir))  # backup the current training file
-os.system("cp %s %s" % ("../models/Net.py", log_dir))  # backup the models files
-os.system("cp %s %s" % ("../models/losses.py", log_dir))  # backup the losses files
+os.system("cp %s %s" % ("./models/Net.py", log_dir))  # backup the models files
+os.system("cp %s %s" % ("./models/losses.py", log_dir))  # backup the losses files
 
 # Set up dataloader
 torch.manual_seed(0)  # change random seed for training set (so it will be different from test set
@@ -43,15 +43,15 @@ if args.task == "3d":
     )
     in_dim = 3
 elif args.task == "2d":
-    train_set = basic_shape_dataset2d.get2D_dataset(
-        args.n_points,
-        args.n_iterations,
-        args.grid_res,
-        args.nonmnfld_sample_type,
-        args.nonmnfld_sample_std2,
-        args.n_random_samples,
-        args.grid_range,
-        args.batch_size,
+    train_set = shape_2d.get2D_dataset(
+        n_points=args.n_points,
+        n_samples=args.n_iterations,
+        grid_res=args.grid_res,
+        grid_range=args.grid_range,
+        sample_type=args.nonmnfld_sample_type,
+        sampling_std=args.nonmnfld_sample_std2,
+        n_random_samples=args.n_random_samples,
+        resample=True,
         shape_type=args.shape_type,
     )
     in_dim = 2
