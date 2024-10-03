@@ -192,6 +192,7 @@ class Polygon(ShapeBase):
         normals = np.take_along_axis(n, idx[None, None, :], axis=1).squeeze().transpose()
         normals = point_sign[:, None] * normals / np.linalg.norm(normals, axis=1, keepdims=True)
         distances = point_sign * distances
+        distances = distances[:, None]
 
         return distances, normals
 
@@ -262,21 +263,18 @@ class Union(ShapeBase):
         )
 
     def get_mnfld_points(self):
-        print("get_mnfld_points()")
         points = []
         for shape in self.shapes:
             points.append(shape.get_mnfld_points())
         return np.concatenate(points, axis=-2)
 
     def get_mnfld_normals(self):
-        print("get_mnfld_normals()")
         normals = []
         for shape in self.shapes:
             normals.append(shape.get_mnfld_normals())
         return np.concatenate(normals, axis=-2)
 
     def get_points_distances_and_normals(self, points):
-        print("get_points_distances_and_normals()")
         distances = []
         normals = []
         for shape in self.shapes:
@@ -285,8 +283,12 @@ class Union(ShapeBase):
             normals.append(n)
         distances = np.stack(distances)
         normals = np.stack(normals)
+        print(distances.shape)
+        print(normals.shape)
 
-        idx = np.argmin(np.abs(distances), axis=0).squeeze(-1)
+        idx = np.argmin(np.abs(distances), axis=0)
+        print(idx.shape)
+        idx = idx.squeeze(-1)
         distances = distances[idx, np.arange(distances.shape[1]), :]
         normals = normals[idx, np.arange(normals.shape[1]), :]
 
@@ -467,12 +469,9 @@ def get2D_dataset(
         transform_hexagon = np.array([[0.5, 0, 0.5], [0, 0.5, 0.5], [0, 0, 1]])
         star_points = get_star_points(transform_star)
         hexagon_points = get_hexagon_points(transform_hexagon)
-        args[0] //= 5
+        args[0] //= 2
         out_shape = Union(
             shapes=[
-                Polygon(*args, vertices=star_points),
-                Polygon(*args, vertices=star_points),
-                Polygon(*args, vertices=star_points),
                 Polygon(*args, vertices=star_points),
                 Polygon(*args, vertices=hexagon_points),
             ]
