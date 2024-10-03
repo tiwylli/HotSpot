@@ -75,6 +75,10 @@ class FCBlock(MetaModule):
             self.net[-1].apply(geom_relu_last_layers_init)
             # self.net[-1].apply(geom_relu_last_but_one_layers_init)
 
+        elif init_type == "geometric_relu_2d":
+            self.net.apply(geom_relu_2D_init)
+            self.net[-1].apply(geom_relu_2D_last_layers_init)
+
     def forward(self, coords, params=None, **kwargs):
         if params is None:
             params = OrderedDict(self.named_parameters())
@@ -257,3 +261,18 @@ def geom_relu_last_layers_init(m):
             num_input = m.weight.size(-1)
             m.weight.normal_(mean=np.sqrt(np.pi) / np.sqrt(num_input), std=0.00001)
             m.bias.data = torch.Tensor([-radius_init])
+
+################################# geometric initialization used in 2D experiments ###################################
+def geom_relu_2D_init(m):
+    with torch.no_grad():
+        if hasattr(m, "weight"):
+            out_dims = m.out_features
+            m.weight.normal_(mean=0.005, std=np.sqrt(2) / np.sqrt(out_dims))
+            m.bias.data = torch.zeros_like(m.bias.data)
+def geom_relu_2D_last_layers_init(m):
+    radius_init = 1
+    with torch.no_grad():
+        if hasattr(m, "weight"):
+            num_input = m.weight.size(-1)
+            m.weight.normal_(mean=np.sqrt(np.pi) * 4 / np.sqrt(num_input), std=0.00001)
+            m.bias.data = torch.Tensor([-0.1*radius_init])

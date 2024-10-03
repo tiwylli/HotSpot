@@ -15,8 +15,12 @@ class Circle(ShapeBase):
         n_random_samples=1024,
         resample=True,
         r=0.5,
+        center=(0, 0),
+        outward_normal=True,
     ):
         self.r = r
+        self.center = np.array(center, dtype="f")
+        self.outward_normal = outward_normal
         ShapeBase.__init__(
             self,
             n_points,
@@ -32,19 +36,23 @@ class Circle(ShapeBase):
 
     def get_mnfld_points(self):
         theta = np.random.uniform(0, 2 * np.pi, size=(self.n_points)).astype("f")
-        x = self.r * np.sin(theta)
-        y = self.r * np.cos(theta)
+        x = self.r * np.sin(theta) + self.center[0]
+        y = self.r * np.cos(theta) + self.center[1]
 
         points = np.stack([x, y], axis=-1)
         return points
 
     def get_mnfld_normals(self):
-        return self.mnfld_points / np.linalg.norm(self.mnfld_points, axis=-1, keepdims=True)
+        vector = self.mnfld_points - self.center
+        vector *= -1 if self.outward_normal else 1
+        return vector / np.linalg.norm(vector, axis=-1, keepdims=True)
 
     def get_points_distances_and_normals(self, points):
-        point_dist = np.linalg.norm(points, axis=-1, keepdims=True)
+        vector = points - self.center
+        vector *= -1 if self.outward_normal else 1
+        point_dist = np.linalg.norm(vector, axis=-1, keepdims=True)
         distances = point_dist - self.r
-        normals = points / point_dist
+        normals = vector / point_dist
         return distances, normals
 
 
@@ -254,27 +262,37 @@ class Union(ShapeBase):
         )
 
     def get_mnfld_points(self):
+        print("get_mnfld_points()")
         points = []
         for shape in self.shapes:
             points.append(shape.get_mnfld_points())
         return np.concatenate(points, axis=-2)
 
     def get_mnfld_normals(self):
+        print("get_mnfld_normals()")
         normals = []
         for shape in self.shapes:
             normals.append(shape.get_mnfld_normals())
         return np.concatenate(normals, axis=-2)
 
     def get_points_distances_and_normals(self, points):
+        print("get_points_distances_and_normals()")
         distances = []
         normals = []
         for shape in self.shapes:
             d, n = shape.get_points_distances_and_normals(points)
             distances.append(d)
             normals.append(n)
+        distances = np.stack(distances)
+        normals = np.stack(normals)
+
+        idx = np.argmin(np.abs(distances), axis=0).squeeze(-1)
+        distances = distances[idx, np.arange(distances.shape[1]), :]
+        normals = normals[idx, np.arange(normals.shape[1]), :]
+
         return (
-            np.stack(distances).min(axis=0),
-            np.stack(normals)[np.argmin(np.stack(distances), axis=0), range(points.shape[0])],
+            distances,
+            normals,
         )
 
 
@@ -457,6 +475,17 @@ def get2D_dataset(
                 Polygon(*args, vertices=star_points),
                 Polygon(*args, vertices=star_points),
                 Polygon(*args, vertices=hexagon_points),
+            ]
+        )
+    elif shape_type == "button":
+        args[0] //= 5
+        out_shape = Union(
+            shapes=[
+                Circle(*args, r=1.0, center=(0, 0), outward_normal=True),
+                Circle(*args, r=0.2, center=(0.25, 0.25), outward_normal=False),
+                Circle(*args, r=0.2, center=(-0.25, 0.25), outward_normal=False),
+                Circle(*args, r=0.2, center=(-0.25, -0.25), outward_normal=False),
+                Circle(*args, r=0.2, center=(0.25, -0.25), outward_normal=False),
             ]
         )
     else:
