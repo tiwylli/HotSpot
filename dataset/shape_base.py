@@ -39,43 +39,49 @@ class ShapeBase(data.Dataset):
         self.resample = resample
         self.dim = dim
 
-        self._init_grid_points()
+        self._init_mnfld_and_grid_points()
 
         self._resample()
 
     @abstractmethod
     def get_mnfld_points(self):
-        # implement a function that returns points on the manifold
+        # Implement a function that returns points on the manifold
+        # Should return a numpy array of shape (n_points, dim)
         pass
 
     @abstractmethod
     def get_mnfld_normals(self):
-        # implement a function that returns normal vectors for points on the manifold
+        # Implement a function that returns normal vectors for points on the manifold
+        # Should return a numpy array of shape (n_points, dim)
         pass
 
     @abstractmethod
     def get_points_distances_and_normals(self, points):
-        # implement a function that computes the distance and normal vectors of nonmanifold points.
-        # default implementation finds the nearest neighbor and return its normal and the distance to it.
-        # which is a coarse approxiamation
+        # Implement a function that computes the distance and normal vectors of nonmanifold points.
+        # For input points of shape (n_points, dim), the output should be:
+        # distances: (n_samples, n_points, 1)
+        # normals: (n_samples, n_points, dim)
+
+        # Default implementation finds the nearest neighbor and return its normal and the distance to it, which is a coarse approxiamation
 
         distances = []
         normals = []
         # compute distance and normal (general case)
-        for i, point_cloud in enumerate(self.points):
-            kdtree = spatial.cKDTree(point_cloud)
-            distances, nn_idx = kdtree.query(points, k=1)
-            signs = np.sign(
-                np.einsum("ij,ij->i", points - point_cloud[nn_idx], self.mnfld_normals[i, nn_idx])
-            )
-            normals.append(self.mnfld_normals[i, nn_idx])
-            distances.append(signs * distances)
+        kdtree = spatial.cKDTree(self.mnfld_points)
+        distances, nn_idx = kdtree.query(points, k=1)
+        signs = np.sign(
+            np.einsum("ij,ij->i", points - self.mnfld_points[nn_idx], self.mnfld_normals[nn_idx])
+        )
+        distances = signs * distances
+        distances = distances[..., None]
+        normals = self.mnfld_normals[nn_idx]
 
-        distances = np.stack(distances).astype("f")
-        normals = np.stack(normals).astype("f")
         return distances, normals
 
-    def _init_grid_points(self):
+    def _init_mnfld_and_grid_points(self):
+        self.mnfld_points = self.get_mnfld_points()
+        self.mnfld_normals = self.get_mnfld_normals()
+
         x, y = np.linspace(-self.grid_range, self.grid_range, self.grid_res), np.linspace(
             -self.grid_range, self.grid_range, self.grid_res
         )
@@ -259,9 +265,6 @@ class ShapeBase(data.Dataset):
         return nonmnfld_points, nonmnfld_pdfs
 
     def _resample(self):
-        self.mnfld_points = self.get_mnfld_points()
-        self.mnfld_normals = self.get_mnfld_normals()
-
         self.nonmnfld_points, self.nonmnfld_pdfs = self.get_nonmnfld_points_and_pdfs()
 
         self.nonmnfld_dist, self.nonmnfld_normals = self.get_points_distances_and_normals(
@@ -287,7 +290,8 @@ class ShapeBase(data.Dataset):
         if self.resample:
             self._resample()
 
-        mnfld_idx = np.random.permutation(range(self.mnfld_points.shape[0]))[: self.n_points]
+        # mnfld_idx = np.random.permutation(range(self.mnfld_points.shape[0]))[: self.n_points]
+        mnfld_idx = np.random.permutation(range(self.mnfld_points.shape[0]))
         nonmnfld_idx = np.random.permutation(range(self.nonmnfld_points.shape[0]))
 
         if self.nonmnfld_pdfs.shape[0] > 1:

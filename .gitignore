@@ -19,7 +19,7 @@ data/NSP_dataset
 data/scene_reconstruction
 data/ShapeNetNSP
 /data
-sanitychecks/out/
+/sanitychecks_out/
 /*.mp4
 /sanitychecks/*.png
 /sanitychecks/*.html

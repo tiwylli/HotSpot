@@ -4,7 +4,7 @@ THIS_FILE=$(basename "$0")
 TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
 
 CONFIG_DIR=$ROOT_DIR'configs/curv_recon.toml' # change to your config file path
-IDENTIFIER='starAndHexagon'                                                   # change to your desired identifier
+IDENTIFIER='curv'                                                   # change to your desired identifier
 LOG_DIR='./log/2d_curv/'                                           # change to your desired log path
 mkdir -p $LOG_DIR
 

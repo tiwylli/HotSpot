@@ -12,7 +12,7 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 import utils.utils as utils
-import surface_reconstruction.parser as parser
+import parser
 import utils.visualizations as vis
 from PIL import Image
 
@@ -67,19 +67,19 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_idx)
 device = torch.device("cuda")
 
-# model = model.Network(
-#     latent_size=args.latent_size,
-#     in_dim=in_dim,
-#     decoder_hidden_dim=args.decoder_hidden_dim,
-#     nl=args.nl,
-#     encoder_type=args.encoder_type,
-#     decoder_n_hidden_layers=args.decoder_n_hidden_layers,
-#     init_type=args.init_type,
-#     neuron_type=args.neuron_type,
-#     sphere_init_params=args.sphere_init_params,
-# )
+model = model.Network(
+    latent_size=args.latent_size,
+    in_dim=in_dim,
+    decoder_hidden_dim=args.decoder_hidden_dim,
+    nl=args.nl,
+    encoder_type=args.encoder_type,
+    decoder_n_hidden_layers=args.decoder_n_hidden_layers,
+    init_type=args.init_type,
+    neuron_type=args.neuron_type,
+    sphere_init_params=args.sphere_init_params,
+)
 # Uncomment to use small model
-model = heatModel.Net(radius_init=args.sphere_init_params[1])
+# model = heatModel.Net(radius_init=args.sphere_init_params[1])
 model.to(device)
 if args.parallel:
     if device.type == "cuda":
@@ -116,6 +116,8 @@ for batch_idx, data in enumerate(train_dataloader):
     mnfld_points.requires_grad_()
     nonmnfld_points.requires_grad_()
 
+    # print(f"nonmanifold points during training: {nonmnfld_points.shape}")
+    # print(f"manifold points during training: {mnfld_points.shape}")
     output_pred = model(nonmnfld_points, mnfld_points)
 
     loss_dict, _ = criterion(output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs, mnfld_n_gt)
@@ -191,27 +193,38 @@ for batch_idx, data in enumerate(train_dataloader):
         x, y = np.linspace(
             -args.vis_grid_range, args.vis_grid_range, args.vis_grid_res
         ), np.linspace(-args.vis_grid_range, args.vis_grid_range, args.vis_grid_res)
-        meshgrid = np.meshgrid(x, y)
-        meshgrid = np.stack(meshgrid, axis=-1)
+        xx, yy = np.meshgrid(x, y)
+        xx, yy = xx.ravel(), yy.ravel()
+        grid_points = np.stack([xx, yy], axis=-1)
         if in_dim == 3:
             z = np.zeros((args.vis_grid_res, args.vis_grid_res, 1))
-            meshgrid = np.concatenate([meshgrid, z], axis=-1)
-        grid_points = torch.tensor(meshgrid, dtype=torch.float32).to(device)
-        grid_points.requires_grad_(True)
+            grid_points = np.concatenate([xx, yy, z], axis=-1)
+        grid_points = grid_points[None, ...]
+        grid_points = torch.tensor(grid_points, dtype=torch.float32).to(device)
+        grid_points.requires_grad_()
 
         output_dir = os.path.join(log_dir, "vis")
         os.makedirs(output_dir, exist_ok=True)
 
-        output_pred = model(grid_points)
-        mnfld_points_pred = output_pred["nonmanifold_pnts_pred"]
+        # print(f"nonmanifold points during visualization: {grid_points.shape}")
+        # print(f"manifold points during visualization: {mnfld_points.shape}")
+        output_pred = model(grid_points, mnfld_points)
+        mnfld_points_pred = output_pred["manifold_pnts_pred"]
+        grid_points_pred = output_pred["nonmanifold_pnts_pred"]
+        mnfld_normals_pred = utils.gradient(mnfld_points, mnfld_points_pred)
+        mnfld_normals_pred = mnfld_normals_pred / torch.norm(mnfld_normals_pred, dim=-1, keepdim=True)
+        mnfld_normals_gt = data["mnfld_normals"]
 
         sdf_contour_img = vis.plot_contours(
-            x=x,
-            y=y,
-            z=mnfld_points_pred.detach()
+            x_grid=x,
+            y_grid=y,
+            z_grid=grid_points_pred.detach()
             .cpu()
             .numpy()
             .reshape(args.vis_grid_res, args.vis_grid_res),
+            mnfld_points=mnfld_points[0][:100].detach().cpu().numpy(),
+            mnfld_normals=mnfld_normals_pred[0][:100].detach().cpu().numpy(),
+            mnfld_normals_gt=mnfld_normals_gt[0][:100],
             colorscale="Geyser",
             show_scale=True,
             show_ax=True,

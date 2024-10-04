@@ -22,15 +22,15 @@ div_decay_params = [100.0, 0.2, 100.0, 0.4, 0.0, 0.0]
 
 [sampling]
 grid_res = 256
-nonmnfld_sample_type = "uniform"
+nonmnfld_sample_type = "grid"
 n_random_samples = 4096
-n_points = 15000
+n_points = 2
 grid_range = 1.2
 nonmnfld_sample_std2 = 0.09
 
 [training]
 task = "2d"
-n_iterations = 10000
+n_iterations = 1000
 gpu_idx = 0
 lr = 5e-5
 grad_clip_norm = 10.0

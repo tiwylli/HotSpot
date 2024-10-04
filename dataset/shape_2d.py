@@ -44,12 +44,12 @@ class Circle(ShapeBase):
 
     def get_mnfld_normals(self):
         vector = self.mnfld_points - self.center
-        vector *= -1 if self.outward_normal else 1
+        vector *= 1 if self.outward_normal else -1
         return vector / np.linalg.norm(vector, axis=-1, keepdims=True)
 
     def get_points_distances_and_normals(self, points):
         vector = points - self.center
-        vector *= -1 if self.outward_normal else 1
+        vector *= 1 if self.outward_normal else -1
         point_dist = np.linalg.norm(vector, axis=-1, keepdims=True)
         distances = point_dist - self.r
         normals = vector / point_dist
@@ -283,11 +283,8 @@ class Union(ShapeBase):
             normals.append(n)
         distances = np.stack(distances)
         normals = np.stack(normals)
-        print(distances.shape)
-        print(normals.shape)
 
         idx = np.argmin(np.abs(distances), axis=0)
-        print(idx.shape)
         idx = idx.squeeze(-1)
         distances = distances[idx, np.arange(distances.shape[1]), :]
         normals = normals[idx, np.arange(normals.shape[1]), :]
@@ -395,16 +392,16 @@ def get_koch_points(degree, s=1.0):
 
 def get_star_points(transform):
     points = [
-        (1.0, 0.0),
-        (0.4045, 0.2939),
-        (0.3090, 0.9511),
-        (-0.1545, 0.4755),
-        (-0.8090, 0.5878),
-        (-0.5, 0.0),
-        (-0.8090, -0.5878),
-        (-0.1545, -0.4755),
-        (0.3090, -0.9511),
         (0.4045, -0.2939),
+        (0.3090, -0.9511),
+        (-0.1545, -0.4755),
+        (-0.8090, -0.5878),
+        (-0.5, 0.0),
+        (-0.8090, 0.5878),
+        (-0.1545, 0.4755),
+        (0.3090, 0.9511),
+        (0.4045, 0.2939),
+        (1.0, 0.0),
     ]
     # transform points, transform is a 3x3 matrix
     points = np.array(points)
@@ -416,12 +413,12 @@ def get_star_points(transform):
 
 def get_hexagon_points(transform):
     points = [
-        (1.0, 0.0),
-        (0.5000, 0.8660),
-        (-0.5000, 0.8660),
-        (-1.0, 0.0),
-        (-0.5000, -0.8660),
         (0.5000, -0.8660),
+        (-0.5000, -0.8660),
+        (-1.0, 0.0),
+        (-0.5000, 0.8660),
+        (0.5000, 0.8660),
+        (1.0, 0.0),
     ]
     points = np.array(points)
     points = np.concatenate([points, np.ones((points.shape[0], 1))], axis=1)
@@ -477,6 +474,9 @@ def get2D_dataset(
             ]
         )
     elif shape_type == "button":
+        # transform_star = np.array([[0.5, 0, -0.5], [0, 0.5, -0.5], [0, 0, 1]])
+        # star_points = get_star_points(transform_star)
+
         args[0] //= 5
         out_shape = Union(
             shapes=[
@@ -485,6 +485,9 @@ def get2D_dataset(
                 Circle(*args, r=0.2, center=(-0.25, 0.25), outward_normal=False),
                 Circle(*args, r=0.2, center=(-0.25, -0.25), outward_normal=False),
                 Circle(*args, r=0.2, center=(0.25, -0.25), outward_normal=False),
+                Circle(*args, r=0.2, center=(0.25, 0.25), outward_normal=True),
+                # Circle(*args, r=0.2, center=(-0.25, -0.25), outward_normal=True),
+                # Polygon(*args, vertices=star_points),
             ]
         )
     else:

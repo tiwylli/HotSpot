@@ -10,64 +10,7 @@ from PIL import Image
 import os
 
 
-def plot_contours(
-    x, y, z, colorscale="Geyser", show_scale=True, show_ax=True, title_text="", grid_range=1.2, contour_interval=0.05
-):
-    traces = []
-
-    # Decide contour start and end based on the range of the implicit function
-    z_abs_max = np.abs(z).max()
-    z_abs_max = 10 * contour_interval * np.ceil(z_abs_max / 10 / contour_interval)
-    print(f"scale: {z_abs_max}")
-    contour_start = -z_abs_max
-    contour_end = z_abs_max
-
-    # Plot implicit function contour
-    traces.append(
-        go.Contour(
-            x=x,
-            y=y,
-            z=z,
-            colorscale=colorscale,
-            #    autocontour=True,
-            contours=dict(
-                start=contour_start,
-                end=contour_end,
-                size=contour_interval,
-            ),
-            showscale=show_scale,
-        )
-    )
-    # Black bold zero line
-    traces.append(
-        go.Contour(
-            x=x,
-            y=y,
-            z=z,
-            contours=dict(
-                start=contour_start,
-                end=contour_end,
-                size=contour_interval * 10,
-                coloring="lines",
-            ),
-            line=dict(width=2),
-            showscale=False,
-            colorscale=[[0, "rgb(100, 100, 100)"], [1, "rgb(100, 100, 100)"]],
-        )
-    )
-    # Black bold zero line
-    traces.append(
-        go.Contour(
-            x=x,
-            y=y,
-            z=z,
-            contours=dict(start=0, end=0, coloring="lines"),
-            line=dict(width=3),
-            showscale=False,
-            colorscale=[[0, "rgb(50, 50, 50)"], [1, "rgb(50, 50, 50)"]],
-        )
-    )
-
+def default_layout(grid_range=1.0, show_ax=True, title_text="default_title"):
     layout = go.Layout(
         width=800,
         height=800,
@@ -100,6 +43,104 @@ def plot_contours(
             font=dict(family="Sherif", size=24, color="red"),
         ),
     )
+
+    return layout
+
+
+def plot_contours(
+    x_grid, y_grid, z_grid, mnfld_points=None, mnfld_normals=None, mnfld_normals_gt=None, colorscale="Geyser", show_scale=True, show_ax=True, title_text="", grid_range=1.2, contour_interval=0.05, layout=None, contour_range=None, marker_size=2
+):
+    traces = []
+
+    # Decide contour start and end based on the range of the implicit function
+    if contour_range is None:
+        z_abs_max = np.abs(z_grid).max()
+        z_abs_max = 10 * contour_interval * np.ceil(z_abs_max / 10 / contour_interval)
+        # print(f"scale: {z_abs_max}")
+        contour_start = -z_abs_max
+        contour_end = z_abs_max
+    else:
+        contour_start = contour_range[0]
+        contour_end = contour_range[1]
+
+    # Plot implicit function contour
+    traces.append(
+        go.Contour(
+            x=x_grid,
+            y=y_grid,
+            z=z_grid,
+            colorscale=colorscale,
+            #    autocontour=True,
+            contours=dict(
+                start=contour_start,
+                end=contour_end,
+                size=contour_interval,
+            ),
+            showscale=show_scale,
+        )
+    )
+    # Gray bold every 10 contour line
+    traces.append(
+        go.Contour(
+            x=x_grid,
+            y=y_grid,
+            z=z_grid,
+            contours=dict(
+                start=contour_start,
+                end=contour_end,
+                size=contour_interval * 10,
+                coloring="lines",
+            ),
+            line=dict(width=2),
+            showscale=False,
+            colorscale=[[0, "rgb(100, 100, 100)"], [1, "rgb(100, 100, 100)"]],
+        )
+    )
+    # Black bold zero line
+    traces.append(
+        go.Contour(
+            x=x_grid,
+            y=y_grid,
+            z=z_grid,
+            contours=dict(start=0, end=0, coloring="lines"),
+            line=dict(width=3),
+            showscale=False,
+            colorscale=[[0, "rgb(50, 50, 50)"], [1, "rgb(50, 50, 50)"]],
+        )
+    )
+
+    # Plot manifold points
+    if mnfld_points is not None:
+        mnfld_points_scatter = go.Scatter(
+            x=mnfld_points[:, 0],
+            y=mnfld_points[:, 1],
+            mode="markers",
+            marker=dict(size=marker_size, color="rgb(0, 0, 0)"),
+        )
+        traces.append(mnfld_points_scatter)
+
+    # Plot normal vectors
+    if mnfld_normals_gt is not None:
+        f = ff.create_quiver(
+            mnfld_points[:, 0],
+            mnfld_points[:, 1],
+            mnfld_normals_gt[:, 0],
+            mnfld_normals_gt[:, 1],
+            line=dict(color="rgb(0, 255, 0)"),
+        )
+        traces.append(f.data[0])
+    if mnfld_normals is not None:
+        f = ff.create_quiver(
+            mnfld_points[:, 0],
+            mnfld_points[:, 1],
+            mnfld_normals[:, 0],
+            mnfld_normals[:, 1],
+            line=dict(color="rgb(255, 0, 0)"),
+        )
+        traces.append(f.data[0])
+
+    if layout is None:
+        layout = default_layout(grid_range=grid_range, show_ax=show_ax, title_text=title_text)
 
     # Plot sdf image
     sdf_fig = go.Figure(data=traces, layout=layout)
@@ -227,147 +268,6 @@ def plot_contour_and_scatter_sal_training(
     offline.plot(fig1, auto_open=False)
     img = utils.plotly_fig2array(fig1)
     return img
-
-
-# def plot_contour_scatter_and_curl(clean_points, decoder, latent,
-#                                           example_idx=0, n_gt=None, n_pred=None, z_gt=None,
-#                                           show_ax=True, show_bar=True, title_text='', colorscale='Geyser',
-#                                           res=128, nonmnfld_points=None):
-#     # plot contour and scatter plot given input points, SAL decoder and the point's laten representation
-#
-#     clean_points = clean_points[example_idx].detach().cpu().numpy()
-#
-#     if n_gt is not None:
-#         n_gt = n_gt[example_idx].detach().cpu().numpy()
-#     if n_pred is not None:
-#         n_pred = n_pred[example_idx].detach().cpu().numpy()
-#     x, y, grid_points = utils.get_2d_grid_uniform(resolution=res, range=1.2, device=latent.device)
-#     grid_points.requires_grad_()
-#     grid_points_latent = torch.cat([latent[example_idx].expand(grid_points.shape[0], -1), grid_points], dim=1)
-#     z = decoder(grid_points_latent)
-#     z_np = z.detach().cpu().numpy()
-#     traces = []
-#     # plot implicit function contour
-#
-#     traces.append(go.Contour(x=x, y=y, z=z_np.reshape(x.shape[0], x.shape[0]),
-#                                colorscale=colorscale,
-#                                # autocontour=True,
-#                                contours=dict(
-#                                    start=-1,
-#                                    end=1,
-#                                    size=0.025,
-#                                ), showscale=show_bar
-#                                ))  # contour trace
-#
-#     # plot clean points and noisy points scatters
-#     clean_points_scatter = go.Scatter(x=clean_points[:, 0], y=clean_points[:, 1],
-#                                 mode='markers', marker=dict(size=16, color=(0, 0, 0)))
-#     traces.append(clean_points_scatter) # clean points scatter
-#
-#     if nonmnfld_points is not None:
-#         nonmnfld_points = nonmnfld_points[example_idx].detach().cpu().numpy()
-#         nonmnfld_points_scatter = go.Scatter(x=nonmnfld_points[:, 0], y=nonmnfld_points[:, 1],
-#                                           mode='markers', marker=dict(size=16, color='rgb(255, 255, 255)'))
-#         traces.append(nonmnfld_points_scatter)  # nonmnfld points scatter
-#
-#
-#     # plot normal vectors:
-#     if n_gt is not None:
-#         f = ff.create_quiver(clean_points[:, 0], clean_points[:, 1], n_gt[:, 0], n_gt[:, 1], line=dict(color='rgb(0, 255, 0)'))
-#         traces.append(f.data[0])
-#     if n_pred is not None:
-#         f = ff.create_quiver(clean_points[:, 0], clean_points[:, 1], n_pred[:, 0], n_pred[:, 1],
-#                              line=dict(color='rgb(255, 0, 0)'))
-#         traces.append(f.data[0])
-#
-#     layout = go.Layout(width=1200, height=1200,
-#                        xaxis=dict(side="bottom", range=[-1, 1], showgrid=show_ax, zeroline=show_ax, visible=show_ax),
-#                        yaxis=dict(side="left", range=[-1, 1], showgrid=show_ax, zeroline=show_ax, visible=show_ax),
-#                        scene=dict(xaxis=dict(range=[-1, 1], autorange=False),
-#                                   yaxis=dict(range=[-1, 1], autorange=False),
-#                                   aspectratio=dict(x=1, y=1)),
-#                        showlegend=False,
-#                        title=dict(text=title_text, y=0.95, x=0.5, xanchor='center', yanchor='middle',
-#                                   font=dict(family='Sherif', size=24, color='red'))
-#                        )
-#
-#     fig1 = go.Figure(data=traces, layout=layout)
-#     offline.plot(fig1, auto_open=False)
-#     dist_img = utils.plotly_fig2array(fig1)
-#
-#     # plot curl
-#     grid_grad = utils.gradient(grid_points, z)
-#     dx = utils.gradient(grid_points, grid_grad[:, 0], create_graph=False, retain_graph=True)
-#     dy = utils.gradient(grid_points, grid_grad[:, 1], create_graph=False, retain_graph=False)
-#     grid_curl = (dx[:, 1] - dy[:, 0]).cpu().detach().numpy()
-#
-#     traces = [clean_points_scatter]
-#     traces.append(go.Contour(x=x, y=y, z=grid_curl.reshape(x.shape[0], x.shape[0]),
-#                                colorscale=colorscale,
-#                                # autocontour=True,
-#                                contours=dict(
-#                                    start=-1e-5,
-#                                    end=1e-5,
-#                                    size=0.25*1e-5,
-#                                ), showscale=show_bar
-#                                ))  # contour trace
-#     # f = ff.create_quiver(grid_points[:, 0].detach().cpu().numpy(), grid_points[:, 1].detach().cpu().numpy(),
-#     # grid_grad[:, 0].detach().cpu().numpy(), grid_grad[:, 1].detach().cpu().numpy(),
-#     #                      line=dict(color='rgb(0, 0, 0)'))
-#     # traces.append(f.data[0])
-#     fig2 = go.Figure(data=traces, layout=layout)
-#     offline.plot(fig2, auto_open=False)
-#     curl_img = utils.plotly_fig2array(fig2)
-#
-#     # plot eikonal
-#     traces = [clean_points_scatter]
-#     eikonal_term = ((grid_grad.norm(2, dim=-1) - 1) ** 2).cpu().detach().numpy()
-#     traces.append(go.Contour(x=x, y=y, z=eikonal_term.reshape(x.shape[0], x.shape[0]),
-#                                colorscale=colorscale,
-#                                # autocontour=True,
-#                                contours=dict(
-#                                    start=-1,
-#                                    end=1,
-#                                    size=0.025,
-#                                ), showscale=show_bar
-#                                ))  # contour trace
-#     fig3 = go.Figure(data=traces, layout=layout)
-#     offline.plot(fig3, auto_open=False)
-#     eikonal_img = utils.plotly_fig2array(fig3)
-#
-#     #plot divergence
-#     grid_div = (dx[:, 0] + dy[:, 1]).detach().cpu().numpy()
-#     traces = [clean_points_scatter]
-#     traces.append(go.Contour(x=x, y=y, z=grid_div.reshape(x.shape[0], x.shape[0]),
-#                                colorscale=colorscale,
-#                                # autocontour=True,
-#                                contours=dict(
-#                                    start=-10,
-#                                    end=10,
-#                                    size=0.25,
-#                                ), showscale=show_bar
-#                                ))  # contour trace
-#     fig4 = go.Figure(data=traces, layout=layout)
-#     offline.plot(fig2, auto_open=False)
-#     div_img = utils.plotly_fig2array(fig4)
-#
-#     #plot z difference image
-#     z_diff = np.abs(np.abs(np.reshape(z_np, [res, res])) - np.abs(z_gt))
-#     traces = [clean_points_scatter]
-#     traces.append(go.Contour(x=x, y=y, z=z_diff.reshape(x.shape[0], x.shape[0]),
-#                                colorscale=colorscale,
-#                                # autocontour=True,
-#                                contours=dict(
-#                                    start=-0.5,
-#                                    end=0.5,
-#                                    size=0.025,
-#                                ), showscale=show_bar
-#                                ))  # contour trace
-#     fig5 = go.Figure(data=traces, layout=layout)
-#     offline.plot(fig5, auto_open=False)
-#     z_diff_img = utils.plotly_fig2array(fig5)
-#
-#     return dist_img, curl_img, eikonal_img, div_img, z_diff_img, grid_div
 
 
 def plot_contour_props(
@@ -501,84 +401,13 @@ def plot_contour_props(
     return dist_img
 
 
-def plot_coutour(
-    x_grid,
-    y_grid,
-    z_grid,
-    colorscale="Geyser",
-    show_bar=True,
-    show_ax=True,
-    title_text="default_title",
-):
-    traces = []
-
-    # plot implicit function contour
-    traces.append(
-        go.Contour(
-            x=x_grid,
-            y=y_grid,
-            z=z_grid,
-            colorscale=colorscale,
-            # autocontour=True,
-            contours=dict(
-                start=-1,
-                end=1,
-                size=0.025,
-            ),
-            showscale=show_bar,
-        )
-    )  # contour trace
-    traces.append(
-        go.Contour(
-            x=x_grid,
-            y=y_grid,
-            z=z_grid,
-            contours=dict(start=0, end=0, coloring="lines"),
-            line=dict(width=3),
-            showscale=False,
-            colorscale=[[0, "rgb(100, 100, 100)"], [1, "rgb(100, 100, 100)"]],
-        )
-    )  # black bold zero line
-
-    layout = go.Layout(
-        width=800,
-        height=800,
-        xaxis=dict(
-            side="bottom", range=[-1, 1], showgrid=show_ax, zeroline=show_ax, visible=show_ax
-        ),
-        yaxis=dict(side="left", range=[-1, 1], showgrid=show_ax, zeroline=show_ax, visible=show_ax),
-        scene=dict(
-            xaxis=dict(range=[-1, 1], autorange=False),
-            yaxis=dict(range=[-1, 1], autorange=False),
-            aspectratio=dict(x=1, y=1),
-        ),
-        showlegend=False,
-        title=dict(
-            text=title_text,
-            y=0.95,
-            x=0.5,
-            xanchor="center",
-            yanchor="middle",
-            font=dict(family="Sherif", size=24, color="red"),
-        ),
-    )
-
-    # plot sdf image
-    sdf_fig = go.Figure(data=traces, layout=layout)
-    offline.plot(sdf_fig, auto_open=False)
-    sdf_img = utils.plotly_fig2array(sdf_fig)
-    print("Finished computing sign distance image")
-
-    return sdf_img
-
-
 def plot_contour_div_props(
     x_grid,
     y_grid,
     z_grid,
     clean_points,
     z_diff,
-    eikonal_term,
+    grid_eikonal,
     grid_div,
     grid_curl,
     grid_heat,
@@ -708,7 +537,7 @@ def plot_contour_div_props(
         go.Contour(
             x=x_grid,
             y=y_grid,
-            z=eikonal_term,
+            z=grid_eikonal,
             colorscale=colorscale,
             # autocontour=True,
             contours=dict(
@@ -770,30 +599,11 @@ def plot_contour_div_props(
         offline.plot(fig4, auto_open=False)
         div_img = utils.plotly_fig2array(fig4)
         print("Finished divergence image")
-        # plot curl
-        # if clean_points is not None:
-        #     traces = [clean_points_scatter]
-        # traces.append(go.Contour(x=x_grid, y=y_grid, z=np.clip(grid_curl, -1e-4, 1e-4),
-        #                            colorscale=colorscale,
-        #                            # autocontour=True,
-        #                            contours=dict(
-        #                                start=-1e-4,
-        #                                end=1e-4,
-        #                                size=1e-5,
-        #                            ),
-        #                             showscale=show_bar
-        #                            ))  # contour trace
-
-        # fig2 = go.Figure(data=traces, layout=layout)
-        # offline.plot(fig2, auto_open=False)
-        # curl_img = utils.plotly_fig2array(fig2)
-        # print("Finished computing curl image")
         curl_img = np.zeros_like(dist_img)
     else:
-        # div_img, z_diff_img, curl_img = np.zeros_like(dist_img), np.zeros_like(dist_img), np.zeros_like(dist_img)
         div_img, curl_img = np.zeros_like(div_img), np.zeros_like(dist_img)
 
-    # plot heat image
+    # Plot heat image
     traces = go.Contour(
         x=x_grid,
         y=y_grid,
@@ -806,9 +616,9 @@ def plot_contour_div_props(
         ),
         showscale=show_bar,
     )
-    fig6 = go.Figure(data=traces, layout=layout)
-    offline.plot(fig6, auto_open=False)
-    heat_img = utils.plotly_fig2array(fig6)
+    heat_fig = go.Figure(data=traces, layout=layout)
+    offline.plot(heat_fig, auto_open=False)
+    heat_img = utils.plotly_fig2array(heat_fig)
     print("Finished computing heat image")
 
     return dist_img, curl_img, eikonal_img, div_img, z_diff_img, heat_img
