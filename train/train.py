@@ -38,7 +38,7 @@ if args.task == "3d":
         grid_res=args.grid_res,
         grid_range=args.grid_range,
         sample_type=args.nonmnfld_sample_type,
-        sampling_std2=args.nonmnfld_sample_std2,
+        sampling_std2=args.nonmnfld_sample_std,
         n_random_samples=args.n_random_samples,
     )
     in_dim = 3
@@ -49,7 +49,7 @@ elif args.task == "2d":
         grid_res=args.grid_res,
         grid_range=args.grid_range,
         sample_type=args.nonmnfld_sample_type,
-        sampling_std=args.nonmnfld_sample_std2,
+        sampling_std=args.nonmnfld_sample_std,
         n_random_samples=args.n_random_samples,
         resample=True,
         shape_type=args.shape_type,

@@ -220,10 +220,10 @@ def get_train_args():
         "--grid_range", type=float, default=1.2, help="Range of the grid to sample points."
     )
     parser.add_argument(
-        "--nonmnfld_sample_std2",
+        "--nonmnfld_sample_std",
         type=float,
         default=0.09,
-        help="Standard deviation of the gaussian distribution to sample points off the manifold.",
+        help="Standard deviation of the gaussian distribution to sample points off the origin.",
     )
     parser.add_argument(
         "--n_random_samples", type=int, default=4096, help="Number of random samples."
