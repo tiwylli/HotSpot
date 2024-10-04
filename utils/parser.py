@@ -30,7 +30,7 @@ def get_train_args():
     )
     # - 2D basic shape dataset
     parser.add_argument(
-        "--shape_type", type=str, default="L", help="shape dataset to load circle | square | L "
+        "--shape_type", type=str, default="L", help="Shape dataset to load. (circle | square | L |starAndHexagon | button)."
     )
     # Training
     parser.add_argument("--gpu_idx", type=int, default=0, help="Set < 0 to use CPU.")
@@ -91,6 +91,24 @@ def get_train_args():
         default=0.05,
         help="Interval for level set visualization.",
     )
+    parser.add_argument(
+        "--vis_normals", type=bool, default=False, help="Indicator to visualize normals."
+    )
+    parser.add_argument(
+        "--n_vis_normals",
+        type=int,
+        default=100,
+        help="Number of normals to visualize.",
+    )
+    parser.add_argument(
+        "--vis_heat", type=bool, default=False, help="Indicator to visualize heat."
+    )
+    parser.add_argument(
+        "--save_video", type=bool, default=False, help="Indicator to save video."
+    )
+    parser.add_argument(
+        "--video_fps", type=int, default=6, help="Frames per second for video."
+    )
 
     # Network architecture and loss
     parser.add_argument(
@@ -126,14 +144,20 @@ def get_train_args():
         "--loss_type",
         type=str,
         default="siren",
-        help="Loss type to use: siren | siren_wo_n | igr | igr_wo_n | siren_wo_n_w_div | siren_wo_n_w_div_w_reg |...",
+        help="Loss type to use: SPIN: igr[_wo_eik]_w_heat, StEik: siren[_wo_n]_w_div, siren[_wo_n], igr[_wo_n]",
+    )
+    parser.add_argument(
+        "--div_decay",
+        type=str,
+        default="linear",
+        help="Divergence term coefficient decay schedule: none | step | linear.",
     )
     parser.add_argument(
         "--div_decay_params",
         nargs="+",
         type=float,
         default=[0.0, 0.5, 0.75],
-        help="Epoch number to evaluate.",
+        help="Decay schedule for divergence term coefficient. Not effective if div_decay = False. Format: [start, (location, value)*, end]",
     )
     parser.add_argument(
         "--div_type",
@@ -143,16 +167,10 @@ def get_train_args():
     )
     parser.add_argument("--grid_res", type=int, default=128, help="Uniform grid resolution.")
     parser.add_argument(
-        "--div_decay",
-        type=str,
-        default="linear",
-        help="Divergence term importance decay: none | step | linear.",
-    )
-    parser.add_argument(
         "--nonmnfld_sample_type",
         type=str,
         default="uniform",
-        help="How to sample points off the manifold: grid | gaussian | combined.",
+        help="How to sample points off the manifold. Currently supported sample types: grid | central_gaussian | grid_central_gaussian | uniform_central_gaussian.",
     )
     parser.add_argument(
         "--init_type",
@@ -174,27 +192,27 @@ def get_train_args():
         "--heat_decay",
         type=str,
         default=None,
-        help="Heat term importance decay: none | step | linear.",
+        help="Heat coefficient decay schedule: none | step | linear.",
     )
     parser.add_argument(
         "--heat_decay_params",
         nargs="+",
         type=float,
         default=[],
-        help="Heat coefficient decay parameters.",
+        help="Decay schedule for heat coefficient. Not effective if heat_decay = False. Format: [start, (location, value)*, end]",
     )
     parser.add_argument(
         "--heat_lambda_decay",
         type=str,
         default=None,
-        help="Heat lambda importance decay: none | step | linear.",
+        help="Heat lambda decay schedule: none | step | linear.",
     )
     parser.add_argument(
         "--heat_lambda_decay_params",
         nargs="+",
         type=float,
         default=[],
-        help="Heat lambda decay parameters.",
+        help="Decay schedule for heat lambda. Not effective if heat_lambda_decay = False. Format: [start, (location, value)*, end]",
     )
 
     # Sampling

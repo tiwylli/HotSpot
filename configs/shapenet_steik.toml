@@ -4,16 +4,16 @@ model_dir = "models"
 [network]
 decoder_n_hidden_layers = 5
 decoder_hidden_dim = 128
-nl = "sine"                 # 'sine' | 'relu' | 'softplus'
+nl = "sine"
 sphere_init_params = [1.6, 0.1]
-init_type = "mfgi"    # 'siren' | 'geometric_sine' | 'geometric_relu' | 'mfgi'
-neuron_type = "quadratic"          # 'linear' | 'quadratic'
+init_type = "mfgi"
+neuron_type = "quadratic"
 
 [loss]
-loss_type = "siren_wo_n_w_div" # 'siren_wo_n_w_div' | 'siren_wo_n' | 'siren_w_div' | 'siren'
-loss_weights = [5e3, 1e2, 1e2, 0, 1e2, 0, 0] # sdf, inter, normal, eikonal, div, latent, heat
-div_type = "dir_l1" # 'dir_l1' | 'dir_l2' | 'full_l1' | 'full_l2'
-div_decay = "linear" # 'linear' | 'quintic' | 'step'
+loss_type = "siren_wo_n_w_div"
+loss_weights = [5e3, 1e2, 1e2, 0, 1e2, 0, 0]
+div_type = "dir_l1"
+div_decay = "linear"
 div_decay_params = [100.0, 0.2, 100.0, 0.4, 10.0, 10.0]
 
 [sampling]

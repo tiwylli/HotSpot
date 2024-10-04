@@ -12,7 +12,7 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 import utils.utils as utils
-import parser
+from utils import parser
 import utils.visualizations as vis
 from PIL import Image
 
@@ -116,8 +116,6 @@ for batch_idx, data in enumerate(train_dataloader):
     mnfld_points.requires_grad_()
     nonmnfld_points.requires_grad_()
 
-    # print(f"nonmanifold points during training: {nonmnfld_points.shape}")
-    # print(f"manifold points during training: {mnfld_points.shape}")
     output_pred = model(nonmnfld_points, mnfld_points)
 
     loss_dict, _ = criterion(output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs, mnfld_n_gt)
@@ -206,14 +204,14 @@ for batch_idx, data in enumerate(train_dataloader):
         output_dir = os.path.join(log_dir, "vis")
         os.makedirs(output_dir, exist_ok=True)
 
-        # print(f"nonmanifold points during visualization: {grid_points.shape}")
-        # print(f"manifold points during visualization: {mnfld_points.shape}")
         output_pred = model(grid_points, mnfld_points)
-        mnfld_points_pred = output_pred["manifold_pnts_pred"]
         grid_points_pred = output_pred["nonmanifold_pnts_pred"]
-        mnfld_normals_pred = utils.gradient(mnfld_points, mnfld_points_pred)
-        mnfld_normals_pred = mnfld_normals_pred / torch.norm(mnfld_normals_pred, dim=-1, keepdim=True)
-        mnfld_normals_gt = data["mnfld_normals"]
+
+        if args.vis_normals:
+            mnfld_points_pred = output_pred["manifold_pnts_pred"]
+            mnfld_normals_pred = utils.gradient(mnfld_points, mnfld_points_pred)
+            mnfld_normals_pred = mnfld_normals_pred / torch.norm(mnfld_normals_pred, dim=-1, keepdim=True)
+            mnfld_normals_gt = data["mnfld_normals"]
 
         sdf_contour_img = vis.plot_contours(
             x_grid=x,
@@ -222,9 +220,9 @@ for batch_idx, data in enumerate(train_dataloader):
             .cpu()
             .numpy()
             .reshape(args.vis_grid_res, args.vis_grid_res),
-            mnfld_points=mnfld_points[0][:100].detach().cpu().numpy(),
-            mnfld_normals=mnfld_normals_pred[0][:100].detach().cpu().numpy(),
-            mnfld_normals_gt=mnfld_normals_gt[0][:100],
+            mnfld_points=mnfld_points[0][:args.n_vis_normals].detach().cpu().numpy() if args.vis_normals else None,
+            mnfld_normals=mnfld_normals_pred[0][:args.n_vis_normals].detach().cpu().numpy() if args.vis_normals else None,
+            mnfld_normals_gt=mnfld_normals_gt[0][:args.n_vis_normals] if args.vis_normals else None,
             colorscale="Geyser",
             show_scale=True,
             show_ax=True,
@@ -232,11 +230,31 @@ for batch_idx, data in enumerate(train_dataloader):
             grid_range=args.vis_grid_range,
             contour_interval=args.vis_contour_interval,
         )
-        # Save the generated images
         img = Image.fromarray(sdf_contour_img)
         img.save(os.path.join(output_dir, "sdf_" + str(batch_idx).zfill(6) + ".png"))
+
+        if args.vis_heat:
+            grid_points_heat = np.exp(- args.heat_lambda * np.abs(grid_points_pred.detach().cpu().numpy().reshape(args.vis_grid_res, args.vis_grid_res)))
+            heat_contour_img = vis.plot_contours(
+                x_grid=x,
+                y_grid=y,
+                z_grid=grid_points_heat,
+                mnfld_points=mnfld_points[0][:args.n_vis_normals].detach().cpu().numpy() if args.vis_normals else None,
+                mnfld_normals=mnfld_normals_pred[0][:args.n_vis_normals].detach().cpu().numpy() if args.vis_normals else None,
+                mnfld_normals_gt=mnfld_normals_gt[0][:args.n_vis_normals] if args.vis_normals else None,
+                colorscale="Peach",
+                show_scale=True,
+                show_ax=True,
+                title_text=f"Heat, epoch {batch_idx}",
+                grid_range=args.vis_grid_range,
+                contour_interval=args.vis_contour_interval,
+            )
+            img = Image.fromarray(heat_contour_img)
+            img.save(os.path.join(output_dir, "heat_" + str(batch_idx).zfill(6) + ".png"))
+
         utils.log_string("", log_file)
 
+    # Update weights
     if "div" in args.loss_type:
         criterion.update_div_weight(batch_idx, args.n_iterations, args.div_decay_params)
     if args.heat_lambda_decay is not None:
@@ -249,6 +267,12 @@ for batch_idx, data in enumerate(train_dataloader):
 # Save final model
 utils.log_string("saving model to file model.pth", log_file)
 torch.save(model.state_dict(), os.path.join(model_outdir, "model.pth"))
+
+# Save video
+if args.save_video:
+    vis.save_video(output_dir, "sdf.mp4", "sdf_*.png")
+    if args.vis_heat:
+        vis.save_video(output_dir, "heat.mp4", "heat_*.png")
 
 # Convert implicit to mesh
 if in_dim == 3:

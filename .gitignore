@@ -21,11 +21,6 @@ data/ShapeNetNSP
 /data
 /sanitychecks_out/
 /*.mp4
-/sanitychecks/*.png
-/sanitychecks/*.html
-/surface_reconstruction/out/
-/surface_reconstruction/*.png
-/surface_reconstruction/*.html
-/surface_reconstruction/debug.py
+/train/debug.py
 /out/
 /*.html

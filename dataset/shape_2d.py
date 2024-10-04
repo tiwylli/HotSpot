@@ -14,9 +14,9 @@ class Circle(ShapeBase):
         sampling_std=0.005,
         n_random_samples=1024,
         resample=True,
+        outward_normal=True,
         r=0.5,
         center=(0, 0),
-        outward_normal=True,
     ):
         self.r = r
         self.center = np.array(center, dtype="f")
@@ -67,6 +67,7 @@ class Polygon(ShapeBase):
         sampling_std=0.005,
         n_random_samples=1024,
         resample=True,
+        outward_normal=True,  # Clockwise vertices is outward normal by default. This arg will reverse the normal direction
         vertices=[],
         line_sample_type="uniform",
     ):
@@ -74,6 +75,7 @@ class Polygon(ShapeBase):
         self.vertices = np.array(vertices)
         self.lines = self._get_line_props()
         self.line_sample_type = line_sample_type
+        self.outward_normal = outward_normal
         ShapeBase.__init__(
             self,
             n_points,
@@ -142,7 +144,7 @@ class Polygon(ShapeBase):
         return points.astype("f")
 
     def get_mnfld_normals(self):
-        return self.point_normal
+        return self.point_normal * (1 if self.outward_normal else -1)
 
     def get_points_distances_and_normals(self, points):
         # iterate over all the lines and  finds the minimum distance between all points and line segments
@@ -191,6 +193,7 @@ class Polygon(ShapeBase):
         )
         normals = np.take_along_axis(n, idx[None, None, :], axis=1).squeeze().transpose()
         normals = point_sign[:, None] * normals / np.linalg.norm(normals, axis=1, keepdims=True)
+        normals *= 1 if self.outward_normal else -1
         distances = point_sign * distances
         distances = distances[:, None]
 
@@ -265,13 +268,13 @@ class Union(ShapeBase):
     def get_mnfld_points(self):
         points = []
         for shape in self.shapes:
-            points.append(shape.get_mnfld_points())
+            points.append(shape.mnfld_points)
         return np.concatenate(points, axis=-2)
 
     def get_mnfld_normals(self):
         normals = []
         for shape in self.shapes:
-            normals.append(shape.get_mnfld_normals())
+            normals.append(shape.mnfld_normals)
         return np.concatenate(normals, axis=-2)
 
     def get_points_distances_and_normals(self, points):
@@ -470,13 +473,10 @@ def get2D_dataset(
         out_shape = Union(
             shapes=[
                 Polygon(*args, vertices=star_points),
-                Polygon(*args, vertices=hexagon_points),
+                Polygon(*args, vertices=hexagon_points, outward_normal=False),
             ]
         )
     elif shape_type == "button":
-        # transform_star = np.array([[0.5, 0, -0.5], [0, 0.5, -0.5], [0, 0, 1]])
-        # star_points = get_star_points(transform_star)
-
         args[0] //= 5
         out_shape = Union(
             shapes=[
@@ -485,9 +485,6 @@ def get2D_dataset(
                 Circle(*args, r=0.2, center=(-0.25, 0.25), outward_normal=False),
                 Circle(*args, r=0.2, center=(-0.25, -0.25), outward_normal=False),
                 Circle(*args, r=0.2, center=(0.25, -0.25), outward_normal=False),
-                Circle(*args, r=0.2, center=(0.25, 0.25), outward_normal=True),
-                # Circle(*args, r=0.2, center=(-0.25, -0.25), outward_normal=True),
-                # Polygon(*args, vertices=star_points),
             ]
         )
     else:

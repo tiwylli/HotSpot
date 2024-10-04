@@ -8,6 +8,8 @@ import torch
 import matplotlib.pyplot as plt
 from PIL import Image
 import os
+import glob
+import cv2
 
 
 def default_layout(grid_range=1.0, show_ax=True, title_text="default_title"):
@@ -146,7 +148,7 @@ def plot_contours(
     sdf_fig = go.Figure(data=traces, layout=layout)
     offline.plot(sdf_fig, auto_open=False)
     sdf_img = utils.plotly_fig2array(sdf_fig)
-    print("Finished computing sign distance image")
+    print("Finished computing " + title_text + " image")
 
     return sdf_img
 
@@ -1628,3 +1630,26 @@ def plot_sdf_surface(x, y, z, show=True, show_ax=True, title_txt=""):
         fig.show()
 
     return fig
+
+
+def save_video(output_dir, video_name, file_pattern, fps=6):
+    sdf_video_name = os.path.join(output_dir, video_name)
+    file_pattern = os.path.join(output_dir, file_pattern)
+    files = sorted(glob.glob(file_pattern))
+
+    # Read the first image to get dimensions
+    first_image = cv2.imread(files[0])
+    height, width, layers = first_image.shape
+
+    # Define the output video file
+    video = cv2.VideoWriter(sdf_video_name, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
+
+    # Process each image
+    for file in files:
+        image = cv2.imread(file)
+        video.write(image)
+
+    # Release the video writer
+    video.release()
+
+    print(f"Video created: {sdf_video_name}")
