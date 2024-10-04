@@ -30,7 +30,7 @@ def get_train_args():
     )
     # - 2D basic shape dataset
     parser.add_argument(
-        "--shape_type", type=str, default="L", help="shape dataset to load circle | square | L "
+        "--shape_type", type=str, default="L", help="Shape dataset to load. (circle | square | L |starAndHexagon | button)."
     )
     # Training
     parser.add_argument("--gpu_idx", type=int, default=0, help="Set < 0 to use CPU.")
@@ -126,7 +126,7 @@ def get_train_args():
         "--loss_type",
         type=str,
         default="siren",
-        help="Loss type to use: siren | siren_wo_n | igr | igr_wo_n | siren_wo_n_w_div | siren_wo_n_w_div_w_reg |...",
+        help="Loss type to use: SPIN: igr[_wo_eik]_w_heat, StEik: siren[_wo_n]_w_div, siren[_wo_n], igr[_wo_n]",
     )
     parser.add_argument(
         "--div_decay_params",
@@ -152,7 +152,7 @@ def get_train_args():
         "--nonmnfld_sample_type",
         type=str,
         default="uniform",
-        help="How to sample points off the manifold: grid | gaussian | combined.",
+        help="How to sample points off the manifold. Currently supported sample types: grid | central_gaussian | grid_central_gaussian | uniform_central_gaussian.",
     )
     parser.add_argument(
         "--init_type",
