@@ -185,7 +185,7 @@ class ReconDataset(data.Dataset):
 
         return {
             "mnfld_points": mnfld_points,
-            "mnfld_normals": mnfld_normals,
+            "mnfld_normals_gt": mnfld_normals,
             "nonmnfld_points": nonmnfld_points,
             "nonmnfld_pdfs": nonmnfld_pdfs,
         }
