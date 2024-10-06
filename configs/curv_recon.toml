@@ -16,7 +16,9 @@ div_type = "dir_l1" # 'dir_l1' | 'dir_l2' | 'full_l1' | 'full_l2'
 div_decay = "linear" # 'linear' | 'quintic' | 'step'
 div_decay_params = [100.0, 0.2, 100.0, 0.4, 0.0, 0.0]
 heat_decay = "linear" # 'linear' | 'quintic' | 'step'
-heat_decay_params = [0.2, 0.6, 0.2, 0.8, 0.2, 0.01] # start, (location, value)*, end
+heat_decay_params = [0.2, 0.8, 0.2, 0.01] # start, (location, value)*, end
+eikonal_decay = "linear" # 'linear' | 'quintic' | 'step'
+eikonal_decay_params = [0.01, 0.8, 0.01, 3] # start, (location, value)*, end
 # heat_lambda_decay = "linear" # 'linear' | 'quintic' | 'step'
 # heat_lambda_decay_params = [0.1, 0.4, 10.0, 0.6, 10.0, 10.0] # start, (location, value)*, end
 
@@ -30,7 +32,7 @@ nonmnfld_sample_std = 1.0
 
 [training]
 task = "2d"
-n_iterations = 20000
+n_iterations = 200000
 gpu_idx = 0
 lr = 1e-4
 grad_clip_norm = 10.0

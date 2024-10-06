@@ -87,6 +87,7 @@ class Loss(nn.Module):
         heat_lambda=100,
         heat_decay="none",
         heat_lambda_decay="none",
+        eikonal_decay="none",
     ):
         super().__init__()
         self.weights = weights  # sdf, intern, normal, eikonal, div
@@ -95,6 +96,7 @@ class Loss(nn.Module):
         self.div_type = div_type
         self.heat_lambda = heat_lambda
         self.heat_decay = heat_decay
+        self.eikonal_decay = eikonal_decay
         self.heat_lambda_decay = heat_lambda_decay
         self.use_div = True if "div" in self.loss_type else False
         self.use_heat = True if "heat" in self.loss_type else False
@@ -374,6 +376,55 @@ class Loss(nn.Module):
             pass
         else:
             raise Warning("unsupported heat decay value")
+        
+    def update_eikonal_weight(self, current_iteration, n_iterations, params=None):
+        # `params`` should be (start_weight, *optional middle, end_weight) where optional middle is of the form [percent, value]*
+        # Thus (1e2, 0.5, 1e2 0.7 0.0, 0.0) means that the weight at [0, 0.5, 0.75, 1] of the training process, the weight should
+        #   be [1e2,1e2,0.0,0.0]. Between these points, the weights change as per the div_decay parameter, e.g. linearly, quintic, step etc.
+        #   Thus the weight stays at 1e2 from 0-0.5, decay from 1e2 to 0.0 from 0.5-0.75, and then stays at 0.0 from 0.75-1.
+
+        if not hasattr(self, "eikonal_decay_params_list"):
+            assert len(params) >= 2, params
+            assert len(params[1:-1]) % 2 == 0
+            self.eikonal_decay_params_list = list(
+                zip([params[0], *params[1:-1][1::2], params[-1]], [0, *params[1:-1][::2], 1])
+            )
+
+        curr = current_iteration / n_iterations
+        we, e = min(
+            [tup for tup in self.eikonal_decay_params_list if tup[1] >= curr], key=lambda tup: tup[1]
+        )
+        w0, s = max(
+            [tup for tup in self.eikonal_decay_params_list if tup[1] <= curr], key=lambda tup: tup[1]
+        )
+
+        # Divergence term anealing functions
+        if self.eikonal_decay == "linear":
+            if current_iteration < s * n_iterations:
+                self.weights[3] = w0
+            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
+                self.weights[3] = w0 + (we - w0) * (current_iteration / n_iterations - s) / (e - s)
+            else:
+                self.weights[3] = we
+        elif self.eikonal_decay == "quintic":
+            if current_iteration < s * n_iterations:
+                self.weights[3] = w0
+            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
+                self.weights[3] = w0 + (we - w0) * (
+                    1 - (1 - (current_iteration / n_iterations - s) / (e - s)) ** 5
+                )
+            else:
+                self.weights[3] = we
+        elif self.eikonal_decay == "step":
+            if current_iteration < s * n_iterations:
+                self.weights[3] = w0
+            else:
+                self.weights[3] = we
+        elif self.eikonal_decay == "none":
+            pass
+        else:
+            raise Warning("unsupported eikonal decay value")
+        
 
 
     def update_heat_lambda(self, current_iteration, n_iterations, params=None):

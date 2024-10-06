@@ -97,6 +97,7 @@ criterion = Loss(
     div_type=args.div_type,
     heat_lambda=args.heat_lambda,
     heat_decay=args.heat_decay,
+    eikonal_decay=args.eikonal_decay,
     heat_lambda_decay=args.heat_lambda_decay,
 )
 num_batches = len(train_dataloader)
@@ -284,6 +285,8 @@ for batch_idx, data in enumerate(train_dataloader):
         criterion.update_heat_lambda(batch_idx, args.n_iterations, args.heat_lambda_decay_params)
     if args.heat_decay is not None:
         criterion.update_heat_weight(batch_idx, args.n_iterations, args.heat_decay_params)
+    if args.eikonal_decay is not None:
+        criterion.update_eikonal_weight(batch_idx, args.n_iterations, args.eikonal_decay_params)
     
     scheduler.step()
 

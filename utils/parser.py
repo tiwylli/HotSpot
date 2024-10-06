@@ -205,6 +205,19 @@ def get_train_args():
         help="Decay schedule for heat coefficient. Not effective if heat_decay = False. Format: [start, (location, value)*, end]",
     )
     parser.add_argument(
+        "--eikonal_decay",
+        type=str,
+        default=None,
+        help="Eikonal coefficient decay schedule: none | step | linear.",
+    )
+    parser.add_argument(
+        "--eikonal_decay_params",
+        nargs="+",
+        type=float,
+        default=[],
+        help="Decay schedule for eikonal coefficient. Not effective if eikonal_decay = False. Format: [start, (location, value)*, end]",
+    )
+    parser.add_argument(
         "--heat_lambda_decay",
         type=str,
         default=None,
