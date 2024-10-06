@@ -816,7 +816,7 @@ def get2D_dataset(*args, shape_type="circle"):
     elif shape_type == "snowflake":
         vertices = get_koch_points(degree=2, s=1.0)
         out_shape = Polygon(*args, vertices=vertices)
-    elif shape_type == "starAndHexagon":
+    elif shape_type == "starhex":
         # new_args = list(args)
         # new_args.n_points //= 2
         transform_star = np.array([[0.5, 0, -0.5], [0, 0.5, -0.5], [0, 0, 1]])        

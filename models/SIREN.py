@@ -78,6 +78,8 @@ class FCBlock(MetaModule):
         elif init_type == "geometric_relu_2d":
             self.net.apply(geom_relu_2D_init)
             self.net[-1].apply(geom_relu_2D_last_layers_init)
+        else:
+            raise Warning("Unknown initialization type")
 
     def forward(self, coords, params=None, **kwargs):
         if params is None:

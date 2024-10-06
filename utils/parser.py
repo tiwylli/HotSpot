@@ -30,7 +30,7 @@ def get_train_args():
     )
     # - 2D basic shape dataset
     parser.add_argument(
-        "--shape_type", type=str, default="L", help="Shape dataset to load. (circle | square | L |starAndHexagon | button)."
+        "--shape_type", type=str, default="L", help="Shape dataset to load. (circle | square | L |starhex | button)."
     )
     # Training
     parser.add_argument("--gpu_idx", type=int, default=0, help="Set < 0 to use CPU.")

@@ -413,6 +413,15 @@ def get_star_points(transform):
     points = points[:, :2]
     return points
 
+def get_tri_points(center, r):
+    points = [
+        (1, 0.0),
+        (-0.5, -0.866),
+        (-0.5, 0.866)
+    ]
+    points = np.array(points)
+    points = points * r + center
+    return points
 
 def get_hexagon_points(transform):
     points = [
@@ -464,7 +473,7 @@ def get2D_dataset(
     elif shape_type == "snowflake":
         vertices = get_koch_points(degree=2, s=1.0)
         out_shape = Polygon(*args, vertices=vertices)
-    elif shape_type == "starAndHexagon":
+    elif shape_type == "starhex":
         transform_star = np.array([[0.5, 0, -0.5], [0, 0.5, -0.5], [0, 0, 1]])
         transform_hexagon = np.array([[0.5, 0, 0.5], [0, 0.5, 0.5], [0, 0, 1]])
         star_points = get_star_points(transform_star)
@@ -487,6 +496,213 @@ def get2D_dataset(
                 Circle(*args, r=0.2, center=(0.25, -0.25), outward_normal=False),
             ]
         )
+    elif shape_type == "target":
+        args[0] //= 5
+        out_shape = Union(
+            shapes=[
+                Circle(*args, r=0.85, center=(0, 0), outward_normal=True),
+                Circle(*args, r=0.75, center=(0, 0), outward_normal=False),
+                Circle(*args, r=0.65, center=(0, 0), outward_normal=True),
+                Circle(*args, r=0.55, center=(0, 0), outward_normal=False),
+                Circle(*args, r=0.45, center=(0, 0), outward_normal=True),
+                Circle(*args, r=0.35, center=(0, 0), outward_normal=False),
+                Circle(*args, r=0.25, center=(0, 0), outward_normal=True),
+                Circle(*args, r=0.15, center=(0, 0), outward_normal=False),
+                Circle(*args, r=0.05, center=(0, 0), outward_normal=True)
+            ]
+        )
+    elif shape_type == "bearing":
+        args[0] //= 4
+        out_shape = Union(
+            shapes=[
+                Circle(*args, r=1.0, center=(0, 0), outward_normal=True),
+                Circle(*args, r=0.75, center=(0, 0), outward_normal=False),
+                Circle(*args, r=0.5, center=(0, 0), outward_normal=True),
+                Circle(*args, r=0.25, center=(0, 0), outward_normal=False)
+            ]
+        )
+    elif shape_type == "snake":
+        points = [
+        (0.051245, -0.127382),
+        (-0.005640149, -0.24482387),
+        (-0.1707916, -0.265009054),
+        (-0.35032774, -0.16544293),
+        (-0.39891275, 0.03236746),
+        (-0.26703915, 0.16771142),
+        (-0.083110187, 0.25447037),
+        (0.142463076407, 0.2579407),
+        (0.3020995400, 0.10871533),
+        (0.33680311, -0.109917),
+        (0.26045524, -0.3632533),
+        (-0.1074026, -0.5124787),
+        (-0.444027409, -0.42919),
+        (-0.732067, -0.2070872297757),
+        (-0.75635, 0.0844228),
+        (-0.697363, 0.282233),
+        (-0.43708669, 0.587624),
+        (0.01821977, 0.767273933),
+        (0.545024, 0.6362097),
+        (0.850416, 0.1330078),
+        (0.926763, -0.29384),
+        (0.73936463, -0.69987),
+        (0.3888584, -0.928921),
+        (-0.128635, -0.94627),
+        (-0.5342567, -0.856044),
+        (-0.4852847, -0.7544567),
+        (0.1528741, -0.779696),
+        (0.677304, -0.52244),
+        (0.69770106, 0.097088),
+        (0.4147023, 0.5611049),
+        (-0.2481776, 0.556),
+        (-0.571969, 0.31379975),
+        (-0.58978244, -0.120328),
+        (-0.378090609, -0.33202011),
+        (-0.1003044, -0.420467),
+        (0.15974848, -0.303188),
+        (0.233685, -0.09922),
+        (0.215838, 0.066494),
+        (0.1011091, 0.15572837),
+        (-0.0697099, 0.16082745),
+        (-0.20483549, 0.122584),
+        (-0.29406933, 0.0231523),
+        (-0.27622569, -0.12981991),
+        (-0.15129519, -0.19355837),
+        (-0.06206135, -0.1910088),
+        (-0.0238182, -0.11452268)
+    ]
+        out_shape = Polygon(*args, vertices=points)
+    elif shape_type == "seaurchin":
+        points = [
+            (0, 1),
+            (0.01913417, 0.046194),
+            (0.8, 0.8),
+            (0.046194, 0.01913417),
+            (1, 0),
+            (0.046194, -0.01913417),
+            (0.8, -0.8),
+            (0.01913417, -0.046194),
+            (0, -1),
+            (-0.01913417, -0.046194),
+            (-0.8, -0.8),
+            (-0.046194, -0.01913417),
+            (-1, 0),
+            (-0.046194, 0.01913417),
+            (-0.8, 0.8),
+            (-0.01913417, 0.046194)
+        ]
+        out_shape = Polygon(*args, vertices=points)
+        
+    elif shape_type == "peace":
+        args[0] //= 2
+        
+        cir = Circle(*args, r=1.0, center=(0, 0), outward_normal=True)
+        
+        args[0] //= 4
+        
+        right_poly = Polygon(*args, vertices=[
+            (0.1225, 0.8),
+            (0.46, 0.64),
+            (0.7, 0.4),
+            (0.8, 0.0),
+            (0.7, -0.4),
+            (0.1225, 0.0)
+        ], outward_normal=False)
+        left_poly = Polygon(*args, vertices=[
+            (-0.1225, 0.0),
+            (-0.7, -0.4),
+            (-0.8, 0.0),
+            (-0.7, 0.4),
+            (-0.46, 0.64),
+            (-0.1225, 0.8)
+        ], outward_normal=False)
+        
+        right_tri = Polygon(*args, vertices=[
+            (0.1225, -0.3),
+            (0.55, -0.6),
+            (0.1225, -0.8)
+        ], outward_normal=False)
+        left_tri = Polygon(*args, vertices=[
+            (-0.1225, -0.3),
+            (-0.1225, -0.8),
+            (-0.55, -0.6)
+        ], outward_normal=False)
+        
+        out_shape = Union(shapes=[cir, right_poly, left_poly, right_tri, left_tri])
+        
+    elif shape_type == "boomerangs":
+        args[0] //= 2
+        b1 = Polygon(*args, vertices=[
+            (0.6, -0.6),
+            (0.8, 0.6),
+            (0.4, -0.2),
+            (-0.4, -0.2)
+        ], outward_normal=False)
+        b2 = Polygon(*args, vertices=[
+            (-0.6, 0.6),
+            (-0.8, -0.6),
+            (-0.4, 0.2),
+            (0.4, 0.2)
+        ], outward_normal=False)
+        out_shape = Union(shapes=[b1, b2])
+        
+    elif shape_type == "fragments":
+        args[0] //= 15
+        f = []
+        f.append(get_tri_points((1, 0), 0.2))
+        f.append(get_tri_points((0.25, 0.433), 0.2))
+        f.append(get_tri_points((-0.5, 0.866), 0.2))
+        f.append(get_tri_points((-0.5, 0), 0.2))
+        f.append(get_tri_points((0.625, -0.2165), 0.2))
+        f.append(get_tri_points((0.25, -0.433), 0.2))
+        f.append(get_tri_points((-0.125, -0.6495), 0.2))
+        f.append(get_tri_points((-0.125, 0.6495), 0.2))
+        f.append(get_tri_points((-0.5, -0.866), 0.2))
+        f.append(get_tri_points((0.25, 0.0), 0.2))
+        f.append(get_tri_points((-0.125, -0.2165), 0.2))
+        f.append(get_tri_points((0.625, 0.2165), 0.2))
+        f.append(get_tri_points((-0.5, -0.433), 0.2))
+        f.append(get_tri_points((-0.5, 0.433), 0.2))
+        f.append(get_tri_points((-0.125, 0.2165), 0.2))
+        
+        f = [Polygon(*args, vertices=points, outward_normal=True) for points in f]
+        
+        out_shape = Union(shapes=f)
+    elif shape_type == "house":
+        
+        args[0] //= 4
+        facade = Polygon(*args, vertices=[
+            (-1, 0.18),
+            (1, 0.18),
+            (1, -1),
+            (-1, -1)
+        ])
+        roof = Polygon(*args, vertices=[
+            (-0.5, 1),
+            (1, 0.35),
+            (-1, 0.35)
+        ])
+        
+        args[0] //= 2
+        window = Polygon(*args, vertices=[
+            (-0.7, 0.0),
+            (0.2, 0.0),
+            (0.2, -0.4),
+            (-0.7, -0.4)
+        ], outward_normal=False)
+        door = Polygon(*args, vertices=[
+            (0.55, -0.4),
+            (0.8, -0.4),
+            (0.8, -0.85),
+            (0.55, -0.85)
+        ], outward_normal=False)
+        handle = Circle(*args, r=0.05, center=(0.75, -0.65), outward_normal=True)
+        chimney = Polygon(*args, vertices=[
+            (0.4, 1),
+            (0.6, 1),
+            (0.6, 0.6),
+            (0.4, 0.7)
+        ])
+        out_shape = Union(shapes=[facade, window, door, handle, roof, chimney])
     else:
         raise Warning("Unsupportaed shape")
 

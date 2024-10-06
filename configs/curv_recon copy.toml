@@ -11,7 +11,7 @@ neuron_type = "linear"          # 'linear' | 'quadratic'
 
 [loss]
 loss_type = "igr_w_heat" # 'siren_wo_n_w_div' | 'siren_wo_n' | 'siren_w_div' | 'siren'
-loss_weights = [ 10, 0, 0, 0.1, 0, 0, 1] # sdf, inter, normal, eikonal, div, latent, heat
+loss_weights = [ 100, 0, 0, 0.1, 0, 0, 1] # sdf, inter, normal, eikonal, div, latent, heat
 div_type = "dir_l1" # 'dir_l1' | 'dir_l2' | 'full_l1' | 'full_l2'
 div_decay = "linear" # 'linear' | 'quintic' | 'step'
 div_decay_params = [100.0, 0.2, 100.0, 0.4, 0.0, 0.0]

@@ -6,7 +6,7 @@ decoder_n_hidden_layers = 5
 decoder_hidden_dim = 128
 nl = "relu"
 sphere_init_params = [1.6, 1.0]
-init_type = "geometric_relu"
+init_type = "geometric_relu_2D"
 neuron_type = "linear"
 
 [loss]
@@ -22,7 +22,7 @@ nonmnfld_sample_type = "grid"
 n_random_samples = 4096
 n_points = 15000
 grid_range = 1.2
-nonmnfld_sample_std2 = 0.09
+nonmnfld_sample_std = 0.09
 
 [training]
 task = "2d"

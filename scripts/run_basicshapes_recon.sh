@@ -8,7 +8,7 @@ IDENTIFIER='test_temp'                                                   # chang
 LOG_DIR=$ROOT_DIR'out/BasicShapes/'                                           # change to your desired log path
 mkdir -p $LOG_DIR
 
-for SHAPE_TYPE in 'button'; do # shapes: 'L', 'circle', 'snowflake', 'starAndHexagon'
+for SHAPE_TYPE in 'button'; do # shapes: 'L', 'circle', 'snowflake', 'starhex'
     cp -r scripts/$THIS_FILE $LOG_DIR
     cp -r $CONFIG_DIR $LOG_DIR
     echo $SHAPE_TYPE
