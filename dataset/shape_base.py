@@ -267,7 +267,7 @@ class ShapeBase(data.Dataset):
     def _resample(self):
         self.nonmnfld_points, self.nonmnfld_pdfs = self.get_nonmnfld_points_and_pdfs()
 
-        self.nonmnfld_dist, self.nonmnfld_normals = self.get_points_distances_and_normals(
+        self.nonmnfld_dist_gt, self.nonmnfld_normals_gt = self.get_points_distances_and_normals(
             self.nonmnfld_points
         )
 
@@ -301,11 +301,12 @@ class ShapeBase(data.Dataset):
 
         return {
             "mnfld_points": self.mnfld_points[mnfld_idx],  # (n_points, dim)
-            "mnfld_normals": self.mnfld_normals[mnfld_idx],  # (n_points, dim)
-            "nonmnfld_dist": self.nonmnfld_dist[nonmnfld_idx],  # (n_nonmnfld_samples, 1)
-            "nonmnfld_normals": self.nonmnfld_normals[nonmnfld_idx],  # (n_nonmnfld_samples, dim)
+            "mnfld_normals_gt": self.mnfld_normals[mnfld_idx],  # (n_points, dim)
+            "nonmnfld_dists_gt": self.nonmnfld_dist_gt[nonmnfld_idx],  # (n_nonmnfld_samples, 1)
+            "nonmnfld_normals_gt": self.nonmnfld_normals_gt[nonmnfld_idx],  # (n_nonmnfld_samples, dim)
             "nonmnfld_points": self.nonmnfld_points[nonmnfld_idx],  # (n_nonmnfld_samples, dim)
             "nonmnfld_pdfs": nonmnfld_pdfs,  # (n_nonmnfld_samples, 1)
+            "grid_dists_gt": self.grid_dist,  # (grid_res * grid_res, 1)
         }
 
     def __len__(self):

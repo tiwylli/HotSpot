@@ -104,6 +104,9 @@ def get_train_args():
         "--vis_heat", type=bool, default=False, help="Indicator to visualize heat."
     )
     parser.add_argument(
+        "--vis_diff", type=bool, default=False, help="Indicator to visualize difference image."
+    )
+    parser.add_argument(
         "--save_video", type=bool, default=False, help="Indicator to save video."
     )
     parser.add_argument(

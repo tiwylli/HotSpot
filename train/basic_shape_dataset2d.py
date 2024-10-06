@@ -464,9 +464,9 @@ class BasicShape2D(data.Dataset):
 
         return {
             "mnfld_points": mnfld_points,
-            "mnfld_normals": mnfld_normals,
-            "nonmnfld_dist": nonmnfld_dist,
-            "nonmnfld_normals": nonmnfld_n,
+            "mnfld_normals_gt": mnfld_normals,
+            "nonmnfld_dists_gt": nonmnfld_dist,
+            "nonmnfld_normals_gt": nonmnfld_n,
             "nonmnfld_points": nonmnfld_points,
             "nonmnfld_pdfs": nonmnfld_pdfs,
         }
@@ -848,7 +848,7 @@ if __name__ == "__main__":
     )
     data = next(iter(dataloader))
     clean_points_gt = data["mnfld_points"][example_idx].detach().cpu().numpy()
-    n_gt = data["mnfld_normals"][example_idx].detach().cpu().numpy()
+    n_gt = data["mnfld_normals_gt"][example_idx].detach().cpu().numpy()
     nonmnfld_points = data["nonmnfld_points"][example_idx].detach().cpu().numpy()
     grid_normals = dataset.grid_n
 

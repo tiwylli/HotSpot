@@ -106,11 +106,13 @@ for batch_idx, data in enumerate(train_dataloader):
     model.zero_grad()
     model.train()
 
-    mnfld_points, mnfld_n_gt, nonmnfld_points, nonmnfld_pdfs = (
+    mnfld_points, mnfld_normals_gt, nonmnfld_points, nonmnfld_pdfs, nonmnfld_dists_gt, grid_dists_gt = (
         data["mnfld_points"].to(device),
-        data["mnfld_normals"].to(device),
+        data["mnfld_normals_gt"].to(device),
         data["nonmnfld_points"].to(device),
         data["nonmnfld_pdfs"].to(device),
+        data["nonmnfld_dists_gt"].to(device),
+        data["grid_dists_gt"].to(device),
     )
 
     mnfld_points.requires_grad_()
@@ -118,7 +120,7 @@ for batch_idx, data in enumerate(train_dataloader):
 
     output_pred = model(nonmnfld_points, mnfld_points)
 
-    loss_dict, _ = criterion(output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs, mnfld_n_gt)
+    loss_dict, _ = criterion(output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs, mnfld_normals_gt, nonmnfld_dists_gt)
     lr = torch.tensor(optimizer.param_groups[0]["lr"])
     loss_dict["lr"] = lr
     utils.log_losses(log_writer_train, batch_idx, num_batches, loss_dict)
@@ -152,7 +154,7 @@ for batch_idx, data in enumerate(train_dataloader):
         )
         utils.log_string(
             "Iteration: {:4d}/{} ({:.0f}%) Unweighted L_s : L_Mnfld: {:.5f},  "
-            "L_NonMnfld: {:.5f},  L_Nrml: {:.5f},  L_Eknl: {:.5f},  L_Div: {:.5f},  L_Heat: {:.5f}".format(
+            "L_NonMnfld: {:.5f},  L_Nrml: {:.5f},  L_Eknl: {:.5f},  L_Div: {:.5f},  L_Heat: {:.5f},  L_Diff: {:.5f}".format(
                 batch_idx,
                 len(train_set),
                 100.0 * batch_idx / len(train_dataloader),
@@ -162,6 +164,7 @@ for batch_idx, data in enumerate(train_dataloader):
                 loss_dict["eikonal_term"].item(),
                 loss_dict["div_term"].item(),
                 loss_dict["heat_term"].item(),
+                loss_dict["diff_term"].item(),
             ),
             log_file,
         )
@@ -211,7 +214,7 @@ for batch_idx, data in enumerate(train_dataloader):
             mnfld_points_pred = output_pred["manifold_pnts_pred"]
             mnfld_normals_pred = utils.gradient(mnfld_points, mnfld_points_pred)
             mnfld_normals_pred = mnfld_normals_pred / torch.norm(mnfld_normals_pred, dim=-1, keepdim=True)
-            mnfld_normals_gt = data["mnfld_normals"]
+            mnfld_normals_gt = data["mnfld_normals_gt"]
 
         sdf_contour_img = vis.plot_contours(
             x_grid=x,
@@ -251,6 +254,26 @@ for batch_idx, data in enumerate(train_dataloader):
             )
             img = Image.fromarray(heat_contour_img)
             img.save(os.path.join(output_dir, "heat_" + str(batch_idx).zfill(6) + ".png"))
+
+        if args.vis_diff:
+            print(grid_points_pred.shape, grid_dists_gt.shape)
+            grid_points_diff = (grid_points_pred.squeeze() - grid_dists_gt.squeeze()).detach().cpu().numpy().reshape(args.vis_grid_res, args.vis_grid_res)
+            diff_contour_img = vis.plot_contours(
+                x_grid=x,
+                y_grid=y,
+                z_grid=grid_points_diff,
+                mnfld_points=None,
+                mnfld_normals=None,
+                mnfld_normals_gt=None,
+                colorscale="Tropic",
+                show_scale=True,
+                show_ax=True,
+                title_text=f"Diff, epoch {batch_idx}",
+                grid_range=args.vis_grid_range,
+                contour_interval=args.vis_contour_interval,
+            )
+            img = Image.fromarray(diff_contour_img)
+            img.save(os.path.join(output_dir, "diff_" + str(batch_idx).zfill(6) + ".png"))
 
         utils.log_string("", log_file)
 
