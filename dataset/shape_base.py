@@ -59,8 +59,8 @@ class ShapeBase(data.Dataset):
     def get_points_distances_and_normals(self, points):
         # Implement a function that computes the distance and normal vectors of nonmanifold points.
         # For input points of shape (n_points, dim), the output should be:
-        # distances: (n_samples, n_points, 1)
-        # normals: (n_samples, n_points, dim)
+        # distances: (n_points, 1)
+        # normals: (n_points, dim)
 
         # Default implementation finds the nearest neighbor and return its normal and the distance to it, which is a coarse approxiamation
 

@@ -58,7 +58,6 @@ def plot_contours(
     if contour_range is None:
         z_abs_max = np.abs(z_grid).max()
         z_abs_max = 10 * contour_interval * np.ceil(z_abs_max / 10 / contour_interval)
-        # print(f"scale: {z_abs_max}")
         contour_start = -z_abs_max
         contour_end = z_abs_max
     else:

@@ -6,7 +6,7 @@ decoder_n_hidden_layers = 5
 decoder_hidden_dim = 128
 nl = "relu"
 sphere_init_params = [1.6, 1.0]
-init_type = "geometric_relu_2D"
+init_type = "geometric_relu_2d"
 neuron_type = "linear"
 
 [loss]
@@ -25,6 +25,8 @@ grid_range = 1.2
 nonmnfld_sample_std = 0.3
 
 [training]
+train = false
+eval = true
 task = "2d"
 n_iterations = 1000
 gpu_idx = 0
@@ -43,3 +45,4 @@ n_vis_normals = 10
 vis_heat = true
 vis_diff = true
 save_video = true
+compute_losses_on_vis_grid = true

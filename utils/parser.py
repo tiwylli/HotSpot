@@ -32,7 +32,14 @@ def get_train_args():
     parser.add_argument(
         "--shape_type", type=str, default="L", help="Shape dataset to load. (circle | square | L |starhex | button)."
     )
+
     # Training
+    parser.add_argument(
+        "--train", action="store_true", help="Indicator to run training."
+    )
+    parser.add_argument(
+        "--eval", action="store_true", help="Indicator to run evaluation."
+    )
     parser.add_argument("--gpu_idx", type=int, default=0, help="Set < 0 to use CPU.")
     parser.add_argument("--log_dir", type=str, default="./log/debug", help="Log directory.")
     parser.add_argument("--seed", type=int, default=3627473, help="Random seed.")
@@ -56,6 +63,9 @@ def get_train_args():
     parser.add_argument(
         "--num_workers", type=int, default=4, help="Number of workers for dataloader."
     )
+    parser.add_argument(
+        "--compute_losses_on_vis_grid", type=bool, default=False, help="Compute losses on visualization grid."
+    )
 
     # Visualization and logging
     parser.add_argument(
@@ -63,6 +73,12 @@ def get_train_args():
         type=str,
         default="./log/surface_reconstruction/DiGS_surf_recon_experiment/result_meshes",
         help="Path to results directory.",
+    )
+    parser.add_argument(
+        "--saved_model_dir",
+        type=str,
+        default="./log/surface_reconstruction/DiGS_surf_recon_experiment/trained_models",
+        help="Path to saved model directory.",
     )
     parser.add_argument(
         "--vis_interval",
