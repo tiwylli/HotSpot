@@ -272,9 +272,9 @@ def geom_relu_2D_init(m):
             m.weight.normal_(mean=0.005, std=np.sqrt(2) / np.sqrt(out_dims))
             m.bias.data = torch.zeros_like(m.bias.data)
 def geom_relu_2D_last_layers_init(m):
-    radius_init = 1
+    radius_init = 2
     with torch.no_grad():
         if hasattr(m, "weight"):
             num_input = m.weight.size(-1)
-            m.weight.normal_(mean=np.sqrt(np.pi) * 4 / np.sqrt(num_input), std=0.00001)
+            m.weight.normal_(mean=np.sqrt(np.pi) * 1.5 / np.sqrt(num_input), std=0.00001)
             m.bias.data = torch.Tensor([-0.1*radius_init])

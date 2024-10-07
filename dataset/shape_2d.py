@@ -482,7 +482,7 @@ def get2D_dataset(
         out_shape = Union(
             shapes=[
                 Polygon(*args, vertices=star_points),
-                Polygon(*args, vertices=hexagon_points, outward_normal=False),
+                Polygon(*args, vertices=hexagon_points),
             ]
         )
     elif shape_type == "button":
@@ -497,30 +497,48 @@ def get2D_dataset(
             ]
         )
     elif shape_type == "target":
-        args[0] //= 5
-        out_shape = Union(
-            shapes=[
-                Circle(*args, r=0.85, center=(0, 0), outward_normal=True),
-                Circle(*args, r=0.75, center=(0, 0), outward_normal=False),
-                Circle(*args, r=0.65, center=(0, 0), outward_normal=True),
-                Circle(*args, r=0.55, center=(0, 0), outward_normal=False),
-                Circle(*args, r=0.45, center=(0, 0), outward_normal=True),
-                Circle(*args, r=0.35, center=(0, 0), outward_normal=False),
-                Circle(*args, r=0.25, center=(0, 0), outward_normal=True),
-                Circle(*args, r=0.15, center=(0, 0), outward_normal=False),
-                Circle(*args, r=0.05, center=(0, 0), outward_normal=True)
-            ]
-        )
+        args[0] /= 4.05
+        args[0] *= 0.85
+        args[0] = int(args[0]+0.5)
+        cir1 = Circle(*args, r=0.85, center=(0, 0), outward_normal=True)
+        args[0] *= 0.75 / 0.85
+        args[0] = int(args[0]+0.5)
+        cir2 = Circle(*args, r=0.75, center=(0, 0), outward_normal=False)
+        args[0] *= 0.65 / 0.75
+        args[0] = int(args[0]+0.5)
+        cir3 = Circle(*args, r=0.65, center=(0, 0), outward_normal=True)
+        args[0] *= 0.55 / 0.65
+        args[0] = int(args[0]+0.5)
+        cir4 = Circle(*args, r=0.55, center=(0, 0), outward_normal=False)
+        args[0] *= 0.45 / 0.55
+        args[0] = int(args[0]+0.5)
+        cir5 = Circle(*args, r=0.45, center=(0, 0), outward_normal=True)
+        args[0] *= 0.35 / 0.45
+        args[0] = int(args[0]+0.5)
+        cir6 = Circle(*args, r=0.35, center=(0, 0), outward_normal=False)
+        args[0] *= 0.25 / 0.35
+        args[0] = int(args[0]+0.5)
+        cir7 = Circle(*args, r=0.25, center=(0, 0), outward_normal=True)
+        args[0] *= 0.15 / 0.25
+        args[0] = int(args[0]+0.5)
+        cir8 = Circle(*args, r=0.15, center=(0, 0), outward_normal=False)
+        args[0] *= 0.05 / 0.15
+        args[0] = int(args[0]+0.5)
+        cir9 = Circle(*args, r=0.05, center=(0, 0), outward_normal=True)
+        out_shape = Union(shapes=[cir1, cir2, cir3, cir4, cir5, cir6, cir7, cir8, cir9])
     elif shape_type == "bearing":
-        args[0] //= 4
-        out_shape = Union(
-            shapes=[
-                Circle(*args, r=1.0, center=(0, 0), outward_normal=True),
-                Circle(*args, r=0.75, center=(0, 0), outward_normal=False),
-                Circle(*args, r=0.5, center=(0, 0), outward_normal=True),
-                Circle(*args, r=0.25, center=(0, 0), outward_normal=False)
-            ]
-        )
+        args[0] //= 16
+        args[0] *= 7
+        c1 = Circle(*args, r=0.7, center=(0, 0), outward_normal=True)
+        args[0] //= 7
+        args[0] *= 5
+        c2 = Circle(*args, r=0.5, center=(0, 0), outward_normal=False)
+        args[0] //= 5
+        args[0] *= 3
+        c3 = Circle(*args, r=0.3, center=(0, 0), outward_normal=True)
+        args[0] //= 3
+        c4 = Circle(*args, r=0.1, center=(0, 0), outward_normal=False)
+        out_shape = Union(shapes=[c1, c2, c3, c4])
     elif shape_type == "snake":
         points = [
         (0.051245, -0.127382),
@@ -600,31 +618,31 @@ def get2D_dataset(
         args[0] //= 4
         
         right_poly = Polygon(*args, vertices=[
-            (0.1225, 0.8),
+            (0.15, 0.8),
             (0.46, 0.64),
             (0.7, 0.4),
             (0.8, 0.0),
             (0.7, -0.4),
-            (0.1225, 0.0)
+            (0.15, 0.0)
         ], outward_normal=False)
         left_poly = Polygon(*args, vertices=[
-            (-0.1225, 0.0),
+            (-0.15, 0.0),
             (-0.7, -0.4),
             (-0.8, 0.0),
             (-0.7, 0.4),
             (-0.46, 0.64),
-            (-0.1225, 0.8)
+            (-0.15, 0.8)
         ], outward_normal=False)
         
         right_tri = Polygon(*args, vertices=[
-            (0.1225, -0.3),
-            (0.55, -0.6),
-            (0.1225, -0.8)
+            (0.15, -0.2),
+            (0.65, -0.65),
+            (0.15, -0.85)
         ], outward_normal=False)
         left_tri = Polygon(*args, vertices=[
-            (-0.1225, -0.3),
-            (-0.1225, -0.8),
-            (-0.55, -0.6)
+            (-0.15, -0.85),
+            (-0.65, -0.65),
+            (-0.15, -0.2)
         ], outward_normal=False)
         
         out_shape = Union(shapes=[cir, right_poly, left_poly, right_tri, left_tri])
