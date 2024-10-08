@@ -13,6 +13,7 @@ from tqdm import tqdm
 from skimage import measure
 import plotly.graph_objs as go
 import trimesh
+import time
 
 
 def center_and_scale(points, cp=None, scale=None):
@@ -66,10 +67,12 @@ def log_string(out_str, log_file):
 def setup_logdir(logdir, args=None):
     # helper function to set up logging directory
 
+    timestamp = str(time.time())
+
     os.makedirs(logdir, exist_ok=True)
     log_writer_train = SummaryWriter(os.path.join(logdir, "train"))
     log_writer_test = SummaryWriter(os.path.join(logdir, "test"))
-    log_filename = os.path.join(logdir, "out.log")
+    log_filename = os.path.join(logdir, f"out{timestamp}.log")
     log_file = open(log_filename, "w")
     model_outdir = os.path.join(logdir, "trained_models")
     os.makedirs(model_outdir, exist_ok=True)
