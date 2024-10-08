@@ -127,8 +127,13 @@ def visualize_model(
         mae = np.mean(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np))
         rmse = np.sqrt(np.mean((vis_grid_pred_np - vis_grid_dists_gt_np) ** 2))
         mape = np.mean(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np) / vis_grid_dists_gt_np)
+        smape = np.mean(
+            2
+            * np.abs(vis_grid_pred_np - vis_grid_dists_gt_np)
+            / (np.abs(vis_grid_pred_np) + np.abs(vis_grid_dists_gt_np))
+        )
         utils.log_string(
-            f"RMSE: {rmse:.5f}, MAE: {mae:.5f}, MAPE: {mape:.5f}", log_file
+            f"RMSE: {rmse:.10f}, MAE: {mae:.10f}, MAPE: {mape:.10f}, SMAPE: {smape:.10f}", log_file
         )
 
     utils.log_string("", log_file)

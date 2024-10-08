@@ -8,7 +8,7 @@ IDENTIFIER='curv'                                                   # change to 
 LOG_DIR='./log/2d_curv/'                                           # change to your desired log path
 mkdir -p $LOG_DIR
 
-for SHAPE_TYPE in 'house' 'target' 'snowflake' 'peace' 'circle' 'seaurchin' 'snake' 'button' 'bearing' 'L' 'starhex' 'boomerangs' 'fragments' 'square' ; do # for SHAPE_TYPE in 'circle' 'L' 'square' 'snowflake' 'starhex' 'button' 'target' 'bearing' 'snake' 'seaurchin' 'peace' 'boomerangs' 'fragments' 'house'; do
+for SHAPE_TYPE in 'house'; do # for SHAPE_TYPE in 'circle' 'L' 'square' 'snowflake' 'starhex' 'button' 'target' 'bearing' 'snake' 'seaurchin' 'peace' 'boomerangs' 'fragments' 'house'; do
     cp -r scripts/$THIS_FILE $LOG_DIR
     cp -r $CONFIG_DIR $LOG_DIR
     echo $SHAPE_TYPE

@@ -170,7 +170,7 @@ class Polygon(ShapeBase):
 
         d1 = np.linalg.norm(pp1, axis=0)
         d2 = np.linalg.norm(pp2, axis=0)
-        dp = np.sqrt(np.square(d1) - np.square(r * np.array(self.lines["line_length"])[:, None]))
+        dp = np.sqrt(np.max(np.square(d1) - np.square(r * np.array(self.lines["line_length"])[:, None]), 0))
         d = np.where(r < 0, d1, np.where(r > 1, d2, dp))
         distances = np.min(d, axis=0)
         idx = np.argmin(d, axis=0)
