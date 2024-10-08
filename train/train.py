@@ -148,7 +148,7 @@ for batch_idx, data in enumerate(train_dataloader):
 
     if args.train:
         # [Optional] Compute losses on visualization grid
-        if args.compute_losses_on_vis_grid:
+        if args.compute_losses_on_vis_grid > 0:
             vis_pred = model(vis_grid_points, mnfld_points)
             vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(vis_grid_points[0].detach().cpu().numpy()) # (vis_grid_res * vis_grid_res, 1)
             vis_loss_dict, _ = criterion(vis_pred, mnfld_points, vis_grid_points, None, None, torch.tensor(vis_grid_dists_gt, dtype=torch.float32).to(device))
@@ -197,8 +197,8 @@ for batch_idx, data in enumerate(train_dataloader):
                 ),
                 log_file,
             )
-            # Log losses on visualization grid if 
-            if args.compute_losses_on_vis_grid:
+            # Log losses on visualization grid
+            if args.compute_losses_on_vis_grid > 0:
                 utils.log_string(
                     "Iteration: {:4d}/{} ({:.0f}%) L_s in visualization range : L_Eknl: {:.5f}, L_Diff: {:.5f}".format(
                         batch_idx,
