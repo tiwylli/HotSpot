@@ -28,6 +28,8 @@ grid_range = 1.5
 nonmnfld_sample_std = 0.5
 
 [training]
+train = true
+eval = true
 task = "2d"
 n_iterations = 20000
 gpu_idx = 0
@@ -46,3 +48,4 @@ n_vis_normals = 100
 vis_heat = true
 save_video = true
 video_fps = 6
+compute_losses_on_vis_grid = 0
