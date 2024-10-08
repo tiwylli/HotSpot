@@ -592,21 +592,21 @@ def get2D_dataset(
     elif shape_type == "seaurchin":
         points = [
             (0, 1),
-            (0.01913417, 0.046194),
+            (0.0765367, 0.184776),
             (0.8, 0.8),
-            (0.046194, 0.01913417),
+            (0.184776, 0.0765367),
             (1, 0),
-            (0.046194, -0.01913417),
+            (0.184776, -0.0765367),
             (0.8, -0.8),
-            (0.01913417, -0.046194),
+            (0.0765367, -0.184776),
             (0, -1),
-            (-0.01913417, -0.046194),
+            (-0.0765367, -0.184776),
             (-0.8, -0.8),
-            (-0.046194, -0.01913417),
+            (-0.184776, -0.0765367),
             (-1, 0),
-            (-0.046194, 0.01913417),
+            (-0.184776, 0.0765367),
             (-0.8, 0.8),
-            (-0.01913417, 0.046194)
+            (-0.0765367, 0.184776)
         ]
         out_shape = Polygon(*args, vertices=points)
         
@@ -685,12 +685,13 @@ def get2D_dataset(
         f = [Polygon(*args, vertices=points, outward_normal=True) for points in f]
         
         out_shape = Union(shapes=f)
+        
     elif shape_type == "house":
         
         args[0] //= 4
         facade = Polygon(*args, vertices=[
-            (-1, 0.18),
-            (1, 0.18),
+            (-1, 0.10),
+            (1, 0.10),
             (1, -1),
             (-1, -1)
         ])
@@ -702,23 +703,23 @@ def get2D_dataset(
         
         args[0] //= 2
         window = Polygon(*args, vertices=[
-            (-0.7, 0.0),
-            (0.2, 0.0),
-            (0.2, -0.4),
-            (-0.7, -0.4)
+            (-0.8, -0.1),
+            (0.4, -0.1),
+            (0.4, -0.45),
+            (-0.8, -0.45)
         ], outward_normal=False)
         door = Polygon(*args, vertices=[
-            (0.55, -0.4),
-            (0.8, -0.4),
-            (0.8, -0.85),
-            (0.55, -0.85)
+            (0.6, -0.45),
+            (0.8, -0.45),
+            (0.8, -0.9),
+            (0.6, -0.9)
         ], outward_normal=False)
-        handle = Circle(*args, r=0.05, center=(0.75, -0.65), outward_normal=True)
+        handle = Circle(*args, r=0.05, center=(0.73, -0.75), outward_normal=True)
         chimney = Polygon(*args, vertices=[
-            (0.4, 1),
-            (0.6, 1),
-            (0.6, 0.6),
-            (0.4, 0.7)
+            (0.3, 1),
+            (0.5, 1),
+            (0.5, 0.7),
+            (0.3, 0.8)
         ])
         out_shape = Union(shapes=[facade, window, door, handle, roof, chimney])
     else:
