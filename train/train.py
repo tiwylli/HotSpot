@@ -24,9 +24,6 @@ def visualize_model(
     vis_grid_pred = vis_pred[
         "nonmanifold_pnts_pred"
     ]  # (batch_size, vis_grid_res * vis_grid_res, 1)
-    vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
-        vis_grid_points[0].detach().cpu().numpy()
-    )  # (vis_grid_res * vis_grid_res, 1)
 
     if args.vis_normals:
         mnfld_points_pred = vis_pred["manifold_pnts_pred"]

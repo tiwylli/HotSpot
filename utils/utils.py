@@ -67,7 +67,7 @@ def log_string(out_str, log_file):
 def setup_logdir(logdir, args=None):
     # helper function to set up logging directory
 
-    timestamp = str(time.time())
+    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
 
     os.makedirs(logdir, exist_ok=True)
     log_writer_train = SummaryWriter(os.path.join(logdir, "train"))
