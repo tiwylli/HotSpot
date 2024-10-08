@@ -16,340 +16,459 @@ from utils import parser
 import utils.visualizations as vis
 from PIL import Image
 
-args = parser.get_train_args()
 
-if not args.train and not args.eval:
-    raise ValueError("Please specify either --train or --eval, or both.")
+def visualize_model(
+    vis_grid_points, mnfld_points, vis_pred, vis_grid_dists_gt, data, batch_idx, args
+):
+    vis_pred = model(vis_grid_points, mnfld_points)
+    vis_grid_pred = vis_pred[
+        "nonmanifold_pnts_pred"
+    ]  # (batch_size, vis_grid_res * vis_grid_res, 1)
+    vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
+        vis_grid_points[0].detach().cpu().numpy()
+    )  # (vis_grid_res * vis_grid_res, 1)
 
-file_path = os.path.join(args.data_dir, args.file_name)
-log_dir = os.path.join(args.log_dir, args.file_name.split(".")[0])
+    if args.vis_normals:
+        mnfld_points_pred = vis_pred["manifold_pnts_pred"]
+        mnfld_normals_pred = utils.gradient(mnfld_points, mnfld_points_pred)
+        mnfld_normals_pred = mnfld_normals_pred / torch.norm(
+            mnfld_normals_pred, dim=-1, keepdim=True
+        )
+        mnfld_normals_gt = data["mnfld_normals_gt"]
 
-# set up logging
-log_file, log_writer_train, log_writer_test, model_outdir = utils.setup_logdir(log_dir, args)
-os.system("cp %s %s" % (__file__, log_dir))  # backup the current training file
-os.system("cp %s %s" % ("./models/Net.py", log_dir))  # backup the models files
-os.system("cp %s %s" % ("./models/losses.py", log_dir))  # backup the losses files
-
-# Set up dataloader
-torch.manual_seed(0)  # change random seed for training set (so it will be different from test set
-np.random.seed(0)
-if args.task == "3d":
-    train_set = dataset.ReconDataset(
-        file_path=file_path,
-        n_points=args.n_points,
-        n_samples=args.n_iterations,
-        grid_res=args.grid_res,
-        grid_range=args.grid_range,
-        sample_type=args.nonmnfld_sample_type,
-        sampling_std2=args.nonmnfld_sample_std,
-        n_random_samples=args.n_random_samples,
+    sdf_contour_img = vis.plot_contours(
+        x_grid=x,
+        y_grid=y,
+        z_grid=vis_grid_pred.detach().cpu().numpy().reshape(args.vis_grid_res, args.vis_grid_res),
+        mnfld_points=(
+            mnfld_points[0][: args.n_vis_normals].detach().cpu().numpy()
+            if args.vis_normals
+            else None
+        ),
+        mnfld_normals=(
+            mnfld_normals_pred[0][: args.n_vis_normals].detach().cpu().numpy()
+            if args.vis_normals
+            else None
+        ),
+        mnfld_normals_gt=mnfld_normals_gt[0][: args.n_vis_normals] if args.vis_normals else None,
+        colorscale="Geyser",
+        show_scale=True,
+        show_ax=True,
+        title_text=f"SDF, epoch {batch_idx}",
+        grid_range=args.vis_grid_range,
+        contour_interval=args.vis_contour_interval,
     )
-    in_dim = 3
-elif args.task == "2d":
-    train_set = shape_2d.get2D_dataset(
-        n_points=args.n_points,
-        n_samples=args.n_iterations,
-        grid_res=args.grid_res,
-        grid_range=args.grid_range,
-        sample_type=args.nonmnfld_sample_type,
-        sampling_std=args.nonmnfld_sample_std,
-        n_random_samples=args.n_random_samples,
-        resample=True,
-        shape_type=args.shape_type,
+    img = Image.fromarray(sdf_contour_img)
+    img.save(os.path.join(output_dir, "sdf_" + str(batch_idx).zfill(6) + ".png"))
+
+    if args.vis_heat:
+        vis_grid_heat = np.exp(
+            -args.heat_lambda
+            * np.abs(
+                vis_grid_pred.detach().cpu().numpy().reshape(args.vis_grid_res, args.vis_grid_res)
+            )
+        )
+        heat_contour_img = vis.plot_contours(
+            x_grid=x,
+            y_grid=y,
+            z_grid=vis_grid_heat,
+            mnfld_points=(
+                mnfld_points[0][: args.n_vis_normals].detach().cpu().numpy()
+                if args.vis_normals
+                else None
+            ),
+            mnfld_normals=(
+                mnfld_normals_pred[0][: args.n_vis_normals].detach().cpu().numpy()
+                if args.vis_normals
+                else None
+            ),
+            mnfld_normals_gt=(
+                mnfld_normals_gt[0][: args.n_vis_normals] if args.vis_normals else None
+            ),
+            colorscale="Peach",
+            show_scale=True,
+            show_ax=True,
+            title_text=f"Heat, epoch {batch_idx}",
+            grid_range=args.vis_grid_range,
+            contour_interval=args.vis_contour_interval,
+        )
+        img = Image.fromarray(heat_contour_img)
+        img.save(os.path.join(output_dir, "heat_" + str(batch_idx).zfill(6) + ".png"))
+
+    if args.vis_diff:
+        vis_grid_diff = (
+            vis_grid_pred.squeeze().detach().cpu().numpy() - vis_grid_dists_gt.squeeze()
+        ).reshape(args.vis_grid_res, args.vis_grid_res)
+        diff_contour_img = vis.plot_contours(
+            x_grid=x,
+            y_grid=y,
+            z_grid=vis_grid_diff,
+            mnfld_points=None,
+            mnfld_normals=None,
+            mnfld_normals_gt=None,
+            colorscale="Tropic",
+            show_scale=True,
+            show_ax=True,
+            title_text=f"Diff, epoch {batch_idx}",
+            grid_range=args.vis_grid_range,
+            contour_interval=args.vis_contour_interval,
+        )
+        img = Image.fromarray(diff_contour_img)
+        img.save(os.path.join(output_dir, "diff_" + str(batch_idx).zfill(6) + ".png"))
+
+    # Compute metrics: Mean error, RMSE, MAE
+    if args.compute_metrics:
+        vis_grid_pred_np = (
+            vis_grid_pred.detach().cpu().numpy().reshape(args.vis_grid_res, args.vis_grid_res)
+        )
+        vis_grid_dists_gt_np = vis_grid_dists_gt.squeeze().reshape(
+            args.vis_grid_res, args.vis_grid_res
+        )
+        mae = np.mean(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np))
+        rmse = np.sqrt(np.mean((vis_grid_pred_np - vis_grid_dists_gt_np) ** 2))
+        mape = np.mean(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np) / vis_grid_dists_gt_np)
+        utils.log_string(
+            f"RMSE: {rmse:.5f}, MAE: {mae:.5f}, MAPE: {mape:.5f}", log_file
+        )
+
+    utils.log_string("", log_file)
+
+
+if __name__ == "__main__":
+    args = parser.get_train_args()
+
+    if not args.train and not args.eval:
+        raise ValueError("Please specify either --train or --eval, or both.")
+
+    file_path = os.path.join(args.data_dir, args.file_name)
+    log_dir = os.path.join(args.log_dir, args.file_name.split(".")[0])
+
+    # set up logging
+    log_file, log_writer_train, log_writer_test, model_outdir = utils.setup_logdir(log_dir, args)
+    os.system("cp %s %s" % (__file__, log_dir))  # backup the current training file
+    os.system("cp %s %s" % ("./models/Net.py", log_dir))  # backup the models files
+    os.system("cp %s %s" % ("./models/losses.py", log_dir))  # backup the losses files
+
+    # Set up dataloader
+    torch.manual_seed(
+        0
+    )  # change random seed for training set (so it will be different from test set
+    np.random.seed(0)
+    if args.task == "3d":
+        train_set = dataset.ReconDataset(
+            file_path=file_path,
+            n_points=args.n_points,
+            n_samples=args.n_iterations,
+            grid_res=args.grid_res,
+            grid_range=args.grid_range,
+            sample_type=args.nonmnfld_sample_type,
+            sampling_std2=args.nonmnfld_sample_std,
+            n_random_samples=args.n_random_samples,
+        )
+        in_dim = 3
+    elif args.task == "2d":
+        train_set = shape_2d.get2D_dataset(
+            n_points=args.n_points,
+            n_samples=args.n_iterations,
+            grid_res=args.grid_res,
+            grid_range=args.grid_range,
+            sample_type=args.nonmnfld_sample_type,
+            sampling_std=args.nonmnfld_sample_std,
+            n_random_samples=args.n_random_samples,
+            resample=True,
+            shape_type=args.shape_type,
+        )
+        in_dim = 2
+
+    train_dataloader = torch.utils.data.DataLoader(
+        train_set, batch_size=1, shuffle=True, num_workers=args.num_workers, pin_memory=True
     )
-    in_dim = 2
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
 
-train_dataloader = torch.utils.data.DataLoader(
-    train_set, batch_size=1, shuffle=True, num_workers=args.num_workers, pin_memory=True
-)
-torch.manual_seed(args.seed)
-np.random.seed(args.seed)
+    # Set up model
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_idx)
+    device = torch.device("cuda")
 
-# Set up model
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_idx)
-device = torch.device("cuda")
-
-model = model.Network(
-    latent_size=args.latent_size,
-    in_dim=in_dim,
-    decoder_hidden_dim=args.decoder_hidden_dim,
-    nl=args.nl,
-    encoder_type=args.encoder_type,
-    decoder_n_hidden_layers=args.decoder_n_hidden_layers,
-    init_type=args.init_type,
-    neuron_type=args.neuron_type,
-    sphere_init_params=args.sphere_init_params,
-)
-# Uncomment to use small model
-# model = heatModel.Net(radius_init=args.sphere_init_params[1])
-model.to(device)
-if args.parallel:
-    if device.type == "cuda":
-        model = torch.nn.DataParallel(model)
-n_parameters = utils.count_parameters(model)
-utils.log_string("Number of parameters in the current model:{}".format(n_parameters), log_file)
-
-# Set up optimizer, scheduler, and loss
-optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999))
-scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=1.0)  # Does nothing
-criterion = Loss(
-    weights=args.loss_weights,
-    loss_type=args.loss_type,
-    div_decay=args.div_decay,
-    div_type=args.div_type,
-    heat_lambda=args.heat_lambda,
-    heat_decay=args.heat_decay,
-    eikonal_decay=args.eikonal_decay,
-    heat_lambda_decay=args.heat_lambda_decay,
-)
-num_batches = len(train_dataloader)
-
-# Iteratively train the model
-for batch_idx, data in enumerate(train_dataloader):
-    # Load data
-    mnfld_points, mnfld_normals_gt, nonmnfld_points, nonmnfld_pdfs, nonmnfld_dists_gt, grid_dists_gt = (
-        data["mnfld_points"].to(device),
-        data["mnfld_normals_gt"].to(device),
-        data["nonmnfld_points"].to(device),
-        data["nonmnfld_pdfs"].to(device),
-        data["nonmnfld_dists_gt"].to(device),
-        data["grid_dists_gt"].to(device),
+    model = model.Network(
+        latent_size=args.latent_size,
+        in_dim=in_dim,
+        decoder_hidden_dim=args.decoder_hidden_dim,
+        nl=args.nl,
+        encoder_type=args.encoder_type,
+        decoder_n_hidden_layers=args.decoder_n_hidden_layers,
+        init_type=args.init_type,
+        neuron_type=args.neuron_type,
+        sphere_init_params=args.sphere_init_params,
     )
-    mnfld_points.requires_grad_()
-    nonmnfld_points.requires_grad_()
+    # Uncomment to use small model
+    # model = heatModel.Net(radius_init=args.sphere_init_params[1])
+    model.to(device)
+    if args.parallel:
+        if device.type == "cuda":
+            model = torch.nn.DataParallel(model)
+    n_parameters = utils.count_parameters(model)
+    utils.log_string("Number of parameters in the current model:{}".format(n_parameters), log_file)
 
-    if args.train:
-        model.zero_grad()
-        model.train()
-
-        # Compute losses on samples
-        output_pred = model(nonmnfld_points, mnfld_points)
-        loss_dict, _ = criterion(output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs, mnfld_normals_gt, nonmnfld_dists_gt)
-        # Updatae learning rate
-        lr = torch.tensor(optimizer.param_groups[0]["lr"])
-        loss_dict["lr"] = lr
-        # Log losses on samples
-        utils.log_losses(log_writer_train, batch_idx, num_batches, loss_dict)
+    # Set up optimizer, scheduler, and loss
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999))
+    scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=1.0)  # Does nothing
+    criterion = Loss(
+        weights=args.loss_weights,
+        loss_type=args.loss_type,
+        div_decay=args.div_decay,
+        div_type=args.div_type,
+        heat_lambda=args.heat_lambda,
+        heat_decay=args.heat_decay,
+        eikonal_decay=args.eikonal_decay,
+        heat_lambda_decay=args.heat_lambda_decay,
+    )
+    num_batches = len(train_dataloader)
 
     # Set up visualization grid
-    x, y = np.linspace(
+    x, y = np.linspace(-args.vis_grid_range, args.vis_grid_range, args.vis_grid_res), np.linspace(
         -args.vis_grid_range, args.vis_grid_range, args.vis_grid_res
-    ), np.linspace(-args.vis_grid_range, args.vis_grid_range, args.vis_grid_res)
+    )
     xx, yy = np.meshgrid(x, y)
     xx, yy = xx.ravel(), yy.ravel()
     vis_grid_points = np.stack([xx, yy], axis=-1)
     if in_dim == 3:
         z = np.zeros((args.vis_grid_res, args.vis_grid_res, 1))
         vis_grid_points = np.concatenate([xx, yy, z], axis=-1)
-    vis_grid_points = vis_grid_points[None, ...] # (1, grid_res * grid_res, dim)
+    vis_grid_points = vis_grid_points[None, ...]  # (1, grid_res * grid_res, dim)
     vis_grid_points = torch.tensor(vis_grid_points, dtype=torch.float32).to(device)
     vis_grid_points.requires_grad_()
 
-    if args.train:
-        # [Optional] Compute losses on visualization grid
-        if args.compute_losses_on_vis_grid > 0:
-            vis_pred = model(vis_grid_points, mnfld_points)
-            vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(vis_grid_points[0].detach().cpu().numpy()) # (vis_grid_res * vis_grid_res, 1)
-            vis_loss_dict, _ = criterion(vis_pred, mnfld_points, vis_grid_points, None, None, torch.tensor(vis_grid_dists_gt, dtype=torch.float32).to(device))
+    # Iteratively train the model
+    for batch_idx, data in enumerate(train_dataloader):
+        # Load data
+        (
+            mnfld_points,
+            mnfld_normals_gt,
+            nonmnfld_points,
+            nonmnfld_pdfs,
+            nonmnfld_dists_gt,
+            grid_dists_gt,
+        ) = (
+            data["mnfld_points"].to(device),
+            data["mnfld_normals_gt"].to(device),
+            data["nonmnfld_points"].to(device),
+            data["nonmnfld_pdfs"].to(device),
+            data["nonmnfld_dists_gt"].to(device),
+            data["grid_dists_gt"].to(device),
+        )
+        mnfld_points.requires_grad_()
+        nonmnfld_points.requires_grad_()
 
-        # Backpropagate and update weights
-        loss_dict["loss"].backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0)
-        optimizer.step()
+        if args.train:
+            model.zero_grad()
+            model.train()
 
-        # Log training stats and save model
-        if batch_idx % args.log_interval == 0:
-            weights = criterion.weights
-            utils.log_string(f"Current heat lambda: {criterion.heat_lambda}", log_file)
-            utils.log_string("Weights: {}, lr={:.3e}".format(weights, lr), log_file)
-            # Log weighted losses
-            utils.log_string(
-                "Iteration: {:4d}/{} ({:.0f}%) Loss: {:.5f} = L_Mnfld: {:.5f} + "
-                "L_NonMnfld: {:.5f} + L_Nrml: {:.5f} + L_Eknl: {:.5f} + L_Div: {:.5f} + L_Heat: {:.5f}".format(
-                    batch_idx,
-                    len(train_set),
-                    100.0 * batch_idx / len(train_dataloader),
-                    loss_dict["loss"].item(),
-                    weights[0] * loss_dict["sdf_term"].item(),
-                    weights[1] * loss_dict["inter_term"].item(),
-                    weights[2] * loss_dict["normal_term"].item(),
-                    weights[3] * loss_dict["eikonal_term"].item(),
-                    weights[4] * loss_dict["div_term"].item(),
-                    weights[6] * loss_dict["heat_term"].item(),
-                ),
-                log_file,
+            # Compute losses on samples
+            output_pred = model(nonmnfld_points, mnfld_points)
+            loss_dict, _ = criterion(
+                output_pred,
+                mnfld_points,
+                nonmnfld_points,
+                nonmnfld_pdfs,
+                mnfld_normals_gt,
+                nonmnfld_dists_gt,
             )
-            # Log unweighted losses
-            utils.log_string(
-                "Iteration: {:4d}/{} ({:.0f}%) Unweighted L_s : L_Mnfld: {:.5f},  "
-                "L_NonMnfld: {:.5f},  L_Nrml: {:.5f},  L_Eknl: {:.5f},  L_Div: {:.5f},  L_Heat: {:.5f},  L_Diff: {:.5f}".format(
-                    batch_idx,
-                    len(train_set),
-                    100.0 * batch_idx / len(train_dataloader),
-                    loss_dict["sdf_term"].item(),
-                    loss_dict["inter_term"].item(),
-                    loss_dict["normal_term"].item(),
-                    loss_dict["eikonal_term"].item(),
-                    loss_dict["div_term"].item(),
-                    loss_dict["heat_term"].item(),
-                    loss_dict["diff_term"].item(),
-                ),
-                log_file,
-            )
-            # Log losses on visualization grid
+            # Updatae learning rate
+            lr = torch.tensor(optimizer.param_groups[0]["lr"])
+            loss_dict["lr"] = lr
+            # Log losses on samples
+            utils.log_losses(log_writer_train, batch_idx, num_batches, loss_dict)
+
+            # [Optional] Compute losses on visualization grid
             if args.compute_losses_on_vis_grid > 0:
+                vis_pred = model(vis_grid_points, mnfld_points)
+                vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
+                    vis_grid_points[0].detach().cpu().numpy()
+                )  # (vis_grid_res * vis_grid_res, 1)
+                vis_loss_dict, _ = criterion(
+                    vis_pred,
+                    mnfld_points,
+                    vis_grid_points,
+                    None,
+                    None,
+                    torch.tensor(vis_grid_dists_gt, dtype=torch.float32).to(device),
+                )
+
+            # Backpropagate and update weights
+            loss_dict["loss"].backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0)
+            optimizer.step()
+
+            # Log training stats and save model
+            if batch_idx % args.log_interval == 0:
+                weights = criterion.weights
+                utils.log_string(f"Current heat lambda: {criterion.heat_lambda}", log_file)
+                utils.log_string("Weights: {}, lr={:.3e}".format(weights, lr), log_file)
+                # Log weighted losses
                 utils.log_string(
-                    "Iteration: {:4d}/{} ({:.0f}%) L_s in visualization range : L_Eknl: {:.5f}, L_Diff: {:.5f}".format(
+                    "Iteration: {:4d}/{} ({:.0f}%) Loss: {:.5f} = L_Mnfld: {:.5f} + "
+                    "L_NonMnfld: {:.5f} + L_Nrml: {:.5f} + L_Eknl: {:.5f} + L_Div: {:.5f} + L_Heat: {:.5f}".format(
                         batch_idx,
                         len(train_set),
                         100.0 * batch_idx / len(train_dataloader),
-                        vis_loss_dict["eikonal_term"].item(),
-                        vis_loss_dict["diff_term"].item(),
+                        loss_dict["loss"].item(),
+                        weights[0] * loss_dict["sdf_term"].item(),
+                        weights[1] * loss_dict["inter_term"].item(),
+                        weights[2] * loss_dict["normal_term"].item(),
+                        weights[3] * loss_dict["eikonal_term"].item(),
+                        weights[4] * loss_dict["div_term"].item(),
+                        weights[6] * loss_dict["heat_term"].item(),
                     ),
                     log_file,
                 )
-            # Save model
-            utils.log_string(f"saving model to file model_{batch_idx}.pth", log_file)
-            torch.save(model.state_dict(), os.path.join(model_outdir, f"model_{batch_idx}.pth"))
-            utils.log_string("", log_file)
+                # Log unweighted losses
+                utils.log_string(
+                    "Iteration: {:4d}/{} ({:.0f}%) Unweighted L_s : L_Mnfld: {:.5f},  "
+                    "L_NonMnfld: {:.5f},  L_Nrml: {:.5f},  L_Eknl: {:.5f},  L_Div: {:.5f},  L_Heat: {:.5f},  L_Diff: {:.5f}".format(
+                        batch_idx,
+                        len(train_set),
+                        100.0 * batch_idx / len(train_dataloader),
+                        loss_dict["sdf_term"].item(),
+                        loss_dict["inter_term"].item(),
+                        loss_dict["normal_term"].item(),
+                        loss_dict["eikonal_term"].item(),
+                        loss_dict["div_term"].item(),
+                        loss_dict["heat_term"].item(),
+                        loss_dict["diff_term"].item(),
+                    ),
+                    log_file,
+                )
+                # Log losses on visualization grid
+                if args.compute_losses_on_vis_grid > 0:
+                    utils.log_string(
+                        "Iteration: {:4d}/{} ({:.0f}%) L_s in visualization range : L_Eknl: {:.5f}, L_Diff: {:.5f}".format(
+                            batch_idx,
+                            len(train_set),
+                            100.0 * batch_idx / len(train_dataloader),
+                            vis_loss_dict["eikonal_term"].item(),
+                            vis_loss_dict["diff_term"].item(),
+                        ),
+                        log_file,
+                    )
+                # Save model
+                utils.log_string(f"saving model to file model_{batch_idx}.pth", log_file)
+                torch.save(model.state_dict(), os.path.join(model_outdir, f"model_{batch_idx}.pth"))
+                utils.log_string("", log_file)
 
-    # Visualize SDF
-    if args.eval and batch_idx % args.vis_interval == 0:
-        if not args.train:
-            model_path = os.path.join(args.saved_model_dir, f"model_{batch_idx}.pth")
-            model.load_state_dict(torch.load(model_path, weights_only=True))
+        # Visualize SDF
+        if not args.vis_final and args.eval and batch_idx % args.vis_interval == 0:
+            if not args.train:
+                model_path = os.path.join(args.saved_model_dir, f"model_{batch_idx}.pth")
+                model.load_state_dict(torch.load(model_path, weights_only=True))
 
-        utils.log_string(f"Visualizing epoch {batch_idx}", log_file)
+            utils.log_string(f"Visualizing epoch {batch_idx}", log_file)
+
+            output_dir = os.path.join(log_dir, "vis")
+            os.makedirs(output_dir, exist_ok=True)
+
+            vis_pred = model(vis_grid_points, mnfld_points)
+            vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
+                vis_grid_points[0].detach().cpu().numpy()
+            )  # (vis_grid_res * vis_grid_res, 1)
+
+            visualize_model(
+                vis_grid_points=vis_grid_points,
+                mnfld_points=mnfld_points,
+                vis_pred=vis_pred,
+                vis_grid_dists_gt=vis_grid_dists_gt,
+                data=data,
+                batch_idx=batch_idx,
+                args=args,
+            )
+
+        # Update weights
+        if args.heat_lambda_decay is not None:
+            criterion.update_heat_lambda(
+                batch_idx, args.n_iterations, args.heat_lambda_decay_params
+            )
+
+        if args.train:
+            if "div" in args.loss_type:
+                criterion.update_div_weight(batch_idx, args.n_iterations, args.div_decay_params)
+            if args.heat_decay is not None:
+                criterion.update_heat_weight(batch_idx, args.n_iterations, args.heat_decay_params)
+            if args.eikonal_decay is not None:
+                criterion.update_eikonal_weight(
+                    batch_idx, args.n_iterations, args.eikonal_decay_params
+                )
+
+            scheduler.step()
+
+    # Save final model
+    if args.train:
+        utils.log_string("saving model to file model.pth", log_file)
+        torch.save(model.state_dict(), os.path.join(model_outdir, "model.pth"))
+
+    # Visualize final pth if exists
+    if args.eval and args.vis_final:
+        model_path = os.path.join(args.saved_model_dir, f"model.pth")
+        model.load_state_dict(torch.load(model_path, weights_only=True))
+
+        utils.log_string(f"Visualizing final model", log_file)
 
         output_dir = os.path.join(log_dir, "vis")
         os.makedirs(output_dir, exist_ok=True)
 
         vis_pred = model(vis_grid_points, mnfld_points)
-        vis_grid_pred = vis_pred["nonmanifold_pnts_pred"] # (batch_size, vis_grid_res * vis_grid_res, 1)
-        vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(vis_grid_points[0].detach().cpu().numpy()) # (vis_grid_res * vis_grid_res, 1)
+        vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
+            vis_grid_points[0].detach().cpu().numpy()
+        )  # (vis_grid_res * vis_grid_res, 1)
 
-        if args.vis_normals:
-            mnfld_points_pred = vis_pred["manifold_pnts_pred"]
-            mnfld_normals_pred = utils.gradient(mnfld_points, mnfld_points_pred)
-            mnfld_normals_pred = mnfld_normals_pred / torch.norm(mnfld_normals_pred, dim=-1, keepdim=True)
-            mnfld_normals_gt = data["mnfld_normals_gt"]
-
-        sdf_contour_img = vis.plot_contours(
-            x_grid=x,
-            y_grid=y,
-            z_grid=vis_grid_pred.detach()
-            .cpu()
-            .numpy()
-            .reshape(args.vis_grid_res, args.vis_grid_res),
-            mnfld_points=mnfld_points[0][:args.n_vis_normals].detach().cpu().numpy() if args.vis_normals else None,
-            mnfld_normals=mnfld_normals_pred[0][:args.n_vis_normals].detach().cpu().numpy() if args.vis_normals else None,
-            mnfld_normals_gt=mnfld_normals_gt[0][:args.n_vis_normals] if args.vis_normals else None,
-            colorscale="Geyser",
-            show_scale=True,
-            show_ax=True,
-            title_text=f"SDF, epoch {batch_idx}",
-            grid_range=args.vis_grid_range,
-            contour_interval=args.vis_contour_interval,
+        visualize_model(
+            vis_grid_points=vis_grid_points,
+            mnfld_points=mnfld_points,
+            vis_pred=vis_pred,
+            vis_grid_dists_gt=vis_grid_dists_gt,
+            data=data,
+            batch_idx="final",
+            args=args,
         )
-        img = Image.fromarray(sdf_contour_img)
-        img.save(os.path.join(output_dir, "sdf_" + str(batch_idx).zfill(6) + ".png"))
+        
 
-        if args.vis_heat:
-            vis_grid_heat = np.exp(- args.heat_lambda * np.abs(vis_grid_pred.detach().cpu().numpy().reshape(args.vis_grid_res, args.vis_grid_res)))
-            heat_contour_img = vis.plot_contours(
-                x_grid=x,
-                y_grid=y,
-                z_grid=vis_grid_heat,
-                mnfld_points=mnfld_points[0][:args.n_vis_normals].detach().cpu().numpy() if args.vis_normals else None,
-                mnfld_normals=mnfld_normals_pred[0][:args.n_vis_normals].detach().cpu().numpy() if args.vis_normals else None,
-                mnfld_normals_gt=mnfld_normals_gt[0][:args.n_vis_normals] if args.vis_normals else None,
-                colorscale="Peach",
-                show_scale=True,
-                show_ax=True,
-                title_text=f"Heat, epoch {batch_idx}",
-                grid_range=args.vis_grid_range,
-                contour_interval=args.vis_contour_interval,
+    # Save video
+    if args.eval:
+        if args.save_video:
+            vis.save_video(output_dir, "sdf.mp4", "sdf_*.png")
+            if args.vis_heat:
+                vis.save_video(output_dir, "heat.mp4", "heat_*.png")
+
+        # Convert implicit to mesh
+        if in_dim == 3:
+            print("Converting implicit to mesh for file {}".format(args.file_name))
+            output_ply_filepath = os.path.join(log_dir, "output.ply")
+            cp, scale, bbox = train_set.cp, train_set.scale, train_set.bbox
+            test_set, test_dataloader, clean_points_gt, normals_gt, nonmnfld_points, data = (
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )  # free up memory
+            mesh_dict = utils.implicit2mesh(
+                decoder=model.decoder,
+                latent=None,
+                grid_res=args.grid_res,
+                translate=-cp,
+                scale=1 / scale,
+                get_mesh=True,
+                device=device,
+                bbox=bbox,
             )
-            img = Image.fromarray(heat_contour_img)
-            img.save(os.path.join(output_dir, "heat_" + str(batch_idx).zfill(6) + ".png"))
-
-        if args.vis_diff:
-            vis_grid_diff = (vis_grid_pred.squeeze().detach().cpu().numpy() - vis_grid_dists_gt.squeeze()).reshape(args.vis_grid_res, args.vis_grid_res)
-            diff_contour_img = vis.plot_contours(
-                x_grid=x,
-                y_grid=y,
-                z_grid=vis_grid_diff,
-                mnfld_points=None,
-                mnfld_normals=None,
-                mnfld_normals_gt=None,
-                colorscale="Tropic",
-                show_scale=True,
-                show_ax=True,
-                title_text=f"Diff, epoch {batch_idx}",
-                grid_range=args.vis_grid_range,
-                contour_interval=args.vis_contour_interval,
+            vis.plot_mesh(
+                mesh_dict["mesh_trace"],
+                mesh=mesh_dict["mesh_obj"],
+                output_ply_path=output_ply_filepath,
+                show_ax=False,
+                title_txt=args.file_name.split(".")[0],
+                show=False,
             )
-            img = Image.fromarray(diff_contour_img)
-            img.save(os.path.join(output_dir, "diff_" + str(batch_idx).zfill(6) + ".png"))
 
-        utils.log_string("", log_file)
-
-    # Update weights
-    if args.heat_lambda_decay is not None:
-        criterion.update_heat_lambda(batch_idx, args.n_iterations, args.heat_lambda_decay_params)
-
-    if args.train:
-        if "div" in args.loss_type:
-            criterion.update_div_weight(batch_idx, args.n_iterations, args.div_decay_params)
-        if args.heat_decay is not None:
-            criterion.update_heat_weight(batch_idx, args.n_iterations, args.heat_decay_params)
-        if args.eikonal_decay is not None:
-            criterion.update_eikonal_weight(batch_idx, args.n_iterations, args.eikonal_decay_params)
-
-        scheduler.step()
-
-# Save final model
-if args.train:
-    utils.log_string("saving model to file model.pth", log_file)
-    torch.save(model.state_dict(), os.path.join(model_outdir, "model.pth"))
-
-# Save video
-if args.eval and args.save_video:
-    vis.save_video(output_dir, "sdf.mp4", "sdf_*.png")
-    if args.vis_heat:
-        vis.save_video(output_dir, "heat.mp4", "heat_*.png")
-
-    # Convert implicit to mesh
-    if in_dim == 3:
-        print("Converting implicit to mesh for file {}".format(args.file_name))
-        output_ply_filepath = os.path.join(log_dir, "output.ply")
-        cp, scale, bbox = train_set.cp, train_set.scale, train_set.bbox
-        test_set, test_dataloader, clean_points_gt, normals_gt, nonmnfld_points, data = (
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        )  # free up memory
-        mesh_dict = utils.implicit2mesh(
-            decoder=model.decoder,
-            latent=None,
-            grid_res=args.grid_res,
-            translate=-cp,
-            scale=1 / scale,
-            get_mesh=True,
-            device=device,
-            bbox=bbox,
-        )
-        vis.plot_mesh(
-            mesh_dict["mesh_trace"],
-            mesh=mesh_dict["mesh_obj"],
-            output_ply_path=output_ply_filepath,
-            show_ax=False,
-            title_txt=args.file_name.split(".")[0],
-            show=False,
-        )
-
-        print("Conversion complete.")
+            print("Conversion complete.")

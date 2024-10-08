@@ -33,10 +33,11 @@ gpu_idx = 0
 lr = 5e-5
 grad_clip_norm = 10.0
 heat_lambda = 10.0
-vis_interval = 100
 log_interval = 100
+compute_losses_on_vis_grid = 0
 
 [visualization]
+vis_interval = 100
 vis_grid_res = 256
 vis_grid_range = 1.2
 vis_contour_interval = 0.025
@@ -44,5 +45,6 @@ vis_normals = true
 n_vis_normals = 10
 vis_heat = true
 vis_diff = true
-save_video = true
-compute_losses_on_vis_grid = true
+save_video = false
+vis_final = true
+compute_metrics = true

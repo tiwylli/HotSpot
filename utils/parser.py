@@ -128,6 +128,12 @@ def get_train_args():
     parser.add_argument(
         "--video_fps", type=int, default=6, help="Frames per second for video."
     )
+    parser.add_argument(
+        "--vis_final", type=bool, default=False, help="Indicator to visualize final result."
+    )
+    parser.add_argument(
+        "--compute_metrics", type=bool, default=False, help="Indicator to compute metrics."
+    )
 
     # Network architecture and loss
     parser.add_argument(
