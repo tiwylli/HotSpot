@@ -5,13 +5,13 @@ model_dir = "models"
 decoder_n_hidden_layers = 4
 decoder_hidden_dim = 128
 nl = "sine"                 # 'sine' | 'relu' | 'softplus'
-sphere_init_params = [1.6, 0.1]
+sphere_init_params = [1.6, 1.0]
 init_type = "mfgi"    # 'siren' | 'geometric_sine' | 'geometric_relu' | 'mfgi'
 neuron_type = "quadratic"          # 'linear' | 'quadratic'
 
 [loss]
 loss_type = 'siren_wo_n_w_div' # 'siren_wo_n_w_div' | 'siren_wo_n' | 'siren_w_div' | 'siren'
-loss_weights = [3e3, 1e2, 1e2, 0.868, 1e2, 0.0, 0.0] # sdf, inter, normal, eikonal, div, latent, heat
+loss_weights = [3e3, 1e2, 1e2, 5e1, 1e2, 0.0, 0.0] # sdf, inter, normal, eikonal, div, latent, heat
 div_type = "dir_l1" # 'dir_l1' | 'dir_l2' | 'full_l1' | 'full_l2'
 div_decay = "linear" # 'linear' | 'quintic' | 'step'
 div_decay_params = [1e2, 0.2, 1e2, 0.4, 0.0, 0.0]
@@ -28,13 +28,13 @@ nonmnfld_sample_std = 1.0
 train = true
 eval = true
 task = "2d"
-n_iterations = 20000
+n_iterations = 10000
 gpu_idx = 0
 lr = 5e-5
 grad_clip_norm = 10.0
 heat_lambda = 60.0
-vis_interval = 50
-log_interval = 50
+vis_interval = 100
+log_interval = 100
 
 [visualization]
 vis_grid_res = 256
@@ -45,3 +45,5 @@ n_vis_normals = 100
 save_video = true
 compute_losses_on_vis_grid = 0
 video_fps = 6
+vis_contour_range = [-1.0, 1.0]
+vis_gt_shape = true

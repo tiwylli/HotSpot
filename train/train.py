@@ -18,7 +18,7 @@ from PIL import Image
 
 
 def visualize_model(
-    vis_grid_points, mnfld_points, vis_pred, vis_grid_dists_gt, data, batch_idx, args
+    vis_grid_points, mnfld_points, vis_pred, vis_grid_dists_gt, data, batch_idx, args, shape
 ):
     vis_pred = model(vis_grid_points, mnfld_points)
     vis_grid_pred = vis_pred[
@@ -54,6 +54,8 @@ def visualize_model(
         title_text=f"SDF, epoch {batch_idx}",
         grid_range=args.vis_grid_range,
         contour_interval=args.vis_contour_interval,
+        contour_range=args.vis_contour_range,
+        gt_traces=shape.get_trace(color="rgba(0, 0, 255, 0.5)") if args.vis_gt_shape else [],
     )
     img = Image.fromarray(sdf_contour_img)
     img.save(os.path.join(output_dir, "sdf_" + str(batch_idx).zfill(6) + ".png"))
@@ -152,9 +154,8 @@ if __name__ == "__main__":
     os.system("cp %s %s" % ("./models/losses.py", log_dir))  # backup the losses files
 
     # Set up dataloader
-    torch.manual_seed(
-        0
-    )  # change random seed for training set (so it will be different from test set
+    torch.manual_seed(0)
+    # change random seed for training set (so it will be different from test set
     np.random.seed(0)
     if args.task == "3d":
         train_set = dataset.ReconDataset(
@@ -263,6 +264,39 @@ if __name__ == "__main__":
         mnfld_points.requires_grad_()
         nonmnfld_points.requires_grad_()
 
+        # Save model before updating weights
+        if args.train:
+            if batch_idx % args.log_interval == 0:
+                utils.log_string(f"saving model to file model_{batch_idx}.pth", log_file)
+                torch.save(model.state_dict(), os.path.join(model_outdir, f"model_{batch_idx}.pth"))
+
+        # Visualize SDF
+        if not args.vis_final and args.eval and batch_idx % args.vis_interval == 0:
+            if not args.train:
+                model_path = os.path.join(args.saved_model_dir, f"model_{batch_idx}.pth")
+                model.load_state_dict(torch.load(model_path, weights_only=True))
+
+            utils.log_string(f"Visualizing epoch {batch_idx}", log_file)
+
+            output_dir = os.path.join(log_dir, "vis")
+            os.makedirs(output_dir, exist_ok=True)
+
+            vis_pred = model(vis_grid_points, mnfld_points)
+            vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
+                vis_grid_points[0].detach().cpu().numpy()
+            )  # (vis_grid_res * vis_grid_res, 1)
+
+            visualize_model(
+                vis_grid_points=vis_grid_points,
+                mnfld_points=mnfld_points,
+                vis_pred=vis_pred,
+                vis_grid_dists_gt=vis_grid_dists_gt,
+                data=data,
+                batch_idx=batch_idx,
+                args=args,
+                shape=train_set,
+            )
+
         if args.train:
             model.zero_grad()
             model.train()
@@ -354,36 +388,7 @@ if __name__ == "__main__":
                         ),
                         log_file,
                     )
-                # Save model
-                utils.log_string(f"saving model to file model_{batch_idx}.pth", log_file)
-                torch.save(model.state_dict(), os.path.join(model_outdir, f"model_{batch_idx}.pth"))
                 utils.log_string("", log_file)
-
-        # Visualize SDF
-        if not args.vis_final and args.eval and batch_idx % args.vis_interval == 0:
-            if not args.train:
-                model_path = os.path.join(args.saved_model_dir, f"model_{batch_idx}.pth")
-                model.load_state_dict(torch.load(model_path, weights_only=True))
-
-            utils.log_string(f"Visualizing epoch {batch_idx}", log_file)
-
-            output_dir = os.path.join(log_dir, "vis")
-            os.makedirs(output_dir, exist_ok=True)
-
-            vis_pred = model(vis_grid_points, mnfld_points)
-            vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
-                vis_grid_points[0].detach().cpu().numpy()
-            )  # (vis_grid_res * vis_grid_res, 1)
-
-            visualize_model(
-                vis_grid_points=vis_grid_points,
-                mnfld_points=mnfld_points,
-                vis_pred=vis_pred,
-                vis_grid_dists_gt=vis_grid_dists_gt,
-                data=data,
-                batch_idx=batch_idx,
-                args=args,
-            )
 
         # Update weights
         if args.heat_lambda_decay is not None:
@@ -405,7 +410,7 @@ if __name__ == "__main__":
 
     # Save final model
     if args.train:
-        utils.log_string("saving model to file model.pth", log_file)
+        utils.log_string("Saving final model to file model.pth", log_file)
         torch.save(model.state_dict(), os.path.join(model_outdir, "model.pth"))
 
     # Visualize final pth if exists
@@ -432,7 +437,6 @@ if __name__ == "__main__":
             batch_idx="final",
             args=args,
         )
-        
 
     # Save video
     if args.eval:
