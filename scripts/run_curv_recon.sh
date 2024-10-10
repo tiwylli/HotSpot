@@ -1,10 +1,10 @@
-ROOT_DIR= $(dirname $(dirname "$(readlink -f "$0")"))'/'
+ROOT_DIR=$(dirname $(dirname "$(readlink -f "$0")"))'/'
 MODEL_DIR=$ROOT_DIR'models'
 THIS_FILE=$(basename "$0")
-TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
+# TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
 
 CONFIG_DIR=$ROOT_DIR'configs/curv_recon.toml' # change to your config file path
-IDENTIFIER='curv'                                                   # change to your desired identifier
+IDENTIFIER='curv_debug'                                                   # change to your desired identifier
 LOG_DIR='./log/2d_curv/'                                           # change to your desired log path
 mkdir -p $LOG_DIR
 

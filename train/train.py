@@ -48,14 +48,14 @@ def visualize_model(
             else None
         ),
         mnfld_normals_gt=mnfld_normals_gt[0][: args.n_vis_normals] if args.vis_normals else None,
-        colorscale="Geyser",
+        colorscale="RdBu_r",
         show_scale=True,
         show_ax=True,
         title_text=f"SDF, epoch {batch_idx}",
         grid_range=args.vis_grid_range,
         contour_interval=args.vis_contour_interval,
         contour_range=args.vis_contour_range,
-        gt_traces=shape.get_trace(color="rgba(0, 0, 255, 0.5)") if args.vis_gt_shape else [],
+        gt_traces=shape.get_trace(color="rgb(128, 128, 128)") if args.vis_gt_shape else [],
     )
     img = Image.fromarray(sdf_contour_img)
     img.save(os.path.join(output_dir, "sdf_" + str(batch_idx).zfill(6) + ".png"))
@@ -71,25 +71,16 @@ def visualize_model(
             x_grid=x,
             y_grid=y,
             z_grid=vis_grid_heat,
-            mnfld_points=(
-                mnfld_points[0][: args.n_vis_normals].detach().cpu().numpy()
-                if args.vis_normals
-                else None
-            ),
-            mnfld_normals=(
-                mnfld_normals_pred[0][: args.n_vis_normals].detach().cpu().numpy()
-                if args.vis_normals
-                else None
-            ),
-            mnfld_normals_gt=(
-                mnfld_normals_gt[0][: args.n_vis_normals] if args.vis_normals else None
-            ),
+            mnfld_points=None,
+            mnfld_normals=None,
+            mnfld_normals_gt=None,
             colorscale="Peach",
             show_scale=True,
             show_ax=True,
             title_text=f"Heat, epoch {batch_idx}",
             grid_range=args.vis_grid_range,
             contour_interval=args.vis_contour_interval,
+            contour_range=[0, 1],
         )
         img = Image.fromarray(heat_contour_img)
         img.save(os.path.join(output_dir, "heat_" + str(batch_idx).zfill(6) + ".png"))

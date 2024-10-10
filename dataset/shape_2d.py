@@ -60,7 +60,7 @@ class Circle(ShapeBase):
         theta = np.linspace(0, 2 * np.pi, 100)
         x = self.r * np.sin(theta) + self.center[0]
         y = self.r * np.cos(theta) + self.center[1]
-        return [go.Scatter(x=x, y=y, mode="lines", line=dict(color=color), showlegend=False)]
+        return [go.Scatter(x=x, y=y, mode="lines", line=dict(color=color, dash="dash"), showlegend=False)]
 
 
 class Polygon(ShapeBase):
@@ -247,7 +247,7 @@ class Polygon(ShapeBase):
     def get_trace(self, color="rgba(0, 0, 255, 0.5)"):
         x = np.concatenate([self.vertices[:, 0], [self.vertices[0, 0]]])
         y = np.concatenate([self.vertices[:, 1], [self.vertices[0, 1]]])
-        return [go.Scatter(x=x, y=y, mode="lines", line=dict(color=color), showlegend=False)]
+        return [go.Scatter(x=x, y=y, mode="lines", line=dict(color=color, dash="dash"), showlegend=False)]
 
 
 class Union(ShapeBase):

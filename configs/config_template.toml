@@ -4,21 +4,21 @@ model_dir = "models"
 [network]
 decoder_n_hidden_layers = 4
 decoder_hidden_dim = 128
-nl = "sine"                 # 'sine' | 'relu' | 'softplus'
+nl = "sine"
 sphere_init_params = [1.6, 1.0]
-init_type = "mfgi"    # 'siren' | 'geometric_sine' | 'geometric_relu' | 'mfgi'
-neuron_type = "quadratic"          # 'linear' | 'quadratic'
+init_type = "mfgi"
+neuron_type = "quadratic"
 
 [loss]
-loss_type = 'siren_wo_n_w_div' # 'siren_wo_n_w_div' | 'siren_wo_n' | 'siren_w_div' | 'siren'
-loss_weights = [3e3, 1e2, 1e2, 5e1, 1e2, 0.0, 0.0] # sdf, inter, normal, eikonal, div, latent, heat
-div_type = "dir_l1" # 'dir_l1' | 'dir_l2' | 'full_l1' | 'full_l2'
-div_decay = "linear" # 'linear' | 'quintic' | 'step'
+loss_type = 'siren_wo_n_w_div'
+loss_weights = [3e3, 1e2, 1e2, 5e1, 1e2, 0.0, 0.0]
+div_type = "dir_l1"
+div_decay = "linear"
 div_decay_params = [1e2, 0.2, 1e2, 0.4, 0.0, 0.0]
 
 [sampling]
 grid_res = 256
-nonmnfld_sample_type = "grid" # We are using importance sampling so the coefficient changes
+nonmnfld_sample_type = "grid"
 n_random_samples = 4096
 n_points = 15000
 grid_range = 1.2
@@ -45,5 +45,5 @@ n_vis_normals = 100
 save_video = true
 compute_losses_on_vis_grid = 0
 video_fps = 6
-vis_contour_range = [-1.0, 1.0]
+# vis_contour_range = [-1.0, 1.0]
 vis_gt_shape = true

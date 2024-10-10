@@ -130,7 +130,7 @@ def plot_contours(
             mnfld_points[:, 1],
             mnfld_normals_gt[:, 0],
             mnfld_normals_gt[:, 1],
-            line=dict(color="rgba(0, 255, 0, 0.5)"),
+            line=dict(color="rgba(217, 22, 86, 0.8)"),
         )
         traces.append(f.data[0])
     # Plot normal vectors
@@ -140,7 +140,7 @@ def plot_contours(
             mnfld_points[:, 1],
             mnfld_normals[:, 0],
             mnfld_normals[:, 1],
-            line=dict(color="rgba(255, 0, 0, 0.5)"),
+            line=dict(color="rgba(255, 235, 85, 0.8)"),
         )
         traces.append(f.data[0])
 
