@@ -22,7 +22,8 @@ eikonal_decay_params = [0.01, 0.7, 0.01, 3] # start, (location, value)*, end
 [sampling]
 grid_res = 256
 nonmnfld_sample_type = "uniform_central_gaussian"
-n_random_samples = 4096
+n_random_samples = 32766
+#4096
 n_points = 15000
 grid_range = 1.5
 nonmnfld_sample_std = 0.5
