@@ -50,12 +50,12 @@ def default_layout(grid_range=1.0, show_ax=True, title_text="default_title"):
 
 
 def plot_contours(
-    x_grid, y_grid, z_grid, mnfld_points=None, mnfld_normals=None, mnfld_normals_gt=None, colorscale="Geyser", show_scale=True, show_ax=True, title_text="", grid_range=1.2, contour_interval=0.05, layout=None, contour_range=None, marker_size=2
+    x_grid, y_grid, z_grid, mnfld_points=None, mnfld_normals=None, mnfld_normals_gt=None, colorscale="Geyser", show_scale=True, show_ax=True, title_text="", grid_range=1.2, contour_interval=0.05, layout=None, contour_range=None, marker_size=2, gt_traces=[]
 ):
     traces = []
 
     # Decide contour start and end based on the range of the implicit function
-    if contour_range is None:
+    if contour_range is None or len(contour_range) != 2:
         z_abs_max = np.abs(z_grid).max()
         z_abs_max = 10 * contour_interval * np.ceil(z_abs_max / 10 / contour_interval)
         contour_start = -z_abs_max
@@ -63,6 +63,9 @@ def plot_contours(
     else:
         contour_start = contour_range[0]
         contour_end = contour_range[1]
+
+    if len(gt_traces) > 0:
+        traces += gt_traces
 
     # Plot implicit function contour
     traces.append(
@@ -120,23 +123,24 @@ def plot_contours(
         )
         traces.append(mnfld_points_scatter)
 
-    # Plot normal vectors
+    # Plot gt normal vectors
     if mnfld_normals_gt is not None:
         f = ff.create_quiver(
             mnfld_points[:, 0],
             mnfld_points[:, 1],
             mnfld_normals_gt[:, 0],
             mnfld_normals_gt[:, 1],
-            line=dict(color="rgb(0, 255, 0)"),
+            line=dict(color="rgba(217, 22, 86, 0.8)"),
         )
         traces.append(f.data[0])
+    # Plot normal vectors
     if mnfld_normals is not None:
         f = ff.create_quiver(
             mnfld_points[:, 0],
             mnfld_points[:, 1],
             mnfld_normals[:, 0],
             mnfld_normals[:, 1],
-            line=dict(color="rgb(255, 0, 0)"),
+            line=dict(color="rgba(255, 235, 85, 0.8)"),
         )
         traces.append(f.data[0])
 

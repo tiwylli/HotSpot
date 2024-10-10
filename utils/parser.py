@@ -87,6 +87,13 @@ def get_train_args():
         help="Number of iterations between visualizations.",
     )
     parser.add_argument(
+        "--vis_contour_range",
+        nargs="+",
+        type=float,
+        default=None,
+        help="Range of the contour plot.",
+    )
+    parser.add_argument(
         "--log_interval",
         type=int,
         default=100,
@@ -133,6 +140,9 @@ def get_train_args():
     )
     parser.add_argument(
         "--compute_metrics", type=bool, default=False, help="Indicator to compute metrics."
+    )
+    parser.add_argument(
+        "--vis_gt_shape", type=bool, default=False, help="Indicator to visualize ground truth shape."
     )
 
     # Network architecture and loss

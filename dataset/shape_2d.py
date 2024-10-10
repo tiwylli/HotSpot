@@ -1,6 +1,7 @@
 import numpy as np
 from dataset.shape_base import ShapeBase
 from matplotlib.path import Path
+import plotly.graph_objects as go
 
 
 class Circle(ShapeBase):
@@ -54,6 +55,12 @@ class Circle(ShapeBase):
         distances = point_dist - self.r
         normals = vector / point_dist
         return distances, normals
+
+    def get_trace(self, color="rgba(0, 0, 255, 0.5)"):
+        theta = np.linspace(0, 2 * np.pi, 100)
+        x = self.r * np.sin(theta) + self.center[0]
+        y = self.r * np.cos(theta) + self.center[1]
+        return [go.Scatter(x=x, y=y, mode="lines", line=dict(color=color, dash="dash"), showlegend=False)]
 
 
 class Polygon(ShapeBase):
@@ -237,6 +244,11 @@ class Polygon(ShapeBase):
 
         return lines
 
+    def get_trace(self, color="rgba(0, 0, 255, 0.5)"):
+        x = np.concatenate([self.vertices[:, 0], [self.vertices[0, 0]]])
+        y = np.concatenate([self.vertices[:, 1], [self.vertices[0, 1]]])
+        return [go.Scatter(x=x, y=y, mode="lines", line=dict(color=color, dash="dash"), showlegend=False)]
+
 
 class Union(ShapeBase):
     def __init__(self, shapes=[]):
@@ -296,7 +308,12 @@ class Union(ShapeBase):
             distances,
             normals,
         )
-
+    
+    def get_trace(self, color="rgba(0, 0, 255, 0.5)"):
+        traces = []
+        for shape in self.shapes:
+            traces += shape.get_trace(color)
+        return traces
 
 def koch_line(start, end, factor):
     """
