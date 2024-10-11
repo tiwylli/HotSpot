@@ -3,12 +3,12 @@ MODEL_DIR=$ROOT_DIR'models'
 THIS_FILE=$(basename "$0")
 TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
 
-CONFIG_DIR=$ROOT_DIR'configs/curv_recon.toml' # change to your config file path
-IDENTIFIER='spin_curv'                                                   # change to your desired identifier
+CONFIG_DIR=$ROOT_DIR'configs/curv_recon_seaurchin.toml' # change to your config file path
+IDENTIFIER='spin_seaurchin'                                                   # change to your desired identifier
 LOG_DIR='./log/2d_curv/'                                           # change to your desired log path
 mkdir -p $LOG_DIR
 
-for SHAPE_TYPE in 'boomerangs' 'fragments' 'house' 'seaurchin' 'target' 'circle' 'L' 'square' 'snowflake' 'starhex' 'button'  'bearing' 'snake' 'peace' ; do # for SHAPE_TYPE in 'circle' 'L' 'square' 'snowflake' 'starhex' 'button' 'target' 'bearing' 'snake' 'seaurchin' 'peace' 'boomerangs' 'fragments' 'house'; do
+for SHAPE_TYPE in  'seaurchin'; do # for SHAPE_TYPE in 'circle' 'L' 'square' 'snowflake' 'starhex' 'button' 'target' 'bearing' 'snake' 'seaurchin' 'peace' 'boomerangs' 'fragments' 'house'; do
     cp -r scripts/$THIS_FILE $LOG_DIR
     cp -r $CONFIG_DIR $LOG_DIR
     echo $SHAPE_TYPE
