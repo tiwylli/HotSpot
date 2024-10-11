@@ -10,12 +10,11 @@ init_type = "mfgi"
 neuron_type = "quadratic"
 
 [loss]
-loss_type = 'siren_wo_n_w_div'
+loss_type = 'siren_w_div'
 loss_weights = [3e3, 1e2, 1e2, 5e1, 1e2, 0.0, 0.0]
 div_type = "dir_l1"
 div_decay = "linear"
-# div_decay_params = [1e2, 0.2, 1e2, 0.4, 0.0, 0.0]
-div_decay_params = [1e2, 0.6, 1e2, 0.8, 0.0, 0.0]
+div_decay_params = [1e2, 0.2, 1e2, 0.4, 0.0, 0.0]
 
 [sampling]
 grid_res = 256

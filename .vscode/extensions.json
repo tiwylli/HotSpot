@@ -3,5 +3,6 @@
         "donjayamanne.python-extension-pack",
         "ms-python.black-formatter",
         "tamasfe.even-better-toml",
+        "foxundermoon.shell-format",
     ]
 }
