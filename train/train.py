@@ -1,20 +1,23 @@
-import os, sys
+import os
+import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dataset import shape_2d
-import recon_dataset as dataset
-import torch
+from PIL import Image
+
 import numpy as np
-import models.Net as model
-import models.Heat as heatModel
-from models.losses import Loss
+import torch
 import torch.nn.parallel
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from dataset import shape_2d
+import models.Net as model
+import models.Heat as heatModel
+from models.losses import Loss
+import recon_dataset as dataset
 import utils.utils as utils
-from utils import parser
 import utils.visualizations as vis
-from PIL import Image
+from utils import parser
 
 
 def visualize_model(
@@ -106,7 +109,7 @@ def visualize_model(
         img = Image.fromarray(diff_contour_img)
         img.save(os.path.join(output_dir, "diff_" + str(batch_idx).zfill(6) + ".png"))
 
-    # Compute metrics: RMSE, MAE
+    # Compute metrics: RMSE, MAE, MAPE, SMAPE
     if args.compute_metrics:
         vis_grid_pred_np = (
             vis_grid_pred.detach().cpu().numpy().reshape(args.vis_grid_res, args.vis_grid_res)

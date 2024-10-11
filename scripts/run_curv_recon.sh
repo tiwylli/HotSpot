@@ -12,5 +12,5 @@ for SHAPE_TYPE in 'boomerangs' 'fragments' 'house' 'seaurchin' 'target' 'circle'
     cp -r scripts/$THIS_FILE $LOG_DIR
     cp -r $CONFIG_DIR $LOG_DIR
     echo $SHAPE_TYPE
-    python3 train/train.py --config $CONFIG_DIR --log_dir $LOG_DIR/$IDENTIFIER$TIMESTAMP/$SHAPE_TYPE --model_dir $MODEL_DIR --shape_type $SHAPE_TYPE
+    python3 train/train.py --config $CONFIG_DIR --log_dir $EXP_DIR/$SHAPE_TYPE --model_dir $MODEL_DIR --shape_type $SHAPE_TYPE --saved_model_dir $SAVED_MODEL_DIR
 done

@@ -19,15 +19,15 @@ class ShapeBase(data.Dataset):
         resample=True,
         dim=3,
     ):
-        print("n_points:", n_points)
-        print("n_samples:", n_samples)
-        print("grid_res:", grid_res)
-        print("sample_type:", sample_type)
-        print("sampling_std:", sampling_std)
-        print("n_random_sample:", n_random_samples)
-        print("grid_range:", grid_range)
-        print("resample:", resample)
-        print("dim:", dim)
+        # print("n_points:", n_points)
+        # print("n_samples:", n_samples)
+        # print("grid_res:", grid_res)
+        # print("sample_type:", sample_type)
+        # print("sampling_std:", sampling_std)
+        # print("n_random_sample:", n_random_samples)
+        # print("grid_range:", grid_range)
+        # print("resample:", resample)
+        # print("dim:", dim)
 
         self.n_points = n_points
         self.n_samples = n_samples
