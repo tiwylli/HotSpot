@@ -39,7 +39,7 @@ def compute_dists(recon_points, gt_points, eval_type="Default"):
 if __name__ == "__main__":
     device = torch.device("cuda")
     args = parser.get_train_args()
-    args.vis_grid_res = 512 # hardcode vis_grid_res to 512
+    args.vis_grid_res = 2048 # hardcode vis_grid_res to 2048
     assert args.task == "2d", "This script is only for 2D shapes"
     exp_path = args.log_dir
     out_path = os.path.join(exp_path, "metric_summary.txt")
