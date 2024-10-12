@@ -46,29 +46,6 @@ def visualize_model(
         )
         mnfld_normals_gt = data["mnfld_normals_gt"]
 
-    gt_contour_img = vis.plot_contours(
-        x_grid=x_grid,
-        y_grid=y_grid,
-        z_grid=vis_grid_dists_gt.squeeze(),
-        mnfld_points=(
-            mnfld_points[0][: args.n_vis_normals].detach().cpu().numpy()
-            if args.vis_normals
-            else None
-        ),
-        mnfld_normals=None,
-        mnfld_normals_gt=mnfld_normals_gt[0][: args.n_vis_normals] if args.vis_normals else None,
-        colorscale="RdBu_r",
-        show_scale=True,
-        show_ax=True,
-        title_text=f"GT, epoch {batch_idx}",
-        grid_range=args.vis_grid_range,
-        contour_interval=args.vis_contour_interval,
-        contour_range=args.vis_contour_range,
-        gt_traces=shape.get_trace(color="rgb(128, 128, 128)") if args.vis_gt_shape else [],
-    )
-    img = Image.fromarray(gt_contour_img)
-    img.save(os.path.join(output_dir, "gt_" + str(batch_idx).zfill(6) + ".png"))
-
     sdf_contour_img = vis.plot_contours(
         x_grid=x_grid,
         y_grid=y_grid,
