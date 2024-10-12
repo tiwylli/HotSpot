@@ -222,7 +222,7 @@ if __name__ == "__main__":
         SMAPEs.append(smape)
 
         logging.info(
-            f"{shape_name}: IoU = {iou:.4f}, Chamfer = {chamfer_dist:.4e}, Hausdorff = {hausdorff_dist:.4f}, RMSE = {rmse:.4f}, MAE = {mae:.4f}, MAPE = {mape:.4f}, SMAPE = {smape:.4f}"
+            f"{shape_name}: IoU = {iou:.4f}, Chamfer = {chamfer_dist:.4e}, Hausdorff = {hausdorff_dist:.4e}, RMSE = {rmse:.4f}, MAE = {mae:.4f}, MAPE = {mape:.4f}, SMAPE = {smape:.4f}"
         )
 
     # Calculate mean, median, and std
@@ -241,7 +241,7 @@ if __name__ == "__main__":
         f"Chamfer (mean/median/std): {chamfer_distances.mean():.4e}/{np.median(chamfer_distances):.4e}/{chamfer_distances.std():.4e}"
     )
     logging.info(
-        f"Hausdorff (mean/median/std): {hausdorff_distances.mean():.4f}/{np.median(hausdorff_distances):.4f}/{hausdorff_distances.std():.4f}"
+        f"Hausdorff (mean/median/std): {hausdorff_distances.mean():.4e}/{np.median(hausdorff_distances):.4e}/{hausdorff_distances.std():.4e}"
     )
     logging.info(
         f"RMSE (mean/median/std): {np.mean(RMSEs):.4f}/{np.median(RMSEs):.4f}/{np.std(RMSEs):.4f}"
