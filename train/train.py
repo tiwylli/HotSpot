@@ -10,18 +10,28 @@ import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dataset import shape_2d
+from dataset import shape_2d, shape_3d
 import models.Net as model
 import models.Heat as heatModel
 from models.losses import Loss
-import recon_dataset as dataset
+
+# import recon_dataset as dataset
 import utils.utils as utils
 import utils.visualizations as vis
 from utils import parser
 
 
 def visualize_model(
-    vis_grid_points, mnfld_points, vis_pred, vis_grid_dists_gt, data, batch_idx, args, shape
+    x_grid,
+    y_grid,
+    vis_grid_points,
+    mnfld_points,
+    vis_pred,
+    vis_grid_dists_gt,
+    data,
+    batch_idx,
+    args,
+    shape,
 ):
     vis_pred = model(vis_grid_points, mnfld_points)
     vis_grid_pred = vis_pred[
@@ -36,9 +46,32 @@ def visualize_model(
         )
         mnfld_normals_gt = data["mnfld_normals_gt"]
 
+    gt_contour_img = vis.plot_contours(
+        x_grid=x_grid,
+        y_grid=y_grid,
+        z_grid=vis_grid_dists_gt.squeeze(),
+        mnfld_points=(
+            mnfld_points[0][: args.n_vis_normals].detach().cpu().numpy()
+            if args.vis_normals
+            else None
+        ),
+        mnfld_normals=None,
+        mnfld_normals_gt=mnfld_normals_gt[0][: args.n_vis_normals] if args.vis_normals else None,
+        colorscale="RdBu_r",
+        show_scale=True,
+        show_ax=True,
+        title_text=f"GT, epoch {batch_idx}",
+        grid_range=args.vis_grid_range,
+        contour_interval=args.vis_contour_interval,
+        contour_range=args.vis_contour_range,
+        gt_traces=shape.get_trace(color="rgb(128, 128, 128)") if args.vis_gt_shape else [],
+    )
+    img = Image.fromarray(gt_contour_img)
+    img.save(os.path.join(output_dir, "gt_" + str(batch_idx).zfill(6) + ".png"))
+
     sdf_contour_img = vis.plot_contours(
-        x_grid=x,
-        y_grid=y,
+        x_grid=x_grid,
+        y_grid=y_grid,
         z_grid=vis_grid_pred.detach().cpu().numpy().reshape(args.vis_grid_res, args.vis_grid_res),
         mnfld_points=(
             mnfld_points[0][: args.n_vis_normals].detach().cpu().numpy()
@@ -71,8 +104,8 @@ def visualize_model(
             )
         )
         heat_contour_img = vis.plot_contours(
-            x_grid=x,
-            y_grid=y,
+            x_grid=x_grid,
+            y_grid=y_grid,
             z_grid=vis_grid_heat,
             mnfld_points=None,
             mnfld_normals=None,
@@ -93,8 +126,8 @@ def visualize_model(
             vis_grid_pred.squeeze().detach().cpu().numpy() - vis_grid_dists_gt.squeeze()
         ).reshape(args.vis_grid_res, args.vis_grid_res)
         diff_contour_img = vis.plot_contours(
-            x_grid=x,
-            y_grid=y,
+            x_grid=x_grid,
+            y_grid=y_grid,
             z_grid=vis_grid_diff,
             mnfld_points=None,
             mnfld_normals=None,
@@ -158,16 +191,19 @@ if __name__ == "__main__":
     # change random seed for training set (so it will be different from test set
     np.random.seed(0)
     if args.task == "3d":
-        train_set = dataset.ReconDataset(
+        print("Loading 3D dataset")
+        train_set = shape_3d.ReconDataset(
             file_path=file_path,
             n_points=args.n_points,
             n_samples=args.n_iterations,
             grid_res=args.grid_res,
             grid_range=args.grid_range,
             sample_type=args.nonmnfld_sample_type,
-            sampling_std2=args.nonmnfld_sample_std,
+            sampling_std=args.nonmnfld_sample_std,
             n_random_samples=args.n_random_samples,
+            resample=True,
         )
+        print("Done")
         in_dim = 3
     elif args.task == "2d":
         train_set = shape_2d.get2D_dataset(
@@ -237,9 +273,9 @@ if __name__ == "__main__":
     xx, yy = xx.ravel(), yy.ravel()
     vis_grid_points = np.stack([xx, yy], axis=-1)
     if in_dim == 3:
-        z = np.zeros((args.vis_grid_res, args.vis_grid_res, 1))
-        vis_grid_points = np.concatenate([xx, yy, z], axis=-1)
-    vis_grid_points = vis_grid_points[None, ...]  # (1, grid_res * grid_res, dim)
+        z = np.zeros((args.vis_grid_res**2, 1))
+        vis_grid_points = np.concatenate([vis_grid_points, z], axis=-1)
+    vis_grid_points = vis_grid_points[None, ...]  # (1, grid_res ** 2, dim)
     vis_grid_points = torch.tensor(vis_grid_points, dtype=torch.float32).to(device)
     vis_grid_points.requires_grad_()
 
@@ -252,14 +288,14 @@ if __name__ == "__main__":
             nonmnfld_points,
             nonmnfld_pdfs,
             nonmnfld_dists_gt,
-            grid_dists_gt,
+            # grid_dists_gt,
         ) = (
             data["mnfld_points"].to(device),
             data["mnfld_normals_gt"].to(device),
             data["nonmnfld_points"].to(device),
             data["nonmnfld_pdfs"].to(device),
             data["nonmnfld_dists_gt"].to(device),
-            data["grid_dists_gt"].to(device),
+            # data["grid_dists_gt"].to(device),
         )
         mnfld_points.requires_grad_()
         nonmnfld_points.requires_grad_()
@@ -285,8 +321,11 @@ if __name__ == "__main__":
             vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
                 vis_grid_points[0].detach().cpu().numpy()
             )  # (vis_grid_res * vis_grid_res, 1)
+            vis_grid_dists_gt = vis_grid_dists_gt.reshape(args.vis_grid_res, args.vis_grid_res)
 
             visualize_model(
+                x_grid=x,
+                y_grid=y,
                 vis_grid_points=vis_grid_points,
                 mnfld_points=mnfld_points,
                 vis_pred=vis_pred,
@@ -429,6 +468,8 @@ if __name__ == "__main__":
         )  # (vis_grid_res * vis_grid_res, 1)
 
         visualize_model(
+            x_grid=x,
+            y_grid=y,
             vis_grid_points=vis_grid_points,
             mnfld_points=mnfld_points,
             vis_pred=vis_pred,
