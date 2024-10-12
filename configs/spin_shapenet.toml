@@ -5,34 +5,36 @@ model_dir = "models"
 decoder_n_hidden_layers = 5
 decoder_hidden_dim = 128
 nl = "sine"
-sphere_init_params = [1.6, 0.1]
+sphere_init_params = [1.6, 1.0]
 init_type = "mfgi"
 neuron_type = "quadratic"
 
 [loss]
 loss_type = "igr_w_heat"
-loss_weights = [ 4, 0, 0, 0.1, 0, 0, 1, ]
+loss_weights = [4, 0, 0, 0.1, 0, 0, 1]
 div_type = "dir_l1"
 div_decay = "linear"
-div_decay_params = [ 100.0, 0.2, 100.0, 0.4, 0.0, 0.0, ]
+div_decay_params = [100.0, 0.2, 100.0, 0.4, 0.0, 0.0]
 heat_decay = "linear"
 heat_decay_params = [1, 0.2, 1, 0.4, 0.1, 0.1]
 
 [sampling]
 grid_res = 256
-nonmnfld_sample_type = "uniform"
-n_random_samples = 8192
+nonmnfld_sample_type = "uniform_central_gaussian"
+n_random_samples = 4096
 n_points = 15000
-grid_range = 1.2
-nonmnfld_sample_std2 = 0.027
+grid_range = 1.5
+nonmnfld_sample_std = 0.5
 
 [training]
+train = true
+eval = true
 task = "3d"
-n_iterations = 10000
+n_iterations = 20000
 gpu_idx = 0
-lr = 5e-5
+lr = 1e-4
 grad_clip_norm = 10.0
-heat_lambda = 10.0
+heat_lambda = 60.0
 vis_interval = 100
 log_interval = 100
 
@@ -40,3 +42,10 @@ log_interval = 100
 vis_grid_res = 256
 vis_grid_range = 1.2
 vis_contour_interval = 0.025
+vis_normals = true
+n_vis_normals = 100
+vis_heat = true
+vis_gt_shape = false
+save_video = true
+video_fps = 6
+compute_losses_on_vis_grid = 0

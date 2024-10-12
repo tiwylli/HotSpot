@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import dataset.shape_2d as dataset
 import models.Net as model
 import utils.parser as parser
+import plotly.graph_objects as go
 
 
 def compute_dists(recon_points, gt_points, eval_type="Default"):
@@ -82,10 +83,10 @@ if __name__ == "__main__":
         "bearing",
         "snake",
         "seaurchin",
-        "peace",
+        # "peace",
         "boomerangs",
         "fragments",
-        "house",
+        # "house",
     ]
     shape_names = sorted(shape_names)
 
@@ -127,6 +128,40 @@ if __name__ == "__main__":
         occupancies_gt = (dists_gt.reshape(-1) < 0).astype(int)
 
         iou = (occupancies_gt & occupancies_pred).sum() / (occupancies_gt | occupancies_pred).sum()
+
+        # # Plot occupancies for debug
+        # # Create an array containing the coords of the occupied points
+        # occupied_pred = vis_grid_points[0, occupancies_pred == 1].cpu().numpy()
+        # occupied_gt = vis_grid_points[0, occupancies_gt == 1].cpu().numpy()
+        # fig = go.Figure()
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=occupied_pred[:, 0],
+        #         y=occupied_pred[:, 1],
+        #         mode="markers",
+        #         marker=dict(
+        #             size=3,
+        #             color="red",
+        #             opacity=0.8,
+        #             showscale=True,
+        #         ),
+        #     )
+        # ) 
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=occupied_gt[:, 0],
+        #         y=occupied_gt[:, 1],
+        #         mode="markers",
+        #         marker=dict(
+        #             size=3,
+        #             color="blue",
+        #             opacity=0.8,
+        #             showscale=True,
+        #         ),
+        #     )
+        # )
+        # fig.show()
+        # exit(0)
 
         # Compute Chamfer and Hausdorff distances
         gt_points = test_set.mnfld_points

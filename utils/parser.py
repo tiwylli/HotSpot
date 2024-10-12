@@ -4,7 +4,6 @@ import torch
 import os
 import numpy as np
 
-
 def get_train_args():
     parser = configargparse.ArgParser(description="Local implicit functions experiment.")
     parser.add_argument("--config", is_config_file=True, help="Config file path.")
@@ -115,7 +114,7 @@ def get_train_args():
         help="Interval for level set visualization.",
     )
     parser.add_argument(
-        "--vis_normals", type=bool, default=False, help="Indicator to visualize normals."
+        "--vis_normals", action="store_true", help="Indicator to visualize normals."
     )
     parser.add_argument(
         "--n_vis_normals",
@@ -124,25 +123,25 @@ def get_train_args():
         help="Number of normals to visualize.",
     )
     parser.add_argument(
-        "--vis_heat", type=bool, default=False, help="Indicator to visualize heat."
+        "--vis_heat", action="store_true", help="Indicator to visualize heat."
     )
     parser.add_argument(
-        "--vis_diff", type=bool, default=False, help="Indicator to visualize difference image."
+        "--vis_diff", action="store_true", help="Indicator to visualize difference image."
     )
     parser.add_argument(
-        "--save_video", type=bool, default=False, help="Indicator to save video."
+        "--save_video", action="store_true", help="Indicator to save video."
     )
     parser.add_argument(
         "--video_fps", type=int, default=6, help="Frames per second for video."
     )
     parser.add_argument(
-        "--vis_final", type=bool, default=False, help="Indicator to visualize final result."
+        "--vis_final", action="store_true", help="Indicator to visualize final result."
     )
     parser.add_argument(
-        "--compute_metrics", type=bool, default=False, help="Indicator to compute metrics."
+        "--compute_metrics", action="store_true", help="Indicator to compute metrics."
     )
     parser.add_argument(
-        "--vis_gt_shape", type=bool, default=False, help="Indicator to visualize ground truth shape."
+        "--vis_gt_shape", action="store_true", help="Indicator to visualize ground truth shape."
     )
 
     # Network architecture and loss

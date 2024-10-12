@@ -87,9 +87,17 @@ class ShapeBase(data.Dataset):
         )
         xx, yy = np.meshgrid(x, y)
         xx, yy = xx.ravel(), yy.ravel()
-        self.grid_points = np.stack([xx, yy], axis=1).astype("f")
-        self.grid_dist, self.grid_n = self.get_points_distances_and_normals(self.grid_points)
-        self.dist_img = np.reshape(self.grid_dist, [self.grid_res, self.grid_res])
+        if self.dim == 3:
+            z = np.linspace(-self.grid_range, self.grid_range, self.grid_res)
+            zz = np.meshgrid(z)
+            zz = zz.ravel()
+            self.grid_points = np.stack([xx, yy, zz], axis=1).astype("f")
+        elif self.dim == 2:
+            self.grid_points = np.stack([xx, yy], axis=1).astype("f")
+        else:
+            raise ValueError("Invalid dimension of dataset")
+        # self.grid_dist, self.grid_n = self.get_points_distances_and_normals(self.grid_points)
+        # self.dist_img = np.reshape(self.grid_dist, [self.grid_res, self.grid_res])
 
     def get_nonmnfld_points_and_pdfs(self, sample_type=None, n_nonmnfld_samples=None):
         # Default pdf is uniform
@@ -271,7 +279,7 @@ class ShapeBase(data.Dataset):
             self.nonmnfld_points
         )
 
-        self.dist_img = np.reshape(self.grid_dist, [self.grid_res, self.grid_res])
+        # self.dist_img = np.reshape(self.grid_dist, [self.grid_res, self.grid_res])
 
     def generate_batch_indices(self):
         mnfld_idx = []
@@ -306,7 +314,7 @@ class ShapeBase(data.Dataset):
             "nonmnfld_normals_gt": self.nonmnfld_normals_gt[nonmnfld_idx],  # (n_nonmnfld_samples, dim)
             "nonmnfld_points": self.nonmnfld_points[nonmnfld_idx],  # (n_nonmnfld_samples, dim)
             "nonmnfld_pdfs": nonmnfld_pdfs,  # (n_nonmnfld_samples, 1)
-            "grid_dists_gt": self.grid_dist,  # (grid_res * grid_res, 1)
+            # "grid_dists_gt": self.grid_dist,  # (grid_res * grid_res, 1)
         }
 
     def __len__(self):

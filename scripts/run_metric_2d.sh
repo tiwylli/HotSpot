@@ -4,7 +4,7 @@ THIS_FILE=$(basename "$0")
 
 CONFIG_DIR=$ROOT_DIR'configs/spin_2d.toml' # Change to your config file path
 LOG_DIR=$ROOT_DIR'log/2D/'                 # Change to your log path
-IDENTIFIER='DiGS_2D-2024-10-09-17-31-19'   # change to your desired identifier
+IDENTIFIER='StEik2D-2024-10-09-16-26-06'   # change to your desired identifier
 CONFIG_DIR=$LOG_DIR/$IDENTIFIER/*.toml
 EXP_DIR=$LOG_DIR$IDENTIFIER/
 

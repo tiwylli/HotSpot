@@ -494,6 +494,7 @@ class Circle(BasicShape2D):
     def get_points_distances_and_normals(self, points):
         point_dist = np.linalg.norm(points, axis=1, keepdims=True)
         distances = point_dist - self.r
+        distances = np.ones_like(distances)
         normals = points / point_dist
         return distances, normals
 
