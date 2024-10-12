@@ -83,10 +83,10 @@ if __name__ == "__main__":
         "bearing",
         "snake",
         "seaurchin",
-        # "peace",
+        "peace",
         "boomerangs",
         "fragments",
-        # "house",
+        "house",
     ]
     shape_names = sorted(shape_names)
 
@@ -197,6 +197,11 @@ if __name__ == "__main__":
     IoUs = np.array(IoUs)
     chamfer_distances = np.array(chamfer_distances)
     hausdorff_distances = np.array(hausdorff_distances)
+    # clear nan and inf values
+    MAPEs = np.array(MAPEs)
+    MAPEs = MAPEs[np.isfinite(MAPEs)]
+    SMAPEs = np.array(SMAPEs)
+    SMAPEs = SMAPEs[np.isfinite(SMAPEs)]
 
     logging.info("")
     logging.info(f"IoU (mean/median/std): {IoUs.mean():.4f}/{np.median(IoUs):.4f}/{IoUs.std():.4f}")

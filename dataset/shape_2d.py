@@ -172,7 +172,7 @@ class Polygon(ShapeBase):
 
         d1 = np.linalg.norm(pp1, axis=0)
         d2 = np.linalg.norm(pp2, axis=0)
-        dp = np.sqrt(np.square(d1) - np.square(r * np.array(self.lines['line_length'])[:, None]))
+        dp = np.sqrt(np.maximum(np.square(d1) - np.square(r * np.array(self.lines['line_length'])[:, None]), 0))
         d = np.where(r < 0, d1, np.where(r > 1, d2, dp))
         distances = np.min(d, axis=0)
         idx = np.argmin(d, axis=0)
@@ -186,8 +186,20 @@ class Polygon(ShapeBase):
                                           [1, 1, n_grid_points])))
         normals = np.take_along_axis(n, idx[None, None, :], axis=1).squeeze().transpose()
         normals = point_sign[:, None] * normals / np.linalg.norm(normals, axis=1, keepdims=True)
+
+        # Check if vertices are clockwise or anticlockwise
+        sum = 0
+        for i in range(len(self.vertices)):
+            x1, y1 = self.vertices[i]
+            x2, y2 = self.vertices[(i + 1) % len(self.vertices)]
+            sum += (x2 - x1) * (y2 + y1)
+        if sum < 0:
+            # Anticlockwise vertices
+            distances = -distances
+
         distances = point_sign * distances
         distances = distances[:, None]
+        distances *= 1 if self.outward_normal else -1
         normals *= 1 if self.outward_normal else -1
 
         return distances, normals

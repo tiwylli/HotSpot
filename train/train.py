@@ -14,6 +14,7 @@ from dataset import shape_2d, shape_3d
 import models.Net as model
 import models.Heat as heatModel
 from models.losses import Loss
+
 # import recon_dataset as dataset
 import utils.utils as utils
 import utils.visualizations as vis
@@ -21,7 +22,16 @@ from utils import parser
 
 
 def visualize_model(
-    x_grid, y_grid, vis_grid_points, mnfld_points, vis_pred, vis_grid_dists_gt, data, batch_idx, args, shape
+    x_grid,
+    y_grid,
+    vis_grid_points,
+    mnfld_points,
+    vis_pred,
+    vis_grid_dists_gt,
+    data,
+    batch_idx,
+    args,
+    shape,
 ):
     vis_pred = model(vis_grid_points, mnfld_points)
     vis_grid_pred = vis_pred[
@@ -36,24 +46,28 @@ def visualize_model(
         )
         mnfld_normals_gt = data["mnfld_normals_gt"]
 
-    # gt_contour_img = vis.plot_contours(
-    #     x_grid=x_grid,
-    #     y_grid=y_grid,
-    #     z_grid=vis_grid_dists_gt.squeeze(),
-    #     mnfld_points=None,
-    #     mnfld_normals=None,
-    #     mnfld_normals_gt=None,
-    #     colorscale="RdBu_r",
-    #     show_scale=True,
-    #     show_ax=True,
-    #     title_text=f"GT, epoch {batch_idx}",
-    #     grid_range=args.vis_grid_range,
-    #     contour_interval=args.vis_contour_interval,
-    #     contour_range=args.vis_contour_range,
-    #     gt_traces=shape.get_trace(color="rgb(128, 128, 128)") if args.vis_gt_shape else [],
-    # )
-    # img = Image.fromarray(gt_contour_img)
-    # img.save(os.path.join(output_dir, "gt_" + str(batch_idx).zfill(6) + ".png"))
+    gt_contour_img = vis.plot_contours(
+        x_grid=x_grid,
+        y_grid=y_grid,
+        z_grid=vis_grid_dists_gt.squeeze(),
+        mnfld_points=(
+            mnfld_points[0][: args.n_vis_normals].detach().cpu().numpy()
+            if args.vis_normals
+            else None
+        ),
+        mnfld_normals=None,
+        mnfld_normals_gt=mnfld_normals_gt[0][: args.n_vis_normals] if args.vis_normals else None,
+        colorscale="RdBu_r",
+        show_scale=True,
+        show_ax=True,
+        title_text=f"GT, epoch {batch_idx}",
+        grid_range=args.vis_grid_range,
+        contour_interval=args.vis_contour_interval,
+        contour_range=args.vis_contour_range,
+        gt_traces=shape.get_trace(color="rgb(128, 128, 128)") if args.vis_gt_shape else [],
+    )
+    img = Image.fromarray(gt_contour_img)
+    img.save(os.path.join(output_dir, "gt_" + str(batch_idx).zfill(6) + ".png"))
 
     sdf_contour_img = vis.plot_contours(
         x_grid=x_grid,
@@ -253,7 +267,7 @@ if __name__ == "__main__":
     xx, yy = xx.ravel(), yy.ravel()
     vis_grid_points = np.stack([xx, yy], axis=-1)
     if in_dim == 3:
-        z = np.zeros((args.vis_grid_res ** 2, 1))
+        z = np.zeros((args.vis_grid_res**2, 1))
         vis_grid_points = np.concatenate([vis_grid_points, z], axis=-1)
     vis_grid_points = vis_grid_points[None, ...]  # (1, grid_res ** 2, dim)
     vis_grid_points = torch.tensor(vis_grid_points, dtype=torch.float32).to(device)
