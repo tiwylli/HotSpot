@@ -168,12 +168,43 @@ if __name__ == "__main__":
         contours = measure.find_contours(
             dists_pred.reshape(args.vis_grid_res, args.vis_grid_res), level=0
         )
-        contours = [contour / (args.vis_grid_res - 1) * 2 - 1 for contour in contours]
+        contours = [contour / (args.vis_grid_res - 1) * 2 * args.vis_grid_range - args.vis_grid_range for contour in contours]
         pred_points = np.concatenate(contours, axis=0)
+        pred_points = np.stack([pred_points[:, 1], pred_points[:, 0]], axis=-1)
 
         chamfer_dist, hausdorff_dist, cd_re2gt, cd_gt2re, hd_re2gt, hd_gt2re = compute_dists(
             pred_points, gt_points, eval_type="DeepSDF"
         )
+
+        # # Visualize contour points
+        # fig = go.Figure()
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=pred_points[:, 0],
+        #         y=pred_points[:, 1],
+        #         mode="markers",
+        #         marker=dict(
+        #             size=3,
+        #             color="blue",
+        #             opacity=0.5,
+        #             showscale=True,
+        #         ),
+        #     )
+        # ) 
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=gt_points[:, 0],
+        #         y=gt_points[:, 1],
+        #         mode="markers",
+        #         marker=dict(
+        #             size=3,
+        #             color="green",
+        #             opacity=0.5,
+        #             showscale=True,
+        #         ),
+        #     )
+        # )
+        # fig.show()
 
         # Compute RMSE, MAE, MAPE, SMAPE
         rmse = np.sqrt(np.mean((dists_gt - dists_pred) ** 2))
