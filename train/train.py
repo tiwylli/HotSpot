@@ -131,6 +131,12 @@ def visualize_model(
         mae = np.mean(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np))
         rmse = np.sqrt(np.mean((vis_grid_pred_np - vis_grid_dists_gt_np) ** 2))
         mape = np.mean(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np) / vis_grid_dists_gt_np)
+        print(np.min(vis_grid_pred_np))
+        print(np.max(vis_grid_pred_np))
+        print(np.min(np.abs(vis_grid_dists_gt_np)))
+        print(np.max(np.abs(vis_grid_dists_gt_np)))
+        print(np.max(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np)))
+        print(np.max(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np) / vis_grid_dists_gt_np))
         smape = np.mean(
             2
             * np.abs(vis_grid_pred_np - vis_grid_dists_gt_np)

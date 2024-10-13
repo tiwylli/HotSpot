@@ -39,7 +39,7 @@ def compute_dists(recon_points, gt_points, eval_type="Default"):
 if __name__ == "__main__":
     device = torch.device("cuda")
     args = parser.get_train_args()
-    args.vis_grid_res = 512 # hardcode vis_grid_res to 512
+    args.vis_grid_res = 2048 # hardcode vis_grid_res to 2048
     assert args.task == "2d", "This script is only for 2D shapes"
     exp_path = args.log_dir
     out_path = os.path.join(exp_path, "metric_summary.txt")
@@ -222,7 +222,7 @@ if __name__ == "__main__":
         SMAPEs.append(smape)
 
         logging.info(
-            f"{shape_name}: IoU = {iou:.4f}, Chamfer = {chamfer_dist:.4e}, Hausdorff = {hausdorff_dist:.4f}, RMSE = {rmse:.4f}, MAE = {mae:.4f}, MAPE = {mape:.4f}, SMAPE = {smape:.4f}"
+            f"{shape_name}: IoU = {iou:.4f}, Chamfer = {chamfer_dist:.4e}, Hausdorff = {hausdorff_dist:.4e}, RMSE = {rmse:.4f}, MAE = {mae:.4f}, MAPE = {mape:.4f}, SMAPE = {smape:.4f}"
         )
 
     # Calculate mean, median, and std
@@ -241,7 +241,7 @@ if __name__ == "__main__":
         f"Chamfer (mean/median/std): {chamfer_distances.mean():.4e}/{np.median(chamfer_distances):.4e}/{chamfer_distances.std():.4e}"
     )
     logging.info(
-        f"Hausdorff (mean/median/std): {hausdorff_distances.mean():.4f}/{np.median(hausdorff_distances):.4f}/{hausdorff_distances.std():.4f}"
+        f"Hausdorff (mean/median/std): {hausdorff_distances.mean():.4e}/{np.median(hausdorff_distances):.4e}/{hausdorff_distances.std():.4e}"
     )
     logging.info(
         f"RMSE (mean/median/std): {np.mean(RMSEs):.4f}/{np.median(RMSEs):.4f}/{np.std(RMSEs):.4f}"
