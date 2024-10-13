@@ -5,7 +5,7 @@ THIS_FILE=$(basename "$0")
 
 CONFIG_DIR=$ROOT_DIR'configs/steik_2d.toml' # change to your config file path
 IDENTIFIER='StEik2D_debug'                        # change to your desired identifier
-LOG_DIR='./log/2D/'                         # change to your desired log path
+LOG_DIR=$ROOT_DIR'log/2D/'                         # change to your desired log path
 EXP_DIR=$LOG_DIR$IDENTIFIER$TIMESTAMP/
 mkdir -p $EXP_DIR
 cp -r scripts/$THIS_FILE $EXP_DIR # Copy this script to the experiment directory

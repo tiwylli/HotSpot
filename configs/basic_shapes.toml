@@ -35,7 +35,7 @@ lr = 5e-5
 grad_clip_norm = 10.0
 heat_lambda = 10.0
 log_interval = 100
-compute_losses_on_vis_grid = 0
+compute_losses_on_vis_grid = false
 
 [visualization]
 vis_interval = 100

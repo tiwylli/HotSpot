@@ -6,7 +6,7 @@ THIS_FILE=$(basename "$0")
 CONFIG_DIR=$ROOT_DIR'surface_reconstruction/configs/shapenet_steik.toml' # change to your config file path
 IDENTIFIER='STEIK_sirenInit'                                             # change to your desired identifier
 DATASET_DIR=$ROOT_DIR'data/NSP_dataset/'                           # change to your dataset path
-LOG_DIR='./out/ShapeNet/'                                          # change to your desired log path
+LOG_DIR=$ROOT_DIR'log/ShapeNet/'                                          # change to your desired log path
 mkdir -p $LOG_DIR
 
 for SHAPE_NAME in 'lamp'; do # use the shapes you want in the dataset

@@ -11,6 +11,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dataset import shape_2d, shape_3d
+from recon_dataset import ReconDataset
 import models.Net as model
 import models.Heat as heatModel
 from models.losses import Loss
@@ -168,7 +169,6 @@ if __name__ == "__main__":
     # change random seed for training set (so it will be different from test set
     np.random.seed(0)
     if args.task == "3d":
-        print("Loading 3D dataset")
         train_set = shape_3d.ReconDataset(
             file_path=file_path,
             n_points=args.n_points,
@@ -180,7 +180,7 @@ if __name__ == "__main__":
             n_random_samples=args.n_random_samples,
             resample=True,
         )
-        print("Done")
+        # train_set = ReconDataset(file_path, args.n_points, args.n_iterations, args.grid_res, args.nonmnfld_sample_type)
         in_dim = 3
     elif args.task == "2d":
         train_set = shape_2d.get2D_dataset(
@@ -264,14 +264,14 @@ if __name__ == "__main__":
             mnfld_normals_gt,
             nonmnfld_points,
             nonmnfld_pdfs,
-            nonmnfld_dists_gt,
+            # nonmnfld_dists_gt,
             # grid_dists_gt,
         ) = (
             data["mnfld_points"].to(device),
             data["mnfld_normals_gt"].to(device),
             data["nonmnfld_points"].to(device),
             data["nonmnfld_pdfs"].to(device),
-            data["nonmnfld_dists_gt"].to(device),
+            # data["nonmnfld_dists_gt"].to(device),
             # data["grid_dists_gt"].to(device),
         )
         mnfld_points.requires_grad_()
@@ -298,7 +298,8 @@ if __name__ == "__main__":
             vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
                 vis_grid_points[0].detach().cpu().numpy()
             )  # (vis_grid_res * vis_grid_res, 1)
-            vis_grid_dists_gt = vis_grid_dists_gt.reshape(args.vis_grid_res, args.vis_grid_res)
+            if vis_grid_dists_gt is not None:
+                vis_grid_dists_gt = vis_grid_dists_gt.reshape(args.vis_grid_res, args.vis_grid_res)
 
             visualize_model(
                 x_grid=x,
@@ -325,7 +326,7 @@ if __name__ == "__main__":
                 nonmnfld_points,
                 nonmnfld_pdfs,
                 mnfld_normals_gt,
-                nonmnfld_dists_gt,
+                None,
             )
             # Updatae learning rate
             lr = torch.tensor(optimizer.param_groups[0]["lr"])

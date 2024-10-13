@@ -4,6 +4,7 @@ import scipy.spatial as spatial
 import scipy.stats
 from abc import ABC, abstractmethod
 import scipy
+from tqdm import tqdm
 
 
 class ShapeBase(data.Dataset):
@@ -40,7 +41,6 @@ class ShapeBase(data.Dataset):
         self.dim = dim
 
         self._init_mnfld_and_grid_points()
-
         self._resample()
 
     @abstractmethod
@@ -224,6 +224,7 @@ class ShapeBase(data.Dataset):
             nonmnfld_points,
             mean=np.zeros(self.dim),
             cov=np.eye(self.dim) * self.sampling_std**self.dim,
+            
         ).reshape([-1, 1])
 
         return nonmnfld_points, nonmnfld_pdfs
@@ -281,24 +282,10 @@ class ShapeBase(data.Dataset):
 
         # self.dist_img = np.reshape(self.grid_dist, [self.grid_res, self.grid_res])
 
-    def generate_batch_indices(self):
-        mnfld_idx = []
-        nonmnfld_idx = []
-        for i in range(self.n_samples):
-            mnfld_idx.append(np.random.choice(self.point_idxs, self.n_points))
-            nonmnfld_idx.append(
-                np.random.choice(
-                    self.nonmnfld_points_idxs, min(self.n_points, len(self.nonmnfld_points_idxs))
-                )
-            )
-        self.mnfld_idx = np.array(mnfld_idx)
-        self.nonmnfld_idx = np.array(nonmnfld_idx)
-
     def __getitem__(self, index):
         if self.resample:
             self._resample()
 
-        # mnfld_idx = np.random.permutation(range(self.mnfld_points.shape[0]))[: self.n_points]
         mnfld_idx = np.random.permutation(range(self.mnfld_points.shape[0]))
         nonmnfld_idx = np.random.permutation(range(self.nonmnfld_points.shape[0]))
 
@@ -307,15 +294,19 @@ class ShapeBase(data.Dataset):
         else:
             nonmnfld_pdfs = self.nonmnfld_pdfs
 
-        return {
+        ret_dist = {
             "mnfld_points": self.mnfld_points[mnfld_idx],  # (n_points, dim)
             "mnfld_normals_gt": self.mnfld_normals[mnfld_idx],  # (n_points, dim)
-            "nonmnfld_dists_gt": self.nonmnfld_dist_gt[nonmnfld_idx],  # (n_nonmnfld_samples, 1)
-            "nonmnfld_normals_gt": self.nonmnfld_normals_gt[nonmnfld_idx],  # (n_nonmnfld_samples, dim)
             "nonmnfld_points": self.nonmnfld_points[nonmnfld_idx],  # (n_nonmnfld_samples, dim)
             "nonmnfld_pdfs": nonmnfld_pdfs,  # (n_nonmnfld_samples, 1)
-            # "grid_dists_gt": self.grid_dist,  # (grid_res * grid_res, 1)
         }
+
+        if self.nonmnfld_dist_gt is not None:
+            ret_dist["nonmnfld_dists_gt"] = self.nonmnfld_dist_gt[nonmnfld_idx]
+        if self.nonmnfld_normals_gt is not None:
+            ret_dist["nonmnfld_normals_gt"] = self.nonmnfld_normals_gt[nonmnfld_idx]
+
+        return ret_dist
 
     def __len__(self):
         return self.n_samples

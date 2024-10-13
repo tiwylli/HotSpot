@@ -5,7 +5,7 @@ TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
 
 CONFIG_DIR=$ROOT_DIR'configs/siren_2d.toml' # change to your config file path
 IDENTIFIER='curv'                                                   # change to your desired identifier
-LOG_DIR='./log/2d_curv/'                                           # change to your desired log path
+LOG_DIR=$ROOT_DIR'log/2d_curv/'                                           # change to your desired log path
 mkdir -p $LOG_DIR
 
 for SHAPE_TYPE in 'house' 'target' 'snowflake' 'peace' 'circle' 'seaurchin' 'snake' 'button' 'bearing' 'L' 'starhex' 'boomerangs' 'fragments' 'square' ; do # for SHAPE_TYPE in 'circle' 'L' 'square' 'snowflake' 'starhex' 'button' 'target' 'bearing' 'snake' 'seaurchin' 'peace' 'boomerangs' 'fragments' 'house'; do

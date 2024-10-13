@@ -63,7 +63,7 @@ def get_train_args():
         "--num_workers", type=int, default=4, help="Number of workers for dataloader."
     )
     parser.add_argument(
-        "--compute_losses_on_vis_grid", type=int, default=0, help="Compute losses on visualization grid."
+        "--compute_losses_on_vis_grid", action="store_true", help="Compute losses on visualization grid."
     )
 
     # Visualization and logging
