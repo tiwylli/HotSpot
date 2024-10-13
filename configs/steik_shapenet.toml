@@ -18,8 +18,8 @@ div_decay_params = [100.0, 0.2, 100.0, 0.4, 10.0, 10.0]
 
 [sampling]
 grid_res = 256
-nonmnfld_sample_type = "grid"
-n_random_samples = 4096
+nonmnfld_sample_type = "uniform"
+n_random_samples = 15000
 n_points = 15000
 grid_range = 1.2
 nonmnfld_sample_std = 0.5
@@ -34,6 +34,7 @@ lr = 5e-5
 grad_clip_norm = 10.0
 vis_interval = 100
 log_interval = 100
+num_workers = 0
 
 [visualization]
 vis_grid_res = 256
@@ -44,4 +45,4 @@ n_vis_normals = 100
 vis_heat = true
 save_video = true
 video_fps = 6
-compute_losses_on_vis_grid = 0
+compute_losses_on_vis_grid = false

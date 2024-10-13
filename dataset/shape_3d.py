@@ -32,23 +32,18 @@ class ReconDataset(ShapeBase):
         # assumes a subdirectory names "estimated props" in dataset path
         self.nonmnfld_dist, self.nonmnfld_n, self.mnfld_curvs = None, None, None
         # Load data
-        print("Start reading point cloud")
-        print(self.file_path)
-        exit(0)
         self.o3d_point_cloud = o3d.io.read_point_cloud(self.file_path)
-        print("Done")
 
-        ShapeBase.__init__(
-            self,
-            n_points,
-            n_samples,
-            grid_res,
-            grid_range,
-            sample_type,
-            sampling_std,
-            n_random_samples,
-            resample,
-            3,
+        super().__init__(
+            n_points=n_points,
+            n_samples=n_samples,
+            grid_res=grid_res,
+            grid_range=grid_range,
+            sample_type=sample_type,
+            sampling_std=sampling_std,
+            n_random_samples=n_random_samples,
+            resample=resample,
+            dim=3,
         )
 
         # extract center and scale points and normals
@@ -70,6 +65,9 @@ class ReconDataset(ShapeBase):
         normals = np.asarray(self.o3d_point_cloud.normals, dtype=np.float32)
 
         return normals
+
+    def get_points_distances_and_normals(self, points):
+        return None, None
 
     def _init_mnfld_and_grid_points(self):
         self.mnfld_points = self.get_mnfld_points()

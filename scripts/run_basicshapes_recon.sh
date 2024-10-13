@@ -5,7 +5,7 @@ THIS_FILE=$(basename "$0")
 
 CONFIG_DIR=$ROOT_DIR'configs/basic_shapes.toml' # change to your config file path
 IDENTIFIER='test_temp'                          # change to your desired identifier
-LOG_DIR=$ROOT_DIR'out/BasicShapes/'             # change to your desired log path
+LOG_DIR=$ROOT_DIR'log/BasicShapes/'             # change to your desired log path
 mkdir -p $LOG_DIR
 
 for SHAPE_TYPE in 'button'; do # shapes: 'L', 'circle', 'snowflake', 'starhex'

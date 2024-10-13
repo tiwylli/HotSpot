@@ -5,7 +5,7 @@ TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
 
 CONFIG_DIR=$ROOT_DIR'configs/digs_2d.toml' # change to your config file path
 IDENTIFIER='DiGS_2D'                 # change to your desired identifier
-LOG_DIR='./log/2D/'                        # change to your desired log path
+LOG_DIR=$ROOT_DIR'log/2D/'                        # change to your desired log path
 EXP_DIR=$LOG_DIR$IDENTIFIER$TIMESTAMP/
 mkdir -p $EXP_DIR
 cp -r scripts/$THIS_FILE $EXP_DIR # Copy this script to the experiment directory

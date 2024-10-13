@@ -5,7 +5,7 @@ THIS_FILE=$(basename "$0")
 
 CONFIG_DIR=$ROOT_DIR"configs/steik_shapenet.toml" # change to your config file path
 DATASET_DIR=$ROOT_DIR'data/NSP_dataset/'    # change to your dataset path
-LOG_DIR='./log/3D/ShapeNet/'                    # change to your desired log path
+LOG_DIR=$ROOT_DIR'log/3D/ShapeNet/'                    # change to your desired log path
 EXP_DIR=$LOG_DIR$IDENTIFIER$TIMESTAMP/
 mkdir -p $EXP_DIR
 cp -r scripts/$THIS_FILE $EXP_DIR # Copy this script to the experiment directory
@@ -16,7 +16,7 @@ IDENTIFIER='StEik_debug' # change to your desired identifier
 for SHAPE_NAME in 'lamp'; do # use the shapes you want in the dataset
     FOLDER_DIR=${DATASET_DIR}/$SHAPE_NAME/
     echo $SHAPE_NAME
-    for FILE_NAME in 'd1aed86c38d9ea6761462fc0fa9b0bb4.ply'; do # use the scans you want
+    for FILE_NAME in 'd1b15263933da857784a45ea6efa1d77.ply'; do # use the scans you want
         echo $FILE_NAME
         python3 train/train.py --config $CONFIG_DIR --log_dir $LOG_DIR/$IDENTIFIER$TIMESTAMP/$SHAPE_NAME --data_dir $FOLDER_DIR --file_name $FILE_NAME --model_dir $MODEL_DIR
     done

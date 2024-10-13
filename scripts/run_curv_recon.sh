@@ -4,7 +4,7 @@ THIS_FILE=$(basename "$0")
 TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S") # Comment out if you don't want timestamp
 
 CONFIG_DIR=$ROOT_DIR'configs/curv_recon.toml' # Change to your config file path
-LOG_DIR=$ROOT_DIR'./log/2d_curv/'                    # Change to your log path
+LOG_DIR=$ROOT_DIR'log/2d_curv/'                    # Change to your log path
 IDENTIFIER='curv_recon'                       # change to your desired identifier
 EXP_DIR=$LOG_DIR$IDENTIFIER$TIMESTAMP/
 mkdir -p $EXP_DIR
