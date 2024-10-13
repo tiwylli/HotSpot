@@ -17,7 +17,7 @@ heat_decay_params = [0.2, 0.045, 0.2, 0.06, 0.2, 0.2] # start, (location, value)
 eikonal_decay = "linear" # 'linear' | 'quintic' | 'step'
 eikonal_decay_params = [0.01, 0.03, 0.01, 0.06, 0, 0] # start, (location, value)*, end
 heat_lambda_decay = "linear" # 'linear' | 'quintic' | 'step'
-heat_lambda_decay_params = [60, 0.03, 60, 0.06, 0.1, 0.1] # start, (location, value)*, end
+heat_lambda_decay_params = [60, 0.03, 60, 0.06, 30, 30] # start, (location, value)*, end
 
 [sampling]
 grid_res = 256
@@ -37,7 +37,7 @@ lr = 1e-5
 grad_clip_norm = 10.0
 heat_lambda = 60
 vis_interval = 4000
-log_interval = 1000
+log_interval = 4000
 
 [visualization]
 vis_grid_res = 256

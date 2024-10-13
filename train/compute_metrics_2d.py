@@ -89,6 +89,7 @@ if __name__ == "__main__":
         "fragments",
         "house",
     ]
+    #shape_names = ["seaurchin"]
     shape_names = sorted(shape_names)
 
     # Initialize visualization grid

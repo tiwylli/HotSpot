@@ -3,7 +3,7 @@ MODEL_DIR=$ROOT_DIR'models'
 THIS_FILE=$(basename "$0")
 
 LOG_DIR=$ROOT_DIR'log/2d_curv/'                 # Change to your log path
-IDENTIFIER='spin_curv-2024-10-10-09-50-21'   # change to your desired identifier
+IDENTIFIER='igr-2024-10-12-17-02-38'   # change to your desired identifier
 CONFIG_DIR=$LOG_DIR/$IDENTIFIER/*.toml
 EXP_DIR=$LOG_DIR$IDENTIFIER/
 
