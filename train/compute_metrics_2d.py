@@ -174,7 +174,7 @@ if __name__ == "__main__":
         pred_points = np.stack([pred_points[:, 1], pred_points[:, 0]], axis=-1)
 
         chamfer_dist, hausdorff_dist, cd_re2gt, cd_gt2re, hd_re2gt, hd_gt2re = compute_dists(
-            pred_points, gt_points, eval_type="DeepSDF"
+            pred_points, gt_points
         )
 
         # # Visualize contour points
@@ -222,7 +222,7 @@ if __name__ == "__main__":
         SMAPEs.append(smape)
 
         logging.info(
-            f"{shape_name}: IoU = {iou:.4f}, Chamfer = {chamfer_dist:.4e}, Hausdorff = {hausdorff_dist:.4e}, RMSE = {rmse:.4f}, MAE = {mae:.4f}, MAPE = {mape:.4f}, SMAPE = {smape:.4f}"
+            f"{shape_name}: IoU = {iou:.4f}, Chamfer = {chamfer_dist:.4f}, Hausdorff = {hausdorff_dist:.4f}, RMSE = {rmse:.4f}, MAE = {mae:.4f}, MAPE = {mape:.4f}, SMAPE = {smape:.4f}"
         )
 
     # Calculate mean, median, and std
@@ -238,10 +238,10 @@ if __name__ == "__main__":
     logging.info("")
     logging.info(f"IoU (mean/median/std): {IoUs.mean():.4f}/{np.median(IoUs):.4f}/{IoUs.std():.4f}")
     logging.info(
-        f"Chamfer (mean/median/std): {chamfer_distances.mean():.4e}/{np.median(chamfer_distances):.4e}/{chamfer_distances.std():.4e}"
+        f"Chamfer (mean/median/std): {chamfer_distances.mean():.4f}/{np.median(chamfer_distances):.4f}/{chamfer_distances.std():.4f}"
     )
     logging.info(
-        f"Hausdorff (mean/median/std): {hausdorff_distances.mean():.4e}/{np.median(hausdorff_distances):.4e}/{hausdorff_distances.std():.4e}"
+        f"Hausdorff (mean/median/std): {hausdorff_distances.mean():.4f}/{np.median(hausdorff_distances):.4f}/{hausdorff_distances.std():.4f}"
     )
     logging.info(
         f"RMSE (mean/median/std): {np.mean(RMSEs):.4f}/{np.median(RMSEs):.4f}/{np.std(RMSEs):.4f}"
