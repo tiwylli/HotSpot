@@ -78,6 +78,13 @@ class ShapeBase(data.Dataset):
 
         return distances, normals
 
+    # TODO: Point distances for SAL
+    def get_points_distances_sal(self, points):
+        # distances: (n_points, 1)
+        distances = np.zeros((points.shape[0], 1))
+
+        return distances
+
     def _init_mnfld_and_grid_points(self):
         self.mnfld_points = self.get_mnfld_points()
         self.mnfld_normals = self.get_mnfld_normals()
@@ -299,6 +306,7 @@ class ShapeBase(data.Dataset):
             "mnfld_normals_gt": self.mnfld_normals[mnfld_idx],  # (n_points, dim)
             "nonmnfld_points": self.nonmnfld_points[nonmnfld_idx],  # (n_nonmnfld_samples, dim)
             "nonmnfld_pdfs": nonmnfld_pdfs,  # (n_nonmnfld_samples, 1)
+            "nonmnfld_dists_sal": self.get_points_distances_sal(self.nonmnfld_points[nonmnfld_idx]),
         }
 
         if self.nonmnfld_dist_gt is not None:

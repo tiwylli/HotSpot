@@ -101,7 +101,7 @@ class Loss(nn.Module):
         self.use_div = True if "div" in self.loss_type else False
         self.use_heat = True if "heat" in self.loss_type else False
 
-    def forward(self, output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs=None, mnfld_normals_gt=None, nonmnfld_dists_gt=None):
+    def forward(self, output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs=None, mnfld_normals_gt=None, nonmnfld_dists_gt=None, nonmnfld_dists_sal=None):
         dims = mnfld_points.shape[-1]
         device = mnfld_points.device
 
@@ -202,6 +202,9 @@ class Loss(nn.Module):
         if nonmnfld_dists_gt is not None:
             nonmnfld_dists_loss = torch.abs(nonmnfld_pred.squeeze() - nonmnfld_dists_gt.squeeze()).mean()
 
+        # TODO: SAL loss term
+        sal_term = torch.tensor([0.0], device=mnfld_points.device)
+
         #########################################
         # Losses
         #########################################
@@ -260,6 +263,11 @@ class Loss(nn.Module):
                 self.weights[0] * sdf_term
                 + self.weights[3] * eikonal_term
                 + self.weights[6] * heat_term
+            )
+        elif self.loss_type == "sal":
+            loss = (
+                self.weights[0] * sdf_term
+                + self.weights[5] * sal_term
             )
         else:
             raise Warning("unrecognized loss type")

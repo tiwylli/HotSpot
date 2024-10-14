@@ -266,6 +266,7 @@ if __name__ == "__main__":
             nonmnfld_pdfs,
             # nonmnfld_dists_gt,
             # grid_dists_gt,
+            # TODO: Add nonmnfld_dists_sal. Can be None if not running SAL.
         ) = (
             data["mnfld_points"].to(device),
             data["mnfld_normals_gt"].to(device),
@@ -273,6 +274,7 @@ if __name__ == "__main__":
             data["nonmnfld_pdfs"].to(device),
             # data["nonmnfld_dists_gt"].to(device),
             # data["grid_dists_gt"].to(device),
+            # TODO: Add nonmnfld_dists_sal
         )
         mnfld_points.requires_grad_()
         nonmnfld_points.requires_grad_()
@@ -327,6 +329,7 @@ if __name__ == "__main__":
                 nonmnfld_pdfs,
                 mnfld_normals_gt,
                 None,
+                # TODO: add nonmnfld_dists_sal
             )
             # Updatae learning rate
             lr = torch.tensor(optimizer.param_groups[0]["lr"])

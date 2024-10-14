@@ -5,13 +5,13 @@ model_dir = "models"
 decoder_n_hidden_layers = 5
 decoder_hidden_dim = 128
 nl = "softplus"
-sphere_init_params = [1.6, 1.0]
+sphere_init_params = [1.6, 0.1]
 init_type = "geometric_relu"
 neuron_type = "linear"
 
 [loss]
 loss_type = "igr_w_heat"
-loss_weights = [3e3, 1e2, 1e2, 5e1, 1e2, 0, 5e2]
+loss_weights = [3000.0, 100.0, 100.0, 50.0, 100.0, 0.0, 500.0]
 # heat_decay = "linear"                               # 'linear' | 'quintic' | 'step'
 # heat_decay_params = [0.2, 0.4, 0.2, 0.9, 0.01, 0.0] # start, (location, value)*, end
 # eikonal_decay = "linear"                            # 'linear' | 'quintic' | 'step'
@@ -20,9 +20,9 @@ loss_weights = [3e3, 1e2, 1e2, 5e1, 1e2, 0, 5e2]
 [sampling]
 grid_res = 256
 nonmnfld_sample_type = "uniform"
-n_random_samples = 8192
+n_random_samples = 15000
 n_points = 15000
-grid_range = 1.5
+grid_range = 1.2
 nonmnfld_sample_std = 0.5
 
 [training]
@@ -31,7 +31,7 @@ eval = true
 task = "3d"
 n_iterations = 10000
 gpu_idx = 0
-lr = 5e-4
+lr = 5e-5
 grad_clip_norm = 10.0
 heat_lambda = 30.0
 vis_interval = 100
@@ -41,10 +41,10 @@ log_interval = 100
 vis_grid_res = 256
 vis_grid_range = 1.2
 vis_contour_interval = 0.025
-vis_normals = true
-n_vis_normals = 100
-vis_heat = true
-vis_gt_shape = false
+# vis_normals = true
+# n_vis_normals = 100
+# vis_heat = true
+# vis_gt_shape = false
 save_video = true
 video_fps = 6
 compute_losses_on_vis_grid = false

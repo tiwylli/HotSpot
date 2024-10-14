@@ -4,6 +4,7 @@ THIS_FILE=$(basename "$0")
 
 LOG_DIR=$ROOT_DIR'log/2D/'                 # Change to your log path
 IDENTIFIER='StEik2D-2024-10-10-12-12-15'   # Change to your desired identifier
+IDENTIFIER=$1
 CONFIG_DIR=$LOG_DIR/$IDENTIFIER/*.toml
 EXP_DIR=$LOG_DIR$IDENTIFIER/
 
