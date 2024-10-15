@@ -156,7 +156,7 @@ if __name__ == "__main__":
         raise ValueError("Please specify either --train or --eval, or both.")
 
     file_path = os.path.join(args.data_dir, args.file_name)
-    log_dir = os.path.join(args.log_dir, args.file_name.split(".")[0])
+    log_dir = os.path.join(args.log_dir, args.file_name.split(".")[0]) # Concatenate the log directory with the file name if file name is given
 
     # set up logging
     log_file, log_writer_train, log_writer_test, model_outdir = utils.setup_logdir(log_dir, args)

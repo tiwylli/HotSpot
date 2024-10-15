@@ -216,8 +216,8 @@ def get_train_args():
         "--loss_weights",
         nargs="+",
         type=float,
-        default=[2e4, 1e2, 1e2, 5e1, 1e2, 8e2],
-        help="Loss terms weights: sdf | inter | normal | eikonal | div | heat.",
+        default=[2e4, 1e2, 1e2, 5e1, 1e2, 0, 8e2],
+        help="Loss terms weights: sdf | inter | normal | eikonal | div | sal | heat.",
     )
     parser.add_argument(
         "--heat_lambda", type=float, default=30, help="Heat loss weight for eikonal loss."

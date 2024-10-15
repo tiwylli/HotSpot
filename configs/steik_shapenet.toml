@@ -14,7 +14,7 @@ loss_type = "siren_wo_n_w_div"
 loss_weights = [5e3, 1e2, 1e2, 0, 1e2, 0, 0]
 div_type = "dir_l1"
 div_decay = "linear"
-div_decay_params = [100.0, 0.2, 100.0, 0.4, 10.0, 10.0]
+div_decay_params = [100.0, 0.2, 100.0, 0.4, 0.0, 0.0]
 
 [sampling]
 grid_res = 256
@@ -28,7 +28,7 @@ nonmnfld_sample_std = 0.5
 train = true
 eval = true
 task = "3d"
-n_iterations = 20000
+n_iterations = 10000
 gpu_idx = 0
 lr = 5e-5
 grad_clip_norm = 10.0
@@ -45,4 +45,4 @@ vis_contour_interval = 0.025
 # vis_heat = true
 save_video = true
 video_fps = 6
-compute_losses_on_vis_grid = false
+# compute_losses_on_vis_grid = false

@@ -43,8 +43,6 @@ To train a 2D shape neural representation and reconstruct the surface (curve in 
 bash ./scripts/run_spin_2d.sh
 ```
 
-To visualize the MFGI and geometric initializations run `./sanitychecks/scripts/visualize_initializations.sh`
-
 ### 3. Surface Reconstruction (and Scene Reconstruction)
 #### 3.1 Data for Surface Reconstruction
 ##### 3.1.1 Surface Reconstruction Benchamark data
