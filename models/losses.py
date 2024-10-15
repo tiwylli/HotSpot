@@ -202,8 +202,12 @@ class Loss(nn.Module):
         if nonmnfld_dists_gt is not None:
             nonmnfld_dists_loss = torch.abs(nonmnfld_pred.squeeze() - nonmnfld_dists_gt.squeeze()).mean()
 
-        # TODO: SAL loss term
+        # SAL loss term
         sal_term = torch.tensor([0.0], device=mnfld_points.device)
+        if nonmnfld_dists_sal is not None:
+            sal_term = torch.abs(
+                torch.abs(nonmnfld_pred.squeeze()) - nonmnfld_dists_sal.squeeze()
+            ).mean()
 
         #########################################
         # Losses
@@ -284,6 +288,7 @@ class Loss(nn.Module):
             "eikonal_term": eikonal_term,
             "normal_term": normal_term,
             "div_term": div_term,
+            "sal_term": sal_term,
             "heat_term": heat_term,
             "diff_term": nonmnfld_dists_loss,
         }, mnfld_grad
@@ -336,7 +341,6 @@ class Loss(nn.Module):
         else:
             raise Warning("unsupported div decay value")
 
-
     def update_heat_weight(self, current_iteration, n_iterations, params=None):
         # `params`` should be (start_weight, *optional middle, end_weight) where optional middle is of the form [percent, value]*
         # Thus (1e2, 0.5, 1e2 0.7 0.0, 0.0) means that the weight at [0, 0.5, 0.75, 1] of the training process, the weight should
@@ -384,7 +388,7 @@ class Loss(nn.Module):
             pass
         else:
             raise Warning("unsupported heat decay value")
-        
+
     def update_eikonal_weight(self, current_iteration, n_iterations, params=None):
         # `params`` should be (start_weight, *optional middle, end_weight) where optional middle is of the form [percent, value]*
         # Thus (1e2, 0.5, 1e2 0.7 0.0, 0.0) means that the weight at [0, 0.5, 0.75, 1] of the training process, the weight should
@@ -432,8 +436,6 @@ class Loss(nn.Module):
             pass
         else:
             raise Warning("unsupported eikonal decay value")
-        
-
 
     def update_heat_lambda(self, current_iteration, n_iterations, params=None):
         # `params`` should be (start_weight, *optional middle, end_weight) where optional middle is of the form [percent, value]*
@@ -482,4 +484,3 @@ class Loss(nn.Module):
             pass
         else:
             raise Warning("unsupported heat decay value")
-        

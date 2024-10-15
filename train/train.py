@@ -259,23 +259,37 @@ if __name__ == "__main__":
     # Iteratively train the model
     for batch_idx, data in enumerate(train_dataloader):
         # Load data
-        (
-            mnfld_points,
-            mnfld_normals_gt,
-            nonmnfld_points,
-            nonmnfld_pdfs,
-            # nonmnfld_dists_gt,
-            # grid_dists_gt,
-            # TODO: Add nonmnfld_dists_sal. Can be None if not running SAL.
-        ) = (
-            data["mnfld_points"].to(device),
-            data["mnfld_normals_gt"].to(device),
-            data["nonmnfld_points"].to(device),
-            data["nonmnfld_pdfs"].to(device),
-            # data["nonmnfld_dists_gt"].to(device),
-            # data["grid_dists_gt"].to(device),
-            # TODO: Add nonmnfld_dists_sal
-        )
+        mnfld_points = data["mnfld_points"].to(device)
+        mnfld_normals_gt = data["mnfld_normals_gt"].to(device)
+        nonmnfld_points = data["nonmnfld_points"].to(device)
+        nonmnfld_pdfs = data["nonmnfld_pdfs"].to(device)
+        # nonmnfld_dists_gt = data["nonmnfld_dists_gt"].to(device)
+        # grid_dists_gt = data["grid_dists_gt"].to(device)
+
+        # Conditionally load nonmnfld_dists_sal if it exists in the data
+        nonmnfld_dists_sal = data.get("nonmnfld_dists_sal", None)
+        if nonmnfld_dists_sal is not None:
+            nonmnfld_dists_sal = nonmnfld_dists_sal.to(device)
+
+        # # Load data
+        # (
+        #     mnfld_points,
+        #     mnfld_normals_gt,
+        #     nonmnfld_points,
+        #     nonmnfld_pdfs,
+        #     # nonmnfld_dists_gt,
+        #     # grid_dists_gt,
+        #     # TODO: Add nonmnfld_dists_sal. Can be None if not running SAL.
+        # ) = (
+        #     data["mnfld_points"].to(device),
+        #     data["mnfld_normals_gt"].to(device),
+        #     data["nonmnfld_points"].to(device),
+        #     data["nonmnfld_pdfs"].to(device),
+        #     # data["nonmnfld_dists_gt"].to(device),
+        #     # data["grid_dists_gt"].to(device),
+        #     # TODO: Add nonmnfld_dists_sal
+        # )
+        
         mnfld_points.requires_grad_()
         nonmnfld_points.requires_grad_()
 
@@ -329,7 +343,7 @@ if __name__ == "__main__":
                 nonmnfld_pdfs,
                 mnfld_normals_gt,
                 None,
-                # TODO: add nonmnfld_dists_sal
+                nonmnfld_dists_sal,
             )
             # Updatae learning rate
             lr = torch.tensor(optimizer.param_groups[0]["lr"])
@@ -365,7 +379,7 @@ if __name__ == "__main__":
                 # Log weighted losses
                 utils.log_string(
                     "Iteration: {:4d}/{} ({:.0f}%) Loss: {:.5f} = L_Mnfld: {:.5f} + "
-                    "L_NonMnfld: {:.5f} + L_Nrml: {:.5f} + L_Eknl: {:.5f} + L_Div: {:.5f} + L_Heat: {:.5f}".format(
+                    "L_NonMnfld: {:.5f} + L_Nrml: {:.5f} + L_Eknl: {:.5f} + L_Div: {:.5f} + L_SAL: {:.5f} + L_Heat: {:.5f}".format(
                         batch_idx,
                         len(train_set),
                         100.0 * batch_idx / len(train_dataloader),
@@ -375,6 +389,7 @@ if __name__ == "__main__":
                         weights[2] * loss_dict["normal_term"].item(),
                         weights[3] * loss_dict["eikonal_term"].item(),
                         weights[4] * loss_dict["div_term"].item(),
+                        weights[5] * loss_dict["sal_term"].item(), # add SAL term here
                         weights[6] * loss_dict["heat_term"].item(),
                     ),
                     log_file,
