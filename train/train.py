@@ -32,7 +32,7 @@ def visualize_model(
     data,
     batch_idx,
     args,
-    shape,
+    shape=None,
 ):
     vis_pred = model(vis_grid_points, mnfld_points)
     vis_grid_pred = vis_pred[
@@ -69,7 +69,7 @@ def visualize_model(
         grid_range=args.vis_grid_range,
         contour_interval=args.vis_contour_interval,
         contour_range=args.vis_contour_range,
-        gt_traces=shape.get_trace(color="rgb(128, 128, 128)") if args.vis_gt_shape else [],
+        gt_traces=shape.get_trace(color="rgb(128, 128, 128)") if args.vis_gt_shape and shape is not None else [],
     )
     img = Image.fromarray(sdf_contour_img)
     img.save(os.path.join(output_dir, "sdf_" + str(batch_idx).zfill(6) + ".png"))
@@ -178,7 +178,8 @@ if __name__ == "__main__":
             sample_type=args.nonmnfld_sample_type,
             sampling_std=args.nonmnfld_sample_std,
             n_random_samples=args.n_random_samples,
-            resample=True,
+            resample=False,
+            compute_sal_dist_gt=True if "sal" in args.loss_type else False,
         )
         # train_set = ReconDataset(file_path, args.n_points, args.n_iterations, args.grid_res, args.nonmnfld_sample_type)
         in_dim = 3
@@ -192,6 +193,7 @@ if __name__ == "__main__":
             sampling_std=args.nonmnfld_sample_std,
             n_random_samples=args.n_random_samples,
             resample=True,
+            compute_sal_dist_gt=True if "sal" in args.loss_type else False,
             shape_type=args.shape_type,
         )
         in_dim = 2
@@ -217,6 +219,7 @@ if __name__ == "__main__":
         init_type=args.init_type,
         neuron_type=args.neuron_type,
         sphere_init_params=args.sphere_init_params,
+        n_repeat_period=args.n_repeated_period,
     )
     # Uncomment to use small model
     # model = heatModel.Net(radius_init=args.sphere_init_params[1])
@@ -256,174 +259,174 @@ if __name__ == "__main__":
     vis_grid_points = torch.tensor(vis_grid_points, dtype=torch.float32).to(device)
     vis_grid_points.requires_grad_()
 
-    # Iteratively train the model
-    for batch_idx, data in enumerate(train_dataloader):
-        # Load data
-        mnfld_points = data["mnfld_points"].to(device)
-        mnfld_normals_gt = data["mnfld_normals_gt"].to(device)
-        nonmnfld_points = data["nonmnfld_points"].to(device)
-        nonmnfld_pdfs = data["nonmnfld_pdfs"].to(device)
-        # nonmnfld_dists_gt = data["nonmnfld_dists_gt"].to(device)
-        # grid_dists_gt = data["grid_dists_gt"].to(device)
+    if not args.vis_final:
+        # Iteratively train the model
+        for batch_idx, data in enumerate(train_dataloader):
+            # Load data
+            mnfld_points = data["mnfld_points"].to(device)
+            mnfld_normals_gt = data["mnfld_normals_gt"].to(device)
+            nonmnfld_points = data["nonmnfld_points"].to(device)
+            nonmnfld_pdfs = data["nonmnfld_pdfs"].to(device)
+            # nonmnfld_dists_gt = data["nonmnfld_dists_gt"].to(device)
+            # grid_dists_gt = data["grid_dists_gt"].to(device)
 
-        # Conditionally load nonmnfld_dists_sal if it exists in the data
-        nonmnfld_dists_sal = data.get("nonmnfld_dists_sal", None)
-        if nonmnfld_dists_sal is not None:
-            nonmnfld_dists_sal = nonmnfld_dists_sal.to(device)
+            # Conditionally load nonmnfld_dists_sal if it exists in the data
+            nonmnfld_dists_sal = data.get("nonmnfld_dists_sal", None)
+            if nonmnfld_dists_sal is not None:
+                nonmnfld_dists_sal = nonmnfld_dists_sal.to(device)
 
-        # # Load data
-        # (
-        #     mnfld_points,
-        #     mnfld_normals_gt,
-        #     nonmnfld_points,
-        #     nonmnfld_pdfs,
-        #     # nonmnfld_dists_gt,
-        #     # grid_dists_gt,
-        #     # TODO: Add nonmnfld_dists_sal. Can be None if not running SAL.
-        # ) = (
-        #     data["mnfld_points"].to(device),
-        #     data["mnfld_normals_gt"].to(device),
-        #     data["nonmnfld_points"].to(device),
-        #     data["nonmnfld_pdfs"].to(device),
-        #     # data["nonmnfld_dists_gt"].to(device),
-        #     # data["grid_dists_gt"].to(device),
-        #     # TODO: Add nonmnfld_dists_sal
-        # )
-        
-        mnfld_points.requires_grad_()
-        nonmnfld_points.requires_grad_()
+            # # Load data
+            # (
+            #     mnfld_points,
+            #     mnfld_normals_gt,
+            #     nonmnfld_points,
+            #     nonmnfld_pdfs,
+            #     # nonmnfld_dists_gt,
+            #     # grid_dists_gt,
+            #     # TODO: Add nonmnfld_dists_sal. Can be None if not running SAL.
+            # ) = (
+            #     data["mnfld_points"].to(device),
+            #     data["mnfld_normals_gt"].to(device),
+            #     data["nonmnfld_points"].to(device),
+            #     data["nonmnfld_pdfs"].to(device),
+            #     # data["nonmnfld_dists_gt"].to(device),
+            #     # data["grid_dists_gt"].to(device),
+            #     # TODO: Add nonmnfld_dists_sal
+            # )
+            
+            mnfld_points.requires_grad_()
+            nonmnfld_points.requires_grad_()
+            # Save model before updating weights
+            if args.train:
+                if batch_idx % args.log_interval == 0:
+                    utils.log_string(f"saving model to file model_{batch_idx}.pth", log_file)
+                    torch.save(model.state_dict(), os.path.join(model_outdir, f"model_{batch_idx}.pth"))
 
-        # Save model before updating weights
-        if args.train:
-            if batch_idx % args.log_interval == 0:
-                utils.log_string(f"saving model to file model_{batch_idx}.pth", log_file)
-                torch.save(model.state_dict(), os.path.join(model_outdir, f"model_{batch_idx}.pth"))
+            # Visualize SDF
+            if not args.vis_final and args.eval and batch_idx % args.vis_interval == 0:
+                if not args.train:
+                    model_path = os.path.join(args.saved_model_dir, f"model_{batch_idx}.pth")
+                    model.load_state_dict(torch.load(model_path, weights_only=True))
 
-        # Visualize SDF
-        if not args.vis_final and args.eval and batch_idx % args.vis_interval == 0:
-            if not args.train:
-                model_path = os.path.join(args.saved_model_dir, f"model_{batch_idx}.pth")
-                model.load_state_dict(torch.load(model_path, weights_only=True))
+                utils.log_string(f"Visualizing epoch {batch_idx}", log_file)
 
-            utils.log_string(f"Visualizing epoch {batch_idx}", log_file)
+                output_dir = os.path.join(log_dir, "vis")
+                os.makedirs(output_dir, exist_ok=True)
 
-            output_dir = os.path.join(log_dir, "vis")
-            os.makedirs(output_dir, exist_ok=True)
-
-            vis_pred = model(vis_grid_points, mnfld_points)
-            vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
-                vis_grid_points[0].detach().cpu().numpy()
-            )  # (vis_grid_res * vis_grid_res, 1)
-            if vis_grid_dists_gt is not None:
-                vis_grid_dists_gt = vis_grid_dists_gt.reshape(args.vis_grid_res, args.vis_grid_res)
-
-            visualize_model(
-                x_grid=x,
-                y_grid=y,
-                vis_grid_points=vis_grid_points,
-                mnfld_points=mnfld_points,
-                vis_pred=vis_pred,
-                vis_grid_dists_gt=vis_grid_dists_gt,
-                data=data,
-                batch_idx=batch_idx,
-                args=args,
-                shape=train_set,
-            )
-
-        if args.train:
-            model.zero_grad()
-            model.train()
-
-            # Compute losses on samples
-            output_pred = model(nonmnfld_points, mnfld_points)
-            loss_dict, _ = criterion(
-                output_pred,
-                mnfld_points,
-                nonmnfld_points,
-                nonmnfld_pdfs,
-                mnfld_normals_gt,
-                None,
-                nonmnfld_dists_sal,
-            )
-            # Updatae learning rate
-            lr = torch.tensor(optimizer.param_groups[0]["lr"])
-            loss_dict["lr"] = lr
-            # Log losses on samples
-            utils.log_losses(log_writer_train, batch_idx, num_batches, loss_dict)
-
-            # [Optional] Compute losses on visualization grid
-            if args.compute_losses_on_vis_grid > 0:
                 vis_pred = model(vis_grid_points, mnfld_points)
                 vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
                     vis_grid_points[0].detach().cpu().numpy()
                 )  # (vis_grid_res * vis_grid_res, 1)
-                vis_loss_dict, _ = criterion(
-                    vis_pred,
+                if vis_grid_dists_gt is not None:
+                    vis_grid_dists_gt = vis_grid_dists_gt.reshape(args.vis_grid_res, args.vis_grid_res)
+
+                visualize_model(
+                    x_grid=x,
+                    y_grid=y,
+                    vis_grid_points=vis_grid_points,
+                    mnfld_points=mnfld_points,
+                    vis_pred=vis_pred,
+                    vis_grid_dists_gt=vis_grid_dists_gt,
+                    data=data,
+                    batch_idx=batch_idx,
+                    args=args,
+                    shape=train_set,
+                )
+
+            if args.train:
+                model.zero_grad()
+                model.train()
+
+                # Compute losses on samples
+                output_pred = model(nonmnfld_points, mnfld_points)
+                loss_dict, _ = criterion(
+                    output_pred,
                     mnfld_points,
-                    vis_grid_points,
+                    nonmnfld_points,
+                    nonmnfld_pdfs,
+                    mnfld_normals_gt,
                     None,
-                    None,
-                    torch.tensor(vis_grid_dists_gt, dtype=torch.float32).to(device),
+                    nonmnfld_dists_sal,
                 )
+                # Updatae learning rate
+                lr = torch.tensor(optimizer.param_groups[0]["lr"])
+                loss_dict["lr"] = lr
+                # Log losses on samples
+                utils.log_losses(log_writer_train, batch_idx, num_batches, loss_dict)
 
-            # Backpropagate and update weights
-            loss_dict["loss"].backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0)
-            optimizer.step()
-
-            # Log training stats and save model
-            if batch_idx % args.log_interval == 0:
-                weights = criterion.weights
-                utils.log_string(f"Current heat lambda: {criterion.heat_lambda}", log_file)
-                utils.log_string("Weights: {}, lr={:.3e}".format(weights, lr), log_file)
-                # Log weighted losses
-                utils.log_string(
-                    "Iteration: {:4d}/{} ({:.0f}%) Loss: {:.5f} = L_Mnfld: {:.5f} + "
-                    "L_NonMnfld: {:.5f} + L_Nrml: {:.5f} + L_Eknl: {:.5f} + L_Div: {:.5f} + L_SAL: {:.5f} + L_Heat: {:.5f}".format(
-                        batch_idx,
-                        len(train_set),
-                        100.0 * batch_idx / len(train_dataloader),
-                        loss_dict["loss"].item(),
-                        weights[0] * loss_dict["sdf_term"].item(),
-                        weights[1] * loss_dict["inter_term"].item(),
-                        weights[2] * loss_dict["normal_term"].item(),
-                        weights[3] * loss_dict["eikonal_term"].item(),
-                        weights[4] * loss_dict["div_term"].item(),
-                        weights[5] * loss_dict["sal_term"].item(), # add SAL term here
-                        weights[6] * loss_dict["heat_term"].item(),
-                    ),
-                    log_file,
-                )
-                # Log unweighted losses
-                utils.log_string(
-                    "Iteration: {:4d}/{} ({:.0f}%) Unweighted L_s : L_Mnfld: {:.5f},  "
-                    "L_NonMnfld: {:.5f},  L_Nrml: {:.5f},  L_Eknl: {:.5f},  L_Div: {:.5f},  L_Heat: {:.5f},  L_Diff: {:.5f}".format(
-                        batch_idx,
-                        len(train_set),
-                        100.0 * batch_idx / len(train_dataloader),
-                        loss_dict["sdf_term"].item(),
-                        loss_dict["inter_term"].item(),
-                        loss_dict["normal_term"].item(),
-                        loss_dict["eikonal_term"].item(),
-                        loss_dict["div_term"].item(),
-                        loss_dict["heat_term"].item(),
-                        loss_dict["diff_term"].item(),
-                    ),
-                    log_file,
-                )
-                # Log losses on visualization grid
+                # [Optional] Compute losses on visualization grid
                 if args.compute_losses_on_vis_grid > 0:
+                    vis_pred = model(vis_grid_points, mnfld_points)
+                    vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
+                        vis_grid_points[0].detach().cpu().numpy()
+                    )  # (vis_grid_res * vis_grid_res, 1)
+                    vis_loss_dict, _ = criterion(
+                        vis_pred,
+                        mnfld_points,
+                        vis_grid_points,
+                        None,
+                        None,
+                        torch.tensor(vis_grid_dists_gt, dtype=torch.float32).to(device),
+                    )
+
+                # Backpropagate and update weights
+                loss_dict["loss"].backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0)
+                optimizer.step()
+
+                # Log training stats and save model
+                if batch_idx % args.log_interval == 0:
+                    weights = criterion.weights
+                    utils.log_string(f"Current heat lambda: {criterion.heat_lambda}", log_file)
+                    utils.log_string("Weights: {}, lr={:.3e}".format(weights, lr), log_file)
+                    # Log weighted losses
                     utils.log_string(
-                        "Iteration: {:4d}/{} ({:.0f}%) L_s in visualization range : L_Eknl: {:.5f}, L_Diff: {:.5f}".format(
+                        "Iteration: {:4d}/{} ({:.0f}%) Loss: {:.5f} = L_Mnfld: {:.5f} + "
+                        "L_NonMnfld: {:.5f} + L_Nrml: {:.5f} + L_Eknl: {:.5f} + L_Div: {:.5f} + L_SAL: {:.5f} + L_Heat: {:.5f}".format(
                             batch_idx,
                             len(train_set),
                             100.0 * batch_idx / len(train_dataloader),
-                            vis_loss_dict["eikonal_term"].item(),
-                            vis_loss_dict["diff_term"].item(),
+                            loss_dict["loss"].item(),
+                            weights[0] * loss_dict["sdf_term"].item(),
+                            weights[1] * loss_dict["inter_term"].item(),
+                            weights[2] * loss_dict["normal_term"].item(),
+                            weights[3] * loss_dict["eikonal_term"].item(),
+                            weights[4] * loss_dict["div_term"].item(),
+                            weights[5] * loss_dict["sal_term"].item(), # add SAL term here
+                            weights[6] * loss_dict["heat_term"].item(),
                         ),
                         log_file,
                     )
-                utils.log_string("", log_file)
+                    # Log unweighted losses
+                    utils.log_string(
+                        "Iteration: {:4d}/{} ({:.0f}%) Unweighted L_s : L_Mnfld: {:.5f},  "
+                        "L_NonMnfld: {:.5f},  L_Nrml: {:.5f},  L_Eknl: {:.5f},  L_Div: {:.5f},  L_Heat: {:.5f},  L_Diff: {:.5f}".format(
+                            batch_idx,
+                            len(train_set),
+                            100.0 * batch_idx / len(train_dataloader),
+                            loss_dict["sdf_term"].item(),
+                            loss_dict["inter_term"].item(),
+                            loss_dict["normal_term"].item(),
+                            loss_dict["eikonal_term"].item(),
+                            loss_dict["div_term"].item(),
+                            loss_dict["heat_term"].item(),
+                            loss_dict["diff_term"].item(),
+                        ),
+                        log_file,
+                    )
+                    # Log losses on visualization grid
+                    if args.compute_losses_on_vis_grid > 0:
+                        utils.log_string(
+                            "Iteration: {:4d}/{} ({:.0f}%) L_s in visualization range : L_Eknl: {:.5f}, L_Diff: {:.5f}".format(
+                                batch_idx,
+                                len(train_set),
+                                100.0 * batch_idx / len(train_dataloader),
+                                vis_loss_dict["eikonal_term"].item(),
+                                vis_loss_dict["diff_term"].item(),
+                            ),
+                            log_file,
+                        )
+                    utils.log_string("", log_file)
 
         # Update weights
         if args.heat_lambda_decay is not None:
@@ -450,7 +453,12 @@ if __name__ == "__main__":
 
     # Visualize final pth if exists
     if args.eval and args.vis_final:
-        model_path = os.path.join(args.saved_model_dir, f"model.pth")
+        test_dataloader = torch.utils.data.DataLoader(
+            train_set, batch_size=1, shuffle=False, num_workers=0, pin_memory=True
+        )
+        test_data = next(iter(test_dataloader))
+        mnfld_points = test_data["mnfld_points"].to(device)
+        model_path = os.path.join(log_dir, "trained_models", f"model.pth")
         model.load_state_dict(torch.load(model_path, weights_only=True))
 
         utils.log_string(f"Visualizing final model", log_file)
@@ -470,7 +478,7 @@ if __name__ == "__main__":
             mnfld_points=mnfld_points,
             vis_pred=vis_pred,
             vis_grid_dists_gt=vis_grid_dists_gt,
-            data=data,
+            data=test_data,
             batch_idx="final",
             args=args,
         )

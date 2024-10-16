@@ -15,6 +15,7 @@ class Circle(ShapeBase):
         sampling_std=0.005,
         n_random_samples=1024,
         resample=True,
+        compute_sal_dist_gt=False,
         outward_normal=True,
         r=0.5,
         center=(0, 0),
@@ -33,6 +34,7 @@ class Circle(ShapeBase):
             n_random_samples,
             resample,
             2,
+            compute_sal_dist_gt,
         )
 
     def get_mnfld_points(self):
@@ -75,6 +77,7 @@ class Polygon(ShapeBase):
         sampling_std=0.005,
         n_random_samples=1024,
         resample=True,
+        compute_sal_dist_gt=False,
         outward_normal=True,  # Clockwise vertices is outward normal by default. This arg will reverse the normal direction
         vertices=[],
         line_sample_type="uniform",
@@ -95,6 +98,7 @@ class Polygon(ShapeBase):
             n_random_samples,
             resample,
             2,
+            compute_sal_dist_gt,
         )
 
     def get_mnfld_points(self):

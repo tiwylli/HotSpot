@@ -25,6 +25,7 @@ class ReconDataset(ShapeBase):
         requires_dist=False,
         requires_curvatures=False,
         grid_range=1.1,
+        compute_sal_dist_gt=False,
     ):
         self.file_path = file_path
         self.requires_dist = requires_dist
@@ -44,6 +45,7 @@ class ReconDataset(ShapeBase):
             n_random_samples=n_random_samples,
             resample=resample,
             dim=3,
+            compute_sal_dist_gt=compute_sal_dist_gt,
         )
 
         # extract center and scale points and normals

@@ -19,6 +19,7 @@ class ShapeBase(data.Dataset):
         n_random_samples=1024,
         resample=True,
         dim=3,
+        compute_sal_dist_gt=False,
     ):
         # print("n_points:", n_points)
         # print("n_samples:", n_samples)
@@ -39,6 +40,7 @@ class ShapeBase(data.Dataset):
         self.n_random_samples = n_random_samples
         self.resample = resample
         self.dim = dim
+        self.compute_sal_dist_gt = compute_sal_dist_gt
 
         self._init_mnfld_and_grid_points()
         self._resample()
@@ -306,6 +308,8 @@ class ShapeBase(data.Dataset):
         mnfld_idx = np.random.permutation(range(self.mnfld_points.shape[0]))
         nonmnfld_idx = np.random.permutation(range(self.nonmnfld_points.shape[0]))
 
+        mnfld_idx = mnfld_idx[: self.n_points]
+
         if self.nonmnfld_pdfs.shape[0] > 1:
             nonmnfld_pdfs = self.nonmnfld_pdfs[nonmnfld_idx]
         else:
@@ -316,13 +320,14 @@ class ShapeBase(data.Dataset):
             "mnfld_normals_gt": self.mnfld_normals[mnfld_idx],  # (n_points, dim)
             "nonmnfld_points": self.nonmnfld_points[nonmnfld_idx],  # (n_nonmnfld_samples, dim)
             "nonmnfld_pdfs": nonmnfld_pdfs,  # (n_nonmnfld_samples, 1)
-            "nonmnfld_dists_sal": self.get_points_distances_sal(self.nonmnfld_points[nonmnfld_idx]),
         }
 
         if self.nonmnfld_dist_gt is not None:
             ret_dist["nonmnfld_dists_gt"] = self.nonmnfld_dist_gt[nonmnfld_idx]
         if self.nonmnfld_normals_gt is not None:
             ret_dist["nonmnfld_normals_gt"] = self.nonmnfld_normals_gt[nonmnfld_idx]
+        if self.compute_sal_dist_gt:
+            ret_dist["nonmnfld_dists_sal_gt"] = self.get_points_distances_sal(self.nonmnfld_points[nonmnfld_idx])
 
         return ret_dist
 

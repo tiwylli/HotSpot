@@ -23,7 +23,10 @@ class Network(nn.Module):
         init_type="siren",
         neuron_type="quadratic",
         sphere_init_params=[1.6, 1.0],
+        n_repeat_period=30,
     ):
+        global periods
+        periods = [1, n_repeat_period]
         super().__init__()
         self.encoder_type = encoder_type
         self.init_type = init_type
