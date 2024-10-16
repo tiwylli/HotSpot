@@ -20,6 +20,7 @@ data/scene_reconstruction
 data/ShapeNetNSP
 /data
 /sanitychecks_out/
+/surface_reconstruction/
 /*.mp4
 /train/debug.py
 /out/

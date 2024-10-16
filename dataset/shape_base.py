@@ -78,6 +78,23 @@ class ShapeBase(data.Dataset):
 
         return distances, normals
 
+    # Non-manifold point to point cloud distances for SAL
+    def get_points_distances_sal(self, points) -> np.ndarray:
+        # Implement a function that compute the distance from non-manifold points to the nearest point in the point cloud (manifold points).
+        # For input points of shape (n_points, dim), the output should be:
+        # distances: (n_points, 1)
+
+        # Build a KD-Tree using the manifold points
+        kdtree = spatial.cKDTree(self.mnfld_points)
+
+        # Query the KD-Tree to find the nearest point for each point in 'points'
+        distances, _ = kdtree.query(points, k=1)
+
+        # Reshape distances to the expected (n_points, 1) shape
+        distances = distances[..., None]
+
+        return distances
+
     def _init_mnfld_and_grid_points(self):
         self.mnfld_points = self.get_mnfld_points()
         self.mnfld_normals = self.get_mnfld_normals()
@@ -299,6 +316,7 @@ class ShapeBase(data.Dataset):
             "mnfld_normals_gt": self.mnfld_normals[mnfld_idx],  # (n_points, dim)
             "nonmnfld_points": self.nonmnfld_points[nonmnfld_idx],  # (n_nonmnfld_samples, dim)
             "nonmnfld_pdfs": nonmnfld_pdfs,  # (n_nonmnfld_samples, 1)
+            "nonmnfld_dists_sal": self.get_points_distances_sal(self.nonmnfld_points[nonmnfld_idx]),
         }
 
         if self.nonmnfld_dist_gt is not None:

@@ -1,14 +1,7 @@
-***StEik***: Stabilizing the Optimization of Neural Signed Distance Functions and Finer Shape Representation (NeurIPS 2023)
----
-Created by [Huizong Yang*](https://www.linkedin.com/in/huizong-yang/), [Yuxin Sun*](https://www.linkedin.com/in/yuxin-sun-972960140/), [Ganesh Sundaramoorthi](http://www.ganeshsun.com/index.html) and [Anthony Yezzi](https://ece.gatech.edu/directory/anthony-joseph-yezzi) from [Georgia Tech](https://www.gatech.edu/) and [Raytheon Technologies](https://www.rtx.com/).
-
-__[Arxiv](https://arxiv.org/abs/2305.18414)__
-
-![Demo](fig/demo.png)
+# ***SPIN***: Screened Poisson Informed Neural Networks for Sign Distance Function Optimization
 
 ## Introduction
-This is the code for training shape INRs for 3D surface reconstructions from point cloud using our new second order regularization and new shape representation.
-It allows to train, test and evaluate the tasks of surface reconstruction.
+Instead of Eikonal equation, you should use screened Poisson equation to optimize SDFs.
 
 Please follow the installation instructions below.
 
@@ -16,35 +9,39 @@ Please follow the installation instructions below.
 
 ### 1. Requirements
 
-Our codebase uses [PyTorch](https://pytorch.org/).
+Our codebase uses [PyTorch](https://pytorch.org/). The code was tested with Python 3.9.19, torch 2.4.1, tensorboardX 2.6.2.2, CUDA 11.8 on Ubuntu 20.04.6 LTS. 
 
-The code was tested with Python 3.9.12, torch 1.8.2, tensorboardX 2.3, CUDA 11.7 on Red Hat 4.8.5-44 (should work with later versions).
-For a full list of requirements see [the `requirement.txt` file](requirements.txt). Note we also use `plotly-orca` for visualisation, which needs to be installed from conda.
+We also provide a [docker image](https://hub.docker.com/layers/galaxeaaa/pytorch-cuda11.8/latest/images/sha256-5e32b788a2cb0740234a7ed166451f4324cd79e07add2e7d61569013faa3c0e0?context=repo) that pre-installed all the requirements above in the conda environment named `torch`. Use `/workspace/conda init <your_shell>` to initialize the conda environment for your shell. Then follow the instructions below to activate the environment and install the requirements. For a full list of requirements see [the `requirement.txt` file](requirements.txt). Note we also use `plotly-orca` for visualisation, which needs to be installed from conda.
 
-Example installation code (should install PyTorch separately):
+Example installation code if you are using the docker image:
 ```sh
-conda create -n steik python=3.9.12
-conda activate steik
-conda install pip # for using pip commands in the conda env
+/workspace/conda init <your_shell> # Change <your_shell> to your shell, e.g. bash, zsh, fish
+conda activate torch
+conda install pip
 pip install -r requirements.txt
-conda install -c plotly plotly plotly-orca # conda only 
+conda install -c plotly plotly plotly-orca # Conda only 
+```
+
+Example installation code if you are **not** using the docker image:
+```sh
+conda create -n torch python=3.9
+conda activate torch
+conda install pip
+pip install -r requirements.txt
+conda install -c plotly plotly plotly-orca # Conda only 
 # Install with instructions from https://pytorch.org/get-started/locally/
-# Below is instructions for installation of long term support (1.8.2 at the time).
-conda install pytorch torchvision torchaudio cudatoolkit=11.1 -c pytorch-lts -c nvidia
-# for CUDA 10.2: conda install pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch-lts
+# Below is instructions for installation of latest version of PyTorch with CUDA 11.8
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
 ###  2. Testing on 2D Shapes (No External Data required)
 
-We implemented a 2D shape dataset generator (`./sanitychecks/basic_shape_dataset2d.py`) that includes three shapes: Circle, L shape polygon, and Koch snowflake. The code generally allows any polygonal shape to be used and can be extended to other 2D shapes. 
+We inherit from [StEik](https://github.com/sunyx523/StEik) a 2D shape dataset generator (`./dataset/shape_base.py` and `./dataset/shape_2d.py`) that includes three shapes: Circle, L shape polygon, and Koch snowflake. We also designed 10 more shapes with more complex topology to test our idea. The code generally allows any polygonal shape to be used and can be extended to other 2D shapes. 
 
-To train a 2D shape neural representation and reconstruct the surface (curve in this case) for all three shapes run the script 
+To train a 2D shape neural representation and reconstruct the surface (curve in this case) for all the shapes run the script 
 ```sh
-cd sanitychecks
-./scripts/run_train_test_basic_shape.sh
+bash ./scripts/run_spin_2d.sh
 ```
-
-To visualize the MFGI and geometric initializations run `./sanitychecks/scripts/visualize_initializations.sh`
 
 ### 3. Surface Reconstruction (and Scene Reconstruction)
 #### 3.1 Data for Surface Reconstruction

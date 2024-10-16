@@ -4,14 +4,14 @@ model_dir = "models"
 [network]
 decoder_n_hidden_layers = 5
 decoder_hidden_dim = 128
-nl = "softplus"
-sphere_init_params = [1.0, 1.0]
+nl = "relu"
+sphere_init_params = [1.6, 1.0]
 init_type = "geometric_relu"
 neuron_type = "linear"
 
 [loss]
-loss_type = 'igr_wo_n'
-loss_weights = [100, 0, 0, 5, 0, 0.0, 0.0]
+loss_type = 'sal'
+loss_weights = [100, 0, 0, 0, 0, 20, 0]
 
 [sampling]
 grid_res = 256
