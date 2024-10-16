@@ -273,6 +273,16 @@ class Loss(nn.Module):
                 self.weights[0] * sdf_term
                 + self.weights[5] * sal_term
             )
+        elif self.loss_type == "everything_with_div_heat":
+            loss = (
+                self.weights[0] * sdf_term
+                + self.weights[1] * inter_term
+                + self.weights[2] * normal_term
+                + self.weights[3] * eikonal_term
+                + self.weights[4] * div_term
+                + self.weights[5] * sal_term
+                + self.weights[6] * heat_term
+            )
         else:
             raise Warning("unrecognized loss type")
 
@@ -290,8 +300,8 @@ class Loss(nn.Module):
             "div_term": div_term,
             "sal_term": sal_term,
             "heat_term": heat_term,
-            "diff_term": nonmnfld_dists_loss,
-        }, mnfld_grad
+            "diff_term": nonmnfld_dists_loss
+                }, mnfld_grad
 
     def update_div_weight(self, current_iteration, n_iterations, params=None):
         # `params`` should be (start_weight, *optional middle, end_weight) where optional middle is of the form [percent, value]*

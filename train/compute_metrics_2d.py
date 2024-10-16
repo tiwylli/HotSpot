@@ -37,7 +37,11 @@ def compute_dists(recon_points, gt_points, eval_type="Default"):
 
 
 if __name__ == "__main__":
-    device = torch.device("cuda")
+    # if there is gpu available, use it
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
     args = parser.get_train_args()
     args.vis_grid_res = 2048 # hardcode vis_grid_res to 2048
     assert args.task == "2d", "This script is only for 2D shapes"

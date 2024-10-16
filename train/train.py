@@ -397,7 +397,7 @@ if __name__ == "__main__":
                 # Log unweighted losses
                 utils.log_string(
                     "Iteration: {:4d}/{} ({:.0f}%) Unweighted L_s : L_Mnfld: {:.5f},  "
-                    "L_NonMnfld: {:.5f},  L_Nrml: {:.5f},  L_Eknl: {:.5f},  L_Div: {:.5f},  L_Heat: {:.5f},  L_Diff: {:.5f}".format(
+                    "L_NonMnfld: {:.5f},  L_Nrml: {:.5f},  L_Eknl: {:.5f},  L_Div: {:.5f},  L_SAL: {:.5f}, L_Heat: {:.5f},  L_Diff: {:.5f}".format(
                         batch_idx,
                         len(train_set),
                         100.0 * batch_idx / len(train_dataloader),
@@ -406,6 +406,7 @@ if __name__ == "__main__":
                         loss_dict["normal_term"].item(),
                         loss_dict["eikonal_term"].item(),
                         loss_dict["div_term"].item(),
+                        loss_dict["sal_term"].item(), # add SAL term here
                         loss_dict["heat_term"].item(),
                         loss_dict["diff_term"].item(),
                     ),

@@ -6,14 +6,18 @@ decoder_n_hidden_layers = 5
 decoder_hidden_dim = 128
 nl = "softplus"                 # 'sine' | 'relu' | 'softplus'
 sphere_init_params = [0.0, 1.0]
-init_type = "geometric_relu_2d"    # 'siren' | 'geometric_sine' | 'geometric_relu' | 'mfgi'
+init_type = "geometric_relu_2d"
 neuron_type = "linear"          # 'linear' | 'quadratic'
 
 [loss]
-loss_type = "igr_w_heat" # 'siren_wo_n_w_div' | 'siren_wo_n' | 'siren_w_div' | 'siren'
-loss_weights = [ 90, 0, 0, 0.01, 0, 0, 0.5] # sdf, inter, normal, eikonal, div, sal, heat
-heat_decay = "linear" # 'linear' | 'quintic' | 'step'
-heat_decay_params = [0.2, 0.8, 0.2, 0.9, 0.03, 0.02] # start, (location, value)*, end
+loss_type = "everything_with_div_heat"
+loss_weights = [ 90, 0, 0, 0.01, 0, 0, 0] # sdf, inter, normal, eikonal, div, latent, heat]
+
+div_type = "full_l1" # "full_l1" == digs, "dir_l1" == steik
+div_decay = "linear"
+# div_decay_params = [1e2, 0.2, 1e2, 0.4, 0.0, 0.0]
+div_decay_params = [0, 0] # start, end keep 0
+
 eikonal_decay = "linear" # 'linear' | 'quintic' | 'step'
 eikonal_decay_params = [0.01, 0.7, 0.01, 5] # start, (location, value)*, end
 # heat_lambda_decay = "linear" # 'linear' | 'quintic' | 'step'
@@ -36,8 +40,8 @@ gpu_idx = 0
 lr = 1e-4
 grad_clip_norm = 10.0
 heat_lambda = 60.0
-vis_interval = 50
-log_interval = 50
+vis_interval = 2000
+log_interval = 2000
 
 [visualization]
 vis_grid_res = 256
