@@ -349,12 +349,6 @@ if __name__ == "__main__":
 
                 # Log training stats and save model
                 if batch_idx % args.log_interval == 0:
-                    # print grad of model parameters 
-                    parameters = model.named_parameters()
-                    for name, param in parameters:
-                        if name == "decoder.fc_block.qua2.lin1.bias":
-                            print(name, param.grad[0])
-
                     weights = criterion.weights
                     utils.log_string(f"Current heat lambda: {criterion.heat_lambda}", log_file)
                     utils.log_string("Weights: {}, lr={:.3e}".format(weights, lr), log_file)
