@@ -15,17 +15,17 @@ loss_weights = [ 80, 0, 0, 0.01, 0, 0, 0.2] # sdf, inter, normal, eikonal, div, 
 heat_decay = "linear" # 'linear' | 'quintic' | 'step'
 heat_decay_params = [0.2, 0.045, 0.2, 0.06, 0.2, 0.2] # start, (location, value)*, end
 eikonal_decay = "linear" # 'linear' | 'quintic' | 'step'
-eikonal_decay_params = [0.01, 0.03, 0.01, 0.06, 0, 0] # start, (location, value)*, end
+eikonal_decay_params = [0.01, 0.03, 0.1, 0.06, 0, 0] # start, (location, value)*, end
 heat_lambda_decay = "linear" # 'linear' | 'quintic' | 'step'
-heat_lambda_decay_params = [60, 0.03, 60, 0.06, 0.1, 0.1] # start, (location, value)*, end
+heat_lambda_decay_params = [60, 0.03, 60, 0.06, 40, 40] # start, (location, value)*, end
 
 [sampling]
 grid_res = 256
 nonmnfld_sample_type = "uniform_central_gaussian"
 n_random_samples = 32766
 n_points = 15000
-grid_range = 1.5
-nonmnfld_sample_std = 0.5
+grid_range = 1.3
+nonmnfld_sample_std = 3
 
 [training]
 train = true
@@ -37,12 +37,13 @@ lr = 1e-5
 grad_clip_norm = 10.0
 heat_lambda = 60
 vis_interval = 4000
-log_interval = 1000
+log_interval = 4000
 
 [visualization]
 vis_grid_res = 256
 vis_grid_range = 1.2
-vis_contour_interval = 0.01
+vis_contour_interval = 0.025
+vis_contour_range = [-0.75, 0.75]
 vis_normals = true
 n_vis_normals = 100
 vis_heat = true
