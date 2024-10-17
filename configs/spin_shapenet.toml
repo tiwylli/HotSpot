@@ -8,10 +8,11 @@ nl = "sine"
 sphere_init_params = [1.6, 0.1]
 init_type = "mfgi"
 neuron_type = "quadratic"
+n_repeated_period = 10
 
 [loss]
 loss_type = "igr_w_heat"
-loss_weights = [200, 0, 0, 5, 0, 0, 20]
+loss_weights = [150, 0, 0, 5, 0, 0, 40]
 heat_decay = "linear"                               
 heat_decay_params = [10, 0.6, 10, 0.8, 3, 0.1] 
 eikonal_decay = "linear"                            
@@ -19,7 +20,7 @@ eikonal_decay_params = [1, 0.7, 1, 10]
 
 [sampling]
 grid_res = 256
-nonmnfld_sample_type = "uniform_central_gaussian"
+nonmnfld_sample_type = "uniform"
 n_random_samples = 15000
 n_points = 15000
 grid_range = 1.5
@@ -33,8 +34,8 @@ n_iterations = 10000
 gpu_idx = 0
 lr = 1e-4
 grad_clip_norm = 10.0
-heat_lambda = 12.0
-vis_interval = 100
+heat_lambda = 6.0
+vis_interval = 1000
 log_interval = 100
 
 [visualization]

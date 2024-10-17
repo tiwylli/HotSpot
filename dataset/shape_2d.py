@@ -467,6 +467,7 @@ def get2D_dataset(
     sampling_std=None,
     n_random_samples=None,
     resample=True,
+    compute_sal_dist_gt=False,
     shape_type="circle",
 ):
     args = [
@@ -478,6 +479,7 @@ def get2D_dataset(
         sampling_std,
         n_random_samples,
         resample,
+        compute_sal_dist_gt,
     ]
 
     if shape_type == "circle":

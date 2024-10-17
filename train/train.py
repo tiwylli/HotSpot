@@ -11,21 +11,19 @@ import torch.optim.lr_scheduler as lr_scheduler
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dataset import shape_2d, shape_3d
-from recon_dataset import ReconDataset
 import models.Net as model
 import models.Heat as heatModel
 from models.losses import Loss
 
-# import recon_dataset as dataset
 import utils.utils as utils
 import utils.visualizations as vis
 from utils import parser
+import copy
 
 
 def visualize_model(
     x_grid,
     y_grid,
-    vis_grid_points,
     mnfld_points,
     vis_pred,
     vis_grid_dists_gt,
@@ -34,7 +32,6 @@ def visualize_model(
     args,
     shape=None,
 ):
-    vis_pred = model(vis_grid_points, mnfld_points)
     vis_grid_pred = vis_pred[
         "nonmanifold_pnts_pred"
     ]  # (batch_size, vis_grid_res * vis_grid_res, 1)
@@ -131,12 +128,6 @@ def visualize_model(
         mae = np.mean(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np))
         rmse = np.sqrt(np.mean((vis_grid_pred_np - vis_grid_dists_gt_np) ** 2))
         mape = np.mean(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np) / vis_grid_dists_gt_np)
-        print(np.min(vis_grid_pred_np))
-        print(np.max(vis_grid_pred_np))
-        print(np.min(np.abs(vis_grid_dists_gt_np)))
-        print(np.max(np.abs(vis_grid_dists_gt_np)))
-        print(np.max(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np)))
-        print(np.max(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np) / vis_grid_dists_gt_np))
         smape = np.mean(
             2
             * np.abs(vis_grid_pred_np - vis_grid_dists_gt_np)
@@ -178,10 +169,9 @@ if __name__ == "__main__":
             sample_type=args.nonmnfld_sample_type,
             sampling_std=args.nonmnfld_sample_std,
             n_random_samples=args.n_random_samples,
-            resample=False,
+            resample=True,
             compute_sal_dist_gt=True if "sal" in args.loss_type else False,
         )
-        # train_set = ReconDataset(file_path, args.n_points, args.n_iterations, args.grid_res, args.nonmnfld_sample_type)
         in_dim = 3
     elif args.task == "2d":
         train_set = shape_2d.get2D_dataset(
@@ -275,25 +265,6 @@ if __name__ == "__main__":
             if nonmnfld_dists_sal is not None:
                 nonmnfld_dists_sal = nonmnfld_dists_sal.to(device)
 
-            # # Load data
-            # (
-            #     mnfld_points,
-            #     mnfld_normals_gt,
-            #     nonmnfld_points,
-            #     nonmnfld_pdfs,
-            #     # nonmnfld_dists_gt,
-            #     # grid_dists_gt,
-            #     # TODO: Add nonmnfld_dists_sal. Can be None if not running SAL.
-            # ) = (
-            #     data["mnfld_points"].to(device),
-            #     data["mnfld_normals_gt"].to(device),
-            #     data["nonmnfld_points"].to(device),
-            #     data["nonmnfld_pdfs"].to(device),
-            #     # data["nonmnfld_dists_gt"].to(device),
-            #     # data["grid_dists_gt"].to(device),
-            #     # TODO: Add nonmnfld_dists_sal
-            # )
-            
             mnfld_points.requires_grad_()
             nonmnfld_points.requires_grad_()
             # Save model before updating weights
@@ -305,15 +276,16 @@ if __name__ == "__main__":
             # Visualize SDF
             if not args.vis_final and args.eval and batch_idx % args.vis_interval == 0:
                 if not args.train:
-                    model_path = os.path.join(args.saved_model_dir, f"model_{batch_idx}.pth")
+                    model_path = os.path.join(log_dir, "trained_models", f"model_{batch_idx}.pth")
                     model.load_state_dict(torch.load(model_path, weights_only=True))
 
                 utils.log_string(f"Visualizing epoch {batch_idx}", log_file)
 
                 output_dir = os.path.join(log_dir, "vis")
                 os.makedirs(output_dir, exist_ok=True)
-
-                vis_pred = model(vis_grid_points, mnfld_points)
+                model_copy = copy.deepcopy(model)
+                model_copy.eval()
+                vis_pred = model_copy(vis_grid_points, mnfld_points)
                 vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
                     vis_grid_points[0].detach().cpu().numpy()
                 )  # (vis_grid_res * vis_grid_res, 1)
@@ -323,7 +295,6 @@ if __name__ == "__main__":
                 visualize_model(
                     x_grid=x,
                     y_grid=y,
-                    vis_grid_points=vis_grid_points,
                     mnfld_points=mnfld_points,
                     vis_pred=vis_pred,
                     vis_grid_dists_gt=vis_grid_dists_gt,
@@ -332,12 +303,14 @@ if __name__ == "__main__":
                     args=args,
                     shape=train_set,
                 )
-
+            
             if args.train:
+                # reset grad of mnfld_points and nonmnfld_points
                 model.zero_grad()
                 model.train()
 
                 # Compute losses on samples
+                output_pred = model(nonmnfld_points, mnfld_points)
                 output_pred = model(nonmnfld_points, mnfld_points)
                 loss_dict, _ = criterion(
                     output_pred,
@@ -376,6 +349,12 @@ if __name__ == "__main__":
 
                 # Log training stats and save model
                 if batch_idx % args.log_interval == 0:
+                    # print grad of model parameters 
+                    parameters = model.named_parameters()
+                    for name, param in parameters:
+                        if name == "decoder.fc_block.qua2.lin1.bias":
+                            print(name, param.grad[0])
+
                     weights = criterion.weights
                     utils.log_string(f"Current heat lambda: {criterion.heat_lambda}", log_file)
                     utils.log_string("Weights: {}, lr={:.3e}".format(weights, lr), log_file)
@@ -428,23 +407,23 @@ if __name__ == "__main__":
                         )
                     utils.log_string("", log_file)
 
-        # Update weights
-        if args.heat_lambda_decay is not None:
-            criterion.update_heat_lambda(
-                batch_idx, args.n_iterations, args.heat_lambda_decay_params
-            )
-
-        if args.train:
-            if "div" in args.loss_type:
-                criterion.update_div_weight(batch_idx, args.n_iterations, args.div_decay_params)
-            if args.heat_decay is not None:
-                criterion.update_heat_weight(batch_idx, args.n_iterations, args.heat_decay_params)
-            if args.eikonal_decay is not None:
-                criterion.update_eikonal_weight(
-                    batch_idx, args.n_iterations, args.eikonal_decay_params
+            # Update weights
+            if args.heat_lambda_decay is not None:
+                criterion.update_heat_lambda(
+                    batch_idx, args.n_iterations, args.heat_lambda_decay_params
                 )
 
-            scheduler.step()
+            if args.train:
+                if "div" in args.loss_type:
+                    criterion.update_div_weight(batch_idx, args.n_iterations, args.div_decay_params)
+                if args.heat_decay is not None:
+                    criterion.update_heat_weight(batch_idx, args.n_iterations, args.heat_decay_params)
+                if args.eikonal_decay is not None:
+                    criterion.update_eikonal_weight(
+                        batch_idx, args.n_iterations, args.eikonal_decay_params
+                    )
+
+                scheduler.step()
 
     # Save final model
     if args.train:

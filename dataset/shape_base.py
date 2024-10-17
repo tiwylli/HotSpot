@@ -120,7 +120,7 @@ class ShapeBase(data.Dataset):
 
     def get_nonmnfld_points_and_pdfs(self, sample_type=None, n_nonmnfld_samples=None):
         # Default pdf is uniform
-        nonmnfld_pdfs = 1 / (4 * self.grid_range**2)
+        nonmnfld_pdfs = 1 / (2 ** self.dim * self.grid_range**self.dim)
         nonmnfld_pdfs = np.array([nonmnfld_pdfs])
 
         if sample_type is None:
@@ -306,9 +306,10 @@ class ShapeBase(data.Dataset):
             self._resample()
 
         mnfld_idx = np.random.permutation(range(self.mnfld_points.shape[0]))
-        nonmnfld_idx = np.random.permutation(range(self.nonmnfld_points.shape[0]))
+        # nonmnfld_idx = np.random.permutation(range(self.nonmnfld_points.shape[0]))
 
         mnfld_idx = mnfld_idx[: self.n_points]
+        nonmnfld_idx = range(self.nonmnfld_points.shape[0])
 
         if self.nonmnfld_pdfs.shape[0] > 1:
             nonmnfld_pdfs = self.nonmnfld_pdfs[nonmnfld_idx]
