@@ -16,8 +16,8 @@ cp -r $CONFIG_DIR $EXP_DIR        # Copy the config file to the experiment direc
 for SHAPE_NAME in 'lamp' ; do # use the shapes you want in the dataset
     FOLDER_DIR=${DATASET_DIR}/$SHAPE_NAME/
     echo $SHAPE_NAME
-    # for FILE_NAME in 'd1aed86c38d9ea6761462fc0fa9b0bb4.ply'; do # use the scans you want
-    for FILE_NAME in $FOLDER_DIR/*.ply; do # Iterate over all the files in the folder
+    for FILE_NAME in 'd1aed86c38d9ea6761462fc0fa9b0bb4.ply'; do # use the scans you want
+    # for FILE_NAME in $FOLDER_DIR/*.ply; do # Iterate over all the files in the folder
         echo $FILE_NAME
         FILE_NAME=$(basename $FILE_NAME)
         python3 train/train.py --config $CONFIG_DIR --log_dir $LOG_DIR/$IDENTIFIER$TIMESTAMP/$SHAPE_NAME --data_dir $FOLDER_DIR --file_name $FILE_NAME --model_dir $MODEL_DIR

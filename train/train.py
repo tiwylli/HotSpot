@@ -311,7 +311,6 @@ if __name__ == "__main__":
 
                 # Compute losses on samples
                 output_pred = model(nonmnfld_points, mnfld_points)
-                output_pred = model(nonmnfld_points, mnfld_points)
                 loss_dict, _ = criterion(
                     output_pred,
                     mnfld_points,
