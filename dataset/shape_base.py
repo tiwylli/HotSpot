@@ -302,33 +302,25 @@ class ShapeBase(data.Dataset):
         # self.dist_img = np.reshape(self.grid_dist, [self.grid_res, self.grid_res])
 
     def __getitem__(self, index):
+        mnfld_idx = np.random.permutation(range(self.mnfld_points.shape[0]))
+        mnfld_idx = mnfld_idx[: self.n_points]
+
         if self.resample:
             self._resample()
-
-        mnfld_idx = np.random.permutation(range(self.mnfld_points.shape[0]))
-        # nonmnfld_idx = np.random.permutation(range(self.nonmnfld_points.shape[0]))
-
-        mnfld_idx = mnfld_idx[: self.n_points]
-        nonmnfld_idx = range(self.nonmnfld_points.shape[0])
-
-        if self.nonmnfld_pdfs.shape[0] > 1:
-            nonmnfld_pdfs = self.nonmnfld_pdfs[nonmnfld_idx]
-        else:
-            nonmnfld_pdfs = self.nonmnfld_pdfs
 
         ret_dist = {
             "mnfld_points": self.mnfld_points[mnfld_idx],  # (n_points, dim)
             "mnfld_normals_gt": self.mnfld_normals[mnfld_idx],  # (n_points, dim)
-            "nonmnfld_points": self.nonmnfld_points[nonmnfld_idx],  # (n_nonmnfld_samples, dim)
-            "nonmnfld_pdfs": nonmnfld_pdfs,  # (n_nonmnfld_samples, 1)
+            "nonmnfld_points": self.nonmnfld_points,  # (n_nonmnfld_samples, dim)
+            "nonmnfld_pdfs": self.nonmnfld_pdfs,  # (n_nonmnfld_samples, 1)
         }
 
         if self.nonmnfld_dist_gt is not None:
-            ret_dist["nonmnfld_dists_gt"] = self.nonmnfld_dist_gt[nonmnfld_idx]
+            ret_dist["nonmnfld_dists_gt"] = self.nonmnfld_dist_gt
         if self.nonmnfld_normals_gt is not None:
-            ret_dist["nonmnfld_normals_gt"] = self.nonmnfld_normals_gt[nonmnfld_idx]
+            ret_dist["nonmnfld_normals_gt"] = self.nonmnfld_normals_gt
         if self.compute_sal_dist_gt:
-            ret_dist["nonmnfld_dists_sal_gt"] = self.get_points_distances_sal(self.nonmnfld_points[nonmnfld_idx])
+            ret_dist["nonmnfld_dists_sal_gt"] = self.get_points_distances_sal(self.nonmnfld_points)
 
         return ret_dist
 

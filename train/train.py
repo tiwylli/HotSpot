@@ -447,7 +447,6 @@ if __name__ == "__main__":
         visualize_model(
             x_grid=x,
             y_grid=y,
-            vis_grid_points=vis_grid_points,
             mnfld_points=mnfld_points,
             vis_pred=vis_pred,
             vis_grid_dists_gt=vis_grid_dists_gt,
