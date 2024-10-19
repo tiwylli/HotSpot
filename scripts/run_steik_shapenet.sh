@@ -2,7 +2,7 @@ ROOT_DIR=$(dirname $(dirname "$(readlink -f "$0")"))'/'
 MODEL_DIR=$ROOT_DIR'models'
 THIS_FILE=$(basename "$0")
 TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
-IDENTIFIER='StEik-broken-lamp-new-shapebase' # change to your desired identifier
+IDENTIFIER='StEik' # change to your desired identifier
 
 CONFIG_DIR=$ROOT_DIR"configs/steik_shapenet.toml" # change to your config file path
 DATASET_DIR=$ROOT_DIR'data/NSP_dataset/'    # change to your dataset path
