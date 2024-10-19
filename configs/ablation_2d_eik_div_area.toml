@@ -10,7 +10,7 @@ init_type = "geometric_relu_2d"
 neuron_type = "linear"          # 'linear' | 'quadratic'
 
 [loss]
-loss_type = "everything_with_div_heat"
+loss_type = "everything_including_div_heat_sal"
 loss_weights = [ 90, 3, 0, 0.01, 3, 0, 0] # sdf, inter, normal, eikonal, div, latent, heat]
 
 div_type = "full_l1" # "full_l1" == digs, "dir_l1" == steik

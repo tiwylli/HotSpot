@@ -273,7 +273,7 @@ class Loss(nn.Module):
                 self.weights[0] * sdf_term
                 + self.weights[5] * sal_term
             )
-        elif self.loss_type == "everything_with_div_heat":
+        elif self.loss_type == "everything_including_div_heat_sal":
             loss = (
                 self.weights[0] * sdf_term
                 + self.weights[1] * inter_term

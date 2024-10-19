@@ -332,7 +332,7 @@ class ShapeBase(data.Dataset):
         if self.nonmnfld_normals_gt is not None:
             ret_dist["nonmnfld_normals_gt"] = self.nonmnfld_normals_gt
         if self.compute_sal_dist_gt:
-            ret_dist["nonmnfld_dists_sal_gt"] = self.get_points_distances_sal(self.nonmnfld_points)
+            ret_dist["nonmnfld_dists_sal"] = self.get_points_distances_sal(self.nonmnfld_points)
 
         return ret_dist
 
