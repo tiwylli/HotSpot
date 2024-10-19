@@ -5,7 +5,7 @@ THIS_FILE=$(basename "$0")
 IDENTIFIER='onlysal'                       # change to your desired identifier
 
 CONFIG_DIR=$ROOT_DIR'configs/ablation_2d_onlysal.toml' # Change to your config file path
-LOG_DIR=$ROOT_DIR'log/2Dablation/'                    # Change to your log path
+LOG_DIR=$ROOT_DIR'log/2d_ablation/'                    # Change to your log path
 EXP_DIR=$LOG_DIR$IDENTIFIER$TIMESTAMP/
 mkdir -p $EXP_DIR
 cp -r scripts/$THIS_FILE $EXP_DIR # Copy this script to the experiment directory
