@@ -11,6 +11,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dataset import shape_2d, shape_3d
+import basic_shape_dataset2d
 import models.Net as model
 import models.Heat as heatModel
 from models.losses import Loss
@@ -147,7 +148,9 @@ if __name__ == "__main__":
         raise ValueError("Please specify either --train or --eval, or both.")
 
     file_path = os.path.join(args.data_dir, args.file_name)
-    log_dir = os.path.join(args.log_dir, args.file_name.split(".")[0]) # Concatenate the log directory with the file name if file name is given
+    log_dir = os.path.join(
+        args.log_dir, args.file_name.split(".")[0]
+    )  # Concatenate the log directory with the file name if file name is given
 
     # set up logging
     log_file, log_writer_train, log_writer_test, model_outdir = utils.setup_logdir(log_dir, args)
@@ -175,6 +178,7 @@ if __name__ == "__main__":
         in_dim = 3
     elif args.task == "2d":
         train_set = shape_2d.get2D_dataset(
+            shape_type=args.shape_type,
             n_points=args.n_points,
             n_samples=args.n_iterations,
             grid_res=args.grid_res,
@@ -184,7 +188,6 @@ if __name__ == "__main__":
             n_random_samples=args.n_random_samples,
             resample=True,
             compute_sal_dist_gt=True if "sal" in args.loss_type else False,
-            shape_type=args.shape_type,
         )
         in_dim = 2
 
@@ -271,7 +274,9 @@ if __name__ == "__main__":
             if args.train:
                 if batch_idx % args.log_interval == 0:
                     utils.log_string(f"saving model to file model_{batch_idx}.pth", log_file)
-                    torch.save(model.state_dict(), os.path.join(model_outdir, f"model_{batch_idx}.pth"))
+                    torch.save(
+                        model.state_dict(), os.path.join(model_outdir, f"model_{batch_idx}.pth")
+                    )
 
             # Visualize SDF
             if not args.vis_final and args.eval and batch_idx % args.vis_interval == 0:
@@ -290,7 +295,9 @@ if __name__ == "__main__":
                     vis_grid_points[0].detach().cpu().numpy()
                 )  # (vis_grid_res * vis_grid_res, 1)
                 if vis_grid_dists_gt is not None:
-                    vis_grid_dists_gt = vis_grid_dists_gt.reshape(args.vis_grid_res, args.vis_grid_res)
+                    vis_grid_dists_gt = vis_grid_dists_gt.reshape(
+                        args.vis_grid_res, args.vis_grid_res
+                    )
 
                 visualize_model(
                     x_grid=x,
@@ -303,7 +310,7 @@ if __name__ == "__main__":
                     args=args,
                     shape=train_set,
                 )
-            
+
             if args.train:
                 # reset grad of mnfld_points and nonmnfld_points
                 model.zero_grad()
@@ -343,7 +350,8 @@ if __name__ == "__main__":
 
                 # Backpropagate and update weights
                 loss_dict["loss"].backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0)
+                if args.clip_grad_norm > 0:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad_norm)
                 optimizer.step()
 
                 # Log training stats and save model
@@ -364,7 +372,7 @@ if __name__ == "__main__":
                             weights[2] * loss_dict["normal_term"].item(),
                             weights[3] * loss_dict["eikonal_term"].item(),
                             weights[4] * loss_dict["div_term"].item(),
-                            weights[5] * loss_dict["sal_term"].item(), # add SAL term here
+                            weights[5] * loss_dict["sal_term"].item(),  # add SAL term here
                             weights[6] * loss_dict["heat_term"].item(),
                         ),
                         log_file,
@@ -381,7 +389,7 @@ if __name__ == "__main__":
                             loss_dict["normal_term"].item(),
                             loss_dict["eikonal_term"].item(),
                             loss_dict["div_term"].item(),
-                            loss_dict["sal_term"].item(), # add SAL term here
+                            loss_dict["sal_term"].item(),  # add SAL term here
                             loss_dict["heat_term"].item(),
                             loss_dict["diff_term"].item(),
                         ),
@@ -411,7 +419,9 @@ if __name__ == "__main__":
                 if "div" in args.loss_type:
                     criterion.update_div_weight(batch_idx, args.n_iterations, args.div_decay_params)
                 if args.heat_decay is not None:
-                    criterion.update_heat_weight(batch_idx, args.n_iterations, args.heat_decay_params)
+                    criterion.update_heat_weight(
+                        batch_idx, args.n_iterations, args.heat_decay_params
+                    )
                 if args.eikonal_decay is not None:
                     criterion.update_eikonal_weight(
                         batch_idx, args.n_iterations, args.eikonal_decay_params

@@ -38,7 +38,7 @@ class Circle(ShapeBase):
         )
 
     def get_mnfld_points(self):
-        theta = np.random.uniform(0, 2 * np.pi, size=(self.n_points)).astype("f")
+        theta = np.random.uniform(0, 2 * np.pi, size=(10 * self.n_points)).astype("f")
         x = self.r * np.sin(theta) + self.center[0]
         y = self.r * np.cos(theta) + self.center[1]
 
@@ -103,7 +103,7 @@ class Polygon(ShapeBase):
 
     def get_mnfld_points(self):
         # sample points on the lines
-        n_points_to_sample = self.n_points - len(self.vertices)
+        n_points_to_sample = 10 * self.n_points - len(self.vertices)
         if n_points_to_sample < 0:
             raise Warning(
                 "Fewer points to sample than polygon vertices. Please change the number of points"

@@ -44,6 +44,7 @@ class ShapeBase(data.Dataset):
 
         self._init_mnfld_and_grid_points()
         self._resample()
+        self._generate_batch_indices()
 
     @abstractmethod
     def get_mnfld_points(self):
@@ -130,12 +131,10 @@ class ShapeBase(data.Dataset):
 
         if sample_type == "grid":
             nonmnfld_points = self.grid_points
-            nonmnfld_pdfs = np.ones(nonmnfld_points.shape[:-1] + (1,)) / (4 * self.grid_range**2)
         elif sample_type == "uniform":
             nonmnfld_points = np.random.uniform(
                 -self.grid_range, self.grid_range, size=(self.n_random_samples, self.dim)
             ).astype(np.float32)
-            nonmnfld_pdfs = np.ones(nonmnfld_points.shape[:-1] + (1,)) / (4 * self.grid_range**2)
         elif sample_type == "central_gaussian":
             nonmnfld_points = np.random.multivariate_normal(
                 np.zeros(self.dim),
@@ -301,26 +300,43 @@ class ShapeBase(data.Dataset):
 
         # self.dist_img = np.reshape(self.grid_dist, [self.grid_res, self.grid_res])
 
-    def __getitem__(self, index):
-        mnfld_idx = np.random.permutation(range(self.mnfld_points.shape[0]))
-        mnfld_idx = mnfld_idx[: self.n_points]
+    def _generate_batch_indices(self):
+        self.point_idxs = np.arange(self.mnfld_points.shape[0])
+        self.nonmnfld_points_idxs = np.arange(self.nonmnfld_points.shape[0])
 
-        if self.resample:
+        mnfld_idx = []
+        nonmnfld_idx = []
+        for i in range(self.n_samples):
+            mnfld_idx.append(np.random.choice(self.point_idxs, self.n_points))
+            nonmnfld_idx.append(np.random.choice(self.nonmnfld_points_idxs, self.n_points))
+        self.mnfld_idx = np.array(mnfld_idx)
+        self.nonmnfld_idx = np.array(nonmnfld_idx)
+
+    def __getitem__(self, index):
+        mnfld_idx = self.mnfld_idx[index]
+        nonmnfld_idx = self.nonmnfld_idx[index]
+
+        if self.sample_type != "grid" and self.resample:
             self._resample()
 
+        if self.nonmnfld_pdfs.shape[0] > 1:
+            nonmnfld_pdfs = self.nonmnfld_pdfs[nonmnfld_idx]
+        else:
+            nonmnfld_pdfs = self.nonmnfld_pdfs
+
         ret_dist = {
-            "mnfld_points": self.mnfld_points[mnfld_idx],  # (n_points, dim)
-            "mnfld_normals_gt": self.mnfld_normals[mnfld_idx],  # (n_points, dim)
-            "nonmnfld_points": self.nonmnfld_points,  # (n_nonmnfld_samples, dim)
-            "nonmnfld_pdfs": self.nonmnfld_pdfs,  # (n_nonmnfld_samples, 1)
+            "mnfld_points": self.mnfld_points[mnfld_idx, :],  # (n_points, dim)
+            "mnfld_normals_gt": self.mnfld_normals[mnfld_idx, :],  # (n_points, dim)
+            "nonmnfld_points": self.nonmnfld_points[nonmnfld_idx, :],  # (n_nonmnfld_samples, dim)
+            "nonmnfld_pdfs": nonmnfld_pdfs,  # (n_nonmnfld_samples, 1)
         }
 
         if self.nonmnfld_dist_gt is not None:
-            ret_dist["nonmnfld_dists_gt"] = self.nonmnfld_dist_gt
+            ret_dist["nonmnfld_dists_gt"] = self.nonmnfld_dist_gt[nonmnfld_idx, :]
         if self.nonmnfld_normals_gt is not None:
-            ret_dist["nonmnfld_normals_gt"] = self.nonmnfld_normals_gt
+            ret_dist["nonmnfld_normals_gt"] = self.nonmnfld_normals_gt[nonmnfld_idx, :]
         if self.compute_sal_dist_gt:
-            ret_dist["nonmnfld_dists_sal_gt"] = self.get_points_distances_sal(self.nonmnfld_points)
+            ret_dist["nonmnfld_dists_sal_gt"] = self.get_points_distances_sal(self.nonmnfld_points[nonmnfld_idx, :])
 
         return ret_dist
 

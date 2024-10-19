@@ -65,6 +65,9 @@ def get_train_args():
     parser.add_argument(
         "--compute_losses_on_vis_grid", action="store_true", help="Compute losses on visualization grid."
     )
+    parser.add_argument(
+        "--clip_grad_norm", type=float, default=10.0, help="Clip gradient norm. Set to <=0 to disable."
+    )
 
     # Visualization and logging
     parser.add_argument(
