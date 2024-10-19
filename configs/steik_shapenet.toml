@@ -25,7 +25,7 @@ grid_range = 1.1
 
 [training]
 train = true
-eval = true
+# eval = true
 task = "3d"
 n_iterations = 10000
 gpu_idx = 0

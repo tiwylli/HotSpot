@@ -131,10 +131,12 @@ class ShapeBase(data.Dataset):
 
         if sample_type == "grid":
             nonmnfld_points = self.grid_points
+            nonmnfld_pdfs = np.ones(nonmnfld_points.shape[:-1] + (1,)) / (2**self.dim * self.grid_range**self.dim)
         elif sample_type == "uniform":
             nonmnfld_points = np.random.uniform(
                 -self.grid_range, self.grid_range, size=(self.n_random_samples, self.dim)
             ).astype(np.float32)
+            nonmnfld_pdfs = np.ones(nonmnfld_points.shape[:-1] + (1,)) / (2**self.dim * self.grid_range**self.dim)
         elif sample_type == "central_gaussian":
             nonmnfld_points = np.random.multivariate_normal(
                 np.zeros(self.dim),
