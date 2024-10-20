@@ -265,6 +265,7 @@ class Union(ShapeBase):
         n_random_samples = shapes[0].n_random_samples
         resample = shapes[0].resample
         dim = shapes[0].dim
+        compute_sal_dist_gt = shapes[0].compute_sal_dist_gt
 
         ShapeBase.__init__(
             self,
@@ -277,6 +278,7 @@ class Union(ShapeBase):
             n_random_samples,
             resample,
             dim,
+            compute_sal_dist_gt,
         )
 
     def get_mnfld_points(self):
