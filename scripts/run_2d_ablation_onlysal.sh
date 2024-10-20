@@ -12,6 +12,7 @@ cp -r scripts/$THIS_FILE $EXP_DIR # Copy this script to the experiment directory
 cp -r $CONFIG_DIR $EXP_DIR        # Copy the config file to the experiment directory
 
 for SHAPE_TYPE in 'circle' 'L' 'square' 'snowflake' 'starhex' 'button' 'target' 'bearing' 'snake' 'seaurchin' 'peace' 'boomerangs' 'fragments' 'house'; do
+# for SHAPE_TYPE in 'peace'; do
     cp -r scripts/$THIS_FILE $LOG_DIR
     cp -r $CONFIG_DIR $LOG_DIR
     echo $SHAPE_TYPE
