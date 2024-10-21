@@ -147,6 +147,7 @@ if __name__ == "__main__":
     if not args.train and not args.eval:
         raise ValueError("Please specify either --train or --eval, or both.")
 
+    print(args.eval, args.train)
     file_path = os.path.join(args.data_dir, args.file_name)
     log_dir = os.path.join(
         args.log_dir, args.file_name.split(".")[0]
