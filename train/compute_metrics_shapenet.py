@@ -13,25 +13,26 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import parser
 
 import torch
-import recon_dataset as dataset
+from dataset import shape_3d
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import models.Net as model
 import logging
 from pysdf import SDF
-from mesh_to_sdf import mesh_to_sdf
 
 device = torch.device("cuda")
 args = parser.get_train_args()
 model = model.Network(
-    latent_size=0,
+    latent_size=args.latent_size,
     in_dim=3,
     decoder_hidden_dim=args.decoder_hidden_dim,
     nl=args.nl,
-    encoder_type="none",
+    encoder_type=args.encoder_type,
     decoder_n_hidden_layers=args.decoder_n_hidden_layers,
     neuron_type=args.neuron_type,
-    init_type="mfgi",
+    init_type=args.init_type,
+    sphere_init_params=args.sphere_init_params,
+    n_repeat_period=args.n_repeat_period,
 )
 
 
@@ -98,19 +99,19 @@ def compute_dists(recon_points, gt_points, eval_type="Default"):
 
 
 order = [
-    "car",
-    "chair",
-    "airplane",
-    "display",
-    "table",
-    "rifle",
-    "cabinet",
-    "loudspeaker",
-    "telephone",
+    # "car",
+    # "chair",
+    # "airplane",
+    # "display",
+    # "table",
+    # "rifle",
+    # "cabinet",
+    # "loudspeaker",
+    # "telephone",
     "bench",
-    "sofa",
-    "watercraft",
-    "lamp",
+    # "sofa",
+    # "watercraft",
+    # "lamp",
 ]
 order = sorted(order)
 
@@ -145,10 +146,11 @@ for shape_class in order:
     SMAPEs[shape_class] = []
     for shape_file in shape_files:
         shape = shape_file.split("/")[-2]
+        print(f"Computing metrics for {shape_class}|{shape}")
         recon_shape_path = os.path.join(mesh_path, shape_class, shape_file)
         recon_mesh = trimesh.load(recon_shape_path)
 
-        gt_shape_path = os.path.join(gt_shape_class_path, shape_class, shape_file)
+        gt_shape_path = os.path.join(gt_shape_class_path, shape + ".ply")
         gt_shape_weights_path = os.path.join(
             saved_weights_class_path, shape, "trained_models", "model.pth"
         )
@@ -166,13 +168,14 @@ for shape_class in order:
         n_points = 15000
         n_samples = 10000
         grid_res = 512
-        test_set = dataset.ReconDataset(
+        test_set = shape_3d.ReconDataset(
             gt_shape_path,
-            n_points * n_samples,
+            n_points=n_points,
             n_samples=1,
             grid_res=grid_res,
             sample_type="grid",
             requires_dist=False,
+            grid_range=1.1,
         )
         cp, scale, bbox = test_set.cp, test_set.scale, test_set.bbox
         model.load_state_dict(
@@ -180,8 +183,8 @@ for shape_class in order:
         )
         model.to(device)
 
-        eval_points = (gen_points - cp) / scale
-        eval_points = torch.tensor(eval_points, device=device, dtype=torch.float32)
+        eval_points_np = (gen_points - cp) / scale
+        eval_points = torch.tensor(eval_points_np, device=device, dtype=torch.float32)
         res = model.decoder(eval_points)
 
         pred_occupancies = (res.reshape(-1) < 0).int().detach().cpu().numpy()
@@ -196,14 +199,55 @@ for shape_class in order:
         chamfers[shape_class].append(chamfer_dist)
         hausdorffs[shape_class].append(hausdorff_dist)
 
-        dists_pred = res.detach().cpu().numpy()
-        f = SDF(gt_pc.vertices, gt_pc.faces)
-        dists_gt = f(gen_points)[..., None] # (100000, 1)
+        # dists_pred = res.detach().cpu().numpy()
+        # f = SDF(gt_pc.vertices)
+        # dists_gt = f(eval_points_np)[..., None] # (100000, 1)
+        # dists_gt = np.where(occupancies[:, None] == 0, np.abs(dists_gt), -np.abs(dists_gt))
 
-        rmse = np.sqrt(np.mean((dists_gt - dists_pred) ** 2))
-        mae = np.mean(np.abs(dists_gt - dists_pred))
-        mape = np.mean(np.abs(dists_gt - dists_pred) / np.abs(dists_gt))
-        smape = 2 * np.mean(np.abs(dists_gt - dists_pred) / (np.abs(dists_gt) + np.abs(dists_pred)))
+        # # use plotly to visualize dists_gt on (gen_points - cp) / scale in 3D
+        # import plotly.graph_objects as go
+        # fig = go.Figure(data=[go.Scatter3d(x=eval_points_np[..., 0], y=eval_points_np[..., 1], z=eval_points_np[..., 2], mode='markers', marker=dict(size=1, color=dists_gt[..., 0], colorscale='RdBu_r', opacity=0.8, cmin=-3, cmax=3))])
+        # # save as html
+        # fig.write_html("gt_dist.html")
+        
+        # fig = go.Figure(data=[go.Scatter3d(x=eval_points_np[..., 0], y=eval_points_np[..., 1], z=eval_points_np[..., 2], mode='markers', marker=dict(size=1, color=dists_pred[..., 0], colorscale='RdBu_r', opacity=0.8, cmin=-3, cmax=3))])
+        # fig.write_html("pred_dist.html")
+
+        # occupancies_mask = occupancies == 1
+        # occupancies_points = eval_points_np[occupancies_mask]
+
+        # pred_occupancies_mask = pred_occupancies == 1
+        # pred_occupancies_points = eval_points_np[pred_occupancies_mask]
+
+        # fig = go.Figure()
+
+        # fig.add_trace(go.Scatter3d(
+        #     x=occupancies_points[..., 0],
+        #     y=occupancies_points[..., 1],
+        #     z=occupancies_points[..., 2],
+        #     mode='markers',
+        #     marker=dict(size=1, color='blue', opacity=0.5)
+        # ))
+
+        # fig.add_trace(go.Scatter3d(
+        #     x=pred_occupancies_points[..., 0],
+        #     y=pred_occupancies_points[..., 1],
+        #     z=pred_occupancies_points[..., 2],
+        #     mode='markers',
+        #     marker=dict(size=1, color='red', opacity=0.5)
+        # ))
+        # fig.write_html("occupancies_compare.html")
+
+        # exit(0)
+
+        # rmse = np.sqrt(np.mean((dists_gt - dists_pred) ** 2))
+        # mae = np.mean(np.abs(dists_gt - dists_pred))
+        # mape = np.mean(np.abs(dists_gt - dists_pred) / np.abs(dists_gt))
+        # smape = 2 * np.mean(np.abs(dists_gt - dists_pred) / (np.abs(dists_gt) + np.abs(dists_pred)))
+        rmse = 0
+        mae = 0
+        mape = 0
+        smape = 0
 
         RMSEs[shape_class].append(rmse)
         MAEs[shape_class].append(mae)
