@@ -13,8 +13,8 @@ cp -r scripts/$THIS_FILE $EXP_DIR # Copy this script to the experiment directory
 cp -r $CONFIG_DIR $EXP_DIR        # Copy the config file to the experiment directory
 
 # for SHAPE_NAME in 'airplane' 'bench' 'cabinet' 'car' 'chair' 'display' 'lamp' 'loudspeaker' 'rifle' 'sofa' 'table' 'telephone' 'watercraft' ; do # use the shapes you want in the dataset
-for SHAPE_NAME in 'airplane' 'bench' 'cabinet' 'car' 'chair' 'display' 'loudspeaker' 'rifle' 'sofa' 'table' 'telephone' 'watercraft' ; do # use the shapes you want in the dataset
-# for SHAPE_NAME in 'lamp' ; do # use the shapes you want in the dataset
+# for SHAPE_NAME in 'airplane' 'bench' 'cabinet' 'car' 'chair' 'display' 'loudspeaker' 'rifle' 'sofa' 'table' 'telephone' 'watercraft' ; do # use the shapes you want in the dataset
+for SHAPE_NAME in 'bench' ; do # use the shapes you want in the dataset
     FOLDER_DIR=${DATASET_DIR}/$SHAPE_NAME/
     echo $SHAPE_NAME
     # for FILE_NAME in 'd16bb6b2f26084556acbef8d3bef8f28.ply'; do # use the scans you want

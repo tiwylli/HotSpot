@@ -42,4 +42,4 @@ vis_contour_interval = 0.025
 # vis_heat = true
 # save_video = true
 # video_fps = 6
-vis_final = true
+# vis_final = true

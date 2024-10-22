@@ -5,17 +5,15 @@ import os
 import glob
 
 
-def fuse_pcd(data_root, scene_title,number_of_points=10**6, ref_title="points.ply"):
+def fuse_pcd(data_root, scene_title, number_of_points=10**6, ref_title="points.ply"):
     # read reference point cloud
-    
+
     # read mesh
     glb_path = os.path.join(data_root, scene_title)
     mesh = o3d.io.read_triangle_mesh(glb_path, enable_post_processing=True)
 
     # blender to opencv coordinate system
-    blender_to_opencv = np.array([[1, 0, 0],
-                                [0, 0, -1],
-                                [0, 1, 0]])
+    blender_to_opencv = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
 
     mesh_vertices = np.asarray(mesh.vertices)
     mesh_vertices = mesh_vertices @ blender_to_opencv.T
@@ -24,7 +22,6 @@ def fuse_pcd(data_root, scene_title,number_of_points=10**6, ref_title="points.pl
     # sample points from mesh
     sampled_pcd = mesh.sample_points_uniformly(number_of_points)
 
-    
     print(np.asarray(sampled_pcd.points).shape)
 
     # # voxel downsampling
@@ -46,11 +43,12 @@ def fuse_pcd(data_root, scene_title,number_of_points=10**6, ref_title="points.pl
     # print(final_pcd)
 
     # # save final point cloud
-    o3d.io.write_point_cloud(os.path.join(data_root, ref_title), final_pcd, compressed=True) # save as ply file
+    o3d.io.write_point_cloud(
+        os.path.join(data_root, ref_title), final_pcd, compressed=True
+    )  # save as ply file
 
 
 if __name__ == "__main__":
-    data_root = "./scripts/mesh2pointclouds" # your data root
-    scene_title = "xeno_raven.glb" # your mesh file, here I give a example usage
-    fuse_pcd(data_root, scene_title)
-
+    data_root = "./scripts/mesh2pointclouds"  # your data root
+    scene_title = "xeno_raven.glb"  # your mesh file, here I give a example usage
+    fuse_pcd(data_root, scene_title, number_of_points=100000)

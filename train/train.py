@@ -147,7 +147,6 @@ if __name__ == "__main__":
     if not args.train and not args.eval:
         raise ValueError("Please specify either --train or --eval, or both.")
 
-    print(args.eval, args.train)
     file_path = os.path.join(args.data_dir, args.file_name)
     log_dir = os.path.join(
         args.log_dir, args.file_name.split(".")[0]
@@ -213,7 +212,7 @@ if __name__ == "__main__":
         init_type=args.init_type,
         neuron_type=args.neuron_type,
         sphere_init_params=args.sphere_init_params,
-        n_repeat_period=args.n_repeated_period,
+        n_repeat_period=args.n_repeat_period,
     )
     # Uncomment to use small model
     # model = heatModel.Net(radius_init=args.sphere_init_params[1])
