@@ -488,7 +488,7 @@ if __name__ == "__main__":
             mesh_dict = utils.implicit2mesh(
                 decoder=model.decoder,
                 latent=None,
-                grid_res=args.grid_res,
+                grid_res=512,
                 translate=-cp,
                 scale=1 / scale,
                 get_mesh=True,
