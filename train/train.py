@@ -173,7 +173,7 @@ if __name__ == "__main__":
             sampling_std=args.nonmnfld_sample_std,
             n_random_samples=args.n_random_samples,
             resample=True,
-            compute_sal_dist_gt=True if "sal" in args.loss_type else False,
+            compute_sal_dist_gt=True if "sal" in args.loss_type and args.loss_weights[5] > 0 else False,
         )
         in_dim = 3
     elif args.task == "2d":
@@ -187,7 +187,7 @@ if __name__ == "__main__":
             sampling_std=args.nonmnfld_sample_std,
             n_random_samples=args.n_random_samples,
             resample=True,
-            compute_sal_dist_gt=True if "sal" in args.loss_type else False,
+            compute_sal_dist_gt=True if "sal" in args.loss_type and args.loss_weights[5] > 0 else False,
         )
         in_dim = 2
 
