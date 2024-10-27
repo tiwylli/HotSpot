@@ -14,3 +14,4 @@ psutil
 # plotly # should install plotly-orca from conda
 kaleido
 opencv-python
+pysdf

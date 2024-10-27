@@ -43,6 +43,11 @@ To train a 2D shape neural representation and reconstruct the surface (curve in 
 bash ./scripts/run_spin_2d.sh
 ```
 
+After training, use the following script to compute the metrics
+```sh
+bash ./scripts/run_metric_2d.sh PATH_TO_EXPERIMENT
+```
+
 ### 3. Surface Reconstruction (and Scene Reconstruction)
 #### 3.1 Data for Surface Reconstruction
 ##### 3.1.1 Surface Reconstruction Benchamark data

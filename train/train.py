@@ -212,7 +212,7 @@ if __name__ == "__main__":
         init_type=args.init_type,
         neuron_type=args.neuron_type,
         sphere_init_params=args.sphere_init_params,
-        n_repeat_period=args.n_repeated_period,
+        n_repeat_period=args.n_repeat_period,
     )
     # Uncomment to use small model
     # model = heatModel.Net(radius_init=args.sphere_init_params[1])

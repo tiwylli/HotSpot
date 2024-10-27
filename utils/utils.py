@@ -420,11 +420,11 @@ def implicit2mesh(
     # compute a mesh from the implicit representation in the decoder.
     # Uses marching cubes.
     # reimplemented from SAL get surface trace function : https://github.com/matanatz/SAL/blob/master/code/utils/plots.py
-    print("in implicit2mesh")
-    print(grid_res, translate, scale, bbox)
+    # print("in implicit2mesh")
+    # print(grid_res, translate, scale, bbox)
     mesh = None
     grid_dict = get_3d_grid(resolution=grid_res, bbox=bbox, device=device)
-    print("Finished getting grid_dict")
+    # print("Finished getting grid_dict")
     cell_width = grid_dict["xyz"][0][2] - grid_dict["xyz"][0][1]
     pnts = grid_dict["grid_points"]
 
@@ -451,7 +451,7 @@ def implicit2mesh(
         .astype(np.float64)
     )
     # import pdb; pdb.set_trace()
-    print(z.min(), z.max())
+    # print(z.min(), z.max())
 
     verts, faces, normals, values = measure.marching_cubes(
         volume=z, level=0.0, spacing=(cell_width, cell_width, cell_width)

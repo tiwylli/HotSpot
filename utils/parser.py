@@ -265,7 +265,7 @@ def get_train_args():
         help="Decay schedule for heat lambda. Not effective if heat_lambda_decay = False. Format: [start, (location, value)*, end]",
     )
     parser.add_argument(
-        "--n_repeated_period",
+        "--n_repeat_period",
         type=int,
         default=30,
         help="Number of periods to repeat the input signal.",

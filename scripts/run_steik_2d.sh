@@ -1,7 +1,7 @@
 ROOT_DIR=$(dirname $(dirname "$(readlink -f "$0")"))'/'
 MODEL_DIR=$ROOT_DIR'models'
 THIS_FILE=$(basename "$0")
-# TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
+TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
 IDENTIFIER='StEik-all' # change to your desired identifier
 
 CONFIG_DIR=$ROOT_DIR'configs/steik_2d.toml' # change to your config file path

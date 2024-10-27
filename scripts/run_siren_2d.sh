@@ -14,5 +14,7 @@ cp -r $CONFIG_DIR $EXP_DIR        # Copy the config file to the experiment direc
 for SHAPE_TYPE in 'seaurchin' 'L' 'circle' 'button' 'target' 'bearing' 'snake' 'peace' 'boomerangs' 'fragments' 'house' 'square' 'snowflake' 'starhex'; do
     # for SHAPE_TYPE in 'L'; do
     echo $SHAPE_TYPE
-    python3 train/train.py --config $CONFIG_DIR --log_dir $EXP_DIR/$SHAPE_TYPE --model_dir $MODEL_DIR --shape_type $SHAPE_TYPE
+    python3 train/train.py --config $CONFIG_DIR --log_dir $EXP_DIR/$SHAPE_TYPE --model_dir $MODEL_DIR --shape_type $SHAPE_TYPE --train
+    python3 train/train.py --config $CONFIG_DIR --log_dir $EXP_DIR/$SHAPE_TYPE --model_dir $MODEL_DIR --shape_type $SHAPE_TYPE --eval
+
 done

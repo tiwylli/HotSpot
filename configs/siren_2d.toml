@@ -22,8 +22,6 @@ grid_range = 1.2
 #nonmnfld_sample_std = 1.0
 
 [training]
-train = true
-eval = true
 task = "2d"
 n_iterations = 20000
 gpu_idx = 0
