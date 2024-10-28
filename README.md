@@ -19,7 +19,7 @@ Example installation code if you are using the docker image:
 conda activate torch
 conda install pip
 pip install -r requirements.txt
-conda install -c plotly plotly plotly-orca # Conda only 
+conda install -y -c plotly plotly plotly-orca 
 ```
 
 Example installation code if you are **not** using the docker image:
@@ -28,11 +28,14 @@ conda create -n torch python=3.9
 conda activate torch
 conda install pip
 pip install -r requirements.txt
-conda install -c plotly plotly plotly-orca # Conda only 
+conda install -y -c plotly plotly plotly-orca
 # Install with instructions from https://pytorch.org/get-started/locally/
 # Below is instructions for installation of latest version of PyTorch with CUDA 11.8
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
+
+To compute metrics for ShapeNet, you will need to download
+
 
 ###  2. Testing on 2D Shapes (No External Data required)
 
@@ -59,7 +62,11 @@ If you use this data in your research, make sure to cite the Deep Geometric Prio
 ##### 3.1.2 ShapeNet data
 We use a subset of the [ShapeNet](https://shapenet.org/) data as chosen by [Neural Splines](https://github.com/fwilliams/neural-splines). This data is first preprocessed to be watertight as per the pipeline in the [Occupancy Networks repository](https://github.com/autonomousvision/occupancy_networks), who provide both the pipleline and the entire preprocessed dataset (73.4GB). 
 
-The Neural Spline split uses the first 20 shapes from the test set of 13 shape classes from ShapeNet. We provide [a subset of the ShapeNet preprocessed data](https://drive.google.com/file/d/1h6TFHnza0axOZz5AuRkfyLMx_sFcu_Yf/view?usp=sharing) (the subset that corresponds to the split of Neural Splines) and [the resulting point clouds for that subset](https://drive.google.com/file/d/14CW_a0gS3ARJsIonyqPc5eKT3iVcCWZ0/view?usp=sharing). These can be downloaded via terminal into the data directory by running `data/scripts/download_shapenet.sh`  (783.76MB download).
+The Neural Spline split uses the first 20 shapes from the test set of 13 shape classes from ShapeNet. We provide [a subset of the ShapeNet preprocessed data](https://drive.google.com/file/d/1h6TFHnza0axOZz5AuRkfyLMx_sFcu_Yf/view?usp=sharing) (the subset that corresponds to the split of Neural Splines) and [the resulting point clouds for that subset](https://drive.google.com/file/d/14CW_a0gS3ARJsIonyqPc5eKT3iVcCWZ0/view?usp=sharing).
+
+In addition to the above subset and resulting point clouds provided by DiGS and StEik, we ran the data preprocessing pipeline introduced in [Occupancy Networks](https://github.com/autonomousvision/occupancy_networks) and provide [the watertight ShapeNet meshes for this subset](https://drive.google.com/file/d/1HAZ41-rZQIw_pezj-ES-ZtgXO6JanU-V/view?usp=sharing) (376.1MB). This is for our distance metrics computation. Note that the watertight meshes are all translated and scaled to exactly match the point clouds provided by DiGS and StEik.
+
+These can be downloaded via terminal into the data directory by running `scripts/download_shapenet.sh`  (783.76MB download).
 
 If you use this data in your research, make sure to cite the ShapeNet and Occupancy Network papers, and if you report on this split, compare and cite to the Neural Spline paper.
 
@@ -85,9 +92,9 @@ These scripts have bash variables for changing the input, major hyperparameters,
 
 ## Thanks
 
-Thanks to the [DiGS](https://github.com/Chumbyte/DiGS) codebase off whom we built upon. 
+Thanks to the [StEik](https://github.com/sunyx523/StEik) codebase off whom we built upon. 
 
-Supported in part by Army Research Office (ARO) W911NF-22-1-0267 and by the Intelligence Advanced Research Projects Activity (IARPA) via Department of Interior/ Interior Business Center (DOI/IBC) contract number 140D0423C0075. The U.S. Government is authorized to reproduce and distribute reprints for Governmental purposes notwithstanding any copyright annotation thereon. Disclaimer: The views and conclusions contained herein are those of the authors and should not be interpreted as necessarily representing the official policies or endorsements, either expressed or implied, of IARPA, DOI/IBC, or the U.S. Government.
+Supported in part by 
 
 ## License and Citation
 

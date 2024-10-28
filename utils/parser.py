@@ -27,6 +27,12 @@ def get_train_args():
         default="",
         help="Name of file to reconstruct (within the dataset path).",
     )
+    parser.add_argument(
+        "--gt_meshes_dir",
+        type=str,
+        default="../data/ShapeNetCore.v1",
+        help="Path to gt mesh folder."
+    )
     # - 2D basic shape dataset
     parser.add_argument(
         "--shape_type", type=str, default="L", help="Shape dataset to load. (circle | square | L |starhex | button)."

@@ -14,4 +14,4 @@ psutil
 # plotly # should install plotly-orca from conda
 kaleido
 opencv-python
-pysdf
+point_cloud_utils
