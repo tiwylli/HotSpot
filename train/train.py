@@ -45,6 +45,8 @@ def visualize_model(
         )
         mnfld_normals_gt = data["mnfld_normals_gt"]
 
+    batch_idx_suffix = "final" if batch_idx == "final" else str(batch_idx).zfill(6)
+
     sdf_contour_img = vis.plot_contours(
         x_grid=x_grid,
         y_grid=y_grid,
@@ -70,7 +72,7 @@ def visualize_model(
         gt_traces=shape.get_trace(color="rgb(128, 128, 128)") if args.vis_gt_shape and shape is not None else [],
     )
     img = Image.fromarray(sdf_contour_img)
-    img.save(os.path.join(output_dir, "sdf_" + str(batch_idx).zfill(6) + ".png"))
+    img.save(os.path.join(output_dir, "sdf_" + batch_idx_suffix + ".png"))
 
     if args.vis_heat:
         vis_grid_heat = np.exp(
@@ -95,7 +97,7 @@ def visualize_model(
             contour_range=[0, 1],
         )
         img = Image.fromarray(heat_contour_img)
-        img.save(os.path.join(output_dir, "heat_" + str(batch_idx).zfill(6) + ".png"))
+        img.save(os.path.join(output_dir, "heat_" + batch_idx_suffix + ".png"))
 
     if args.vis_diff:
         vis_grid_diff = (
@@ -116,27 +118,7 @@ def visualize_model(
             contour_interval=args.vis_contour_interval,
         )
         img = Image.fromarray(diff_contour_img)
-        img.save(os.path.join(output_dir, "diff_" + str(batch_idx).zfill(6) + ".png"))
-
-    # Compute metrics: RMSE, MAE, MAPE, SMAPE
-    if args.compute_metrics:
-        vis_grid_pred_np = (
-            vis_grid_pred.detach().cpu().numpy().reshape(args.vis_grid_res, args.vis_grid_res)
-        )
-        vis_grid_dists_gt_np = vis_grid_dists_gt.squeeze().reshape(
-            args.vis_grid_res, args.vis_grid_res
-        )
-        mae = np.mean(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np))
-        rmse = np.sqrt(np.mean((vis_grid_pred_np - vis_grid_dists_gt_np) ** 2))
-        mape = np.mean(np.abs(vis_grid_pred_np - vis_grid_dists_gt_np) / vis_grid_dists_gt_np)
-        smape = np.mean(
-            2
-            * np.abs(vis_grid_pred_np - vis_grid_dists_gt_np)
-            / (np.abs(vis_grid_pred_np) + np.abs(vis_grid_dists_gt_np))
-        )
-        utils.log_string(
-            f"RMSE: {rmse:.10f}, MAE: {mae:.10f}, MAPE: {mape:.10f}, SMAPE: {smape:.10f}", log_file
-        )
+        img.save(os.path.join(output_dir, "diff_" + batch_idx_suffix + ".png"))
 
     utils.log_string("", log_file)
 
@@ -441,6 +423,7 @@ if __name__ == "__main__":
         )
         test_data = next(iter(test_dataloader))
         mnfld_points = test_data["mnfld_points"].to(device)
+        mnfld_points.requires_grad_()
         model_path = os.path.join(log_dir, "trained_models", f"model.pth")
         if torch.cuda.is_available():
             map_location = torch.device('cuda')
@@ -472,7 +455,7 @@ if __name__ == "__main__":
 
     # Save video
     if args.eval:
-        if args.save_video:
+        if args.save_video and not args.vis_final:
             vis.save_video(output_dir, "sdf.mp4", "sdf_*.png")
             if args.vis_heat:
                 vis.save_video(output_dir, "heat.mp4", "heat_*.png")
