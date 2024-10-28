@@ -51,6 +51,7 @@ vis_normals = true
 n_vis_normals = 100
 vis_heat = true
 vis_gt_shape = true
+#vis_final = true
 save_video = true
 video_fps = 6
 compute_losses_on_vis_grid = false
