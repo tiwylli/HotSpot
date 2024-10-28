@@ -5,13 +5,13 @@ THIS_FILE=$(basename "$0")
 IDENTIFIER='eik_heat'                       # change to your desired identifier
 
 CONFIG_DIR=$ROOT_DIR'configs/ablation_2d_eik_heat.toml' # Change to your config file path
-LOG_DIR=$ROOT_DIR'log/2Dablation/'                    # Change to your log path
+LOG_DIR=$ROOT_DIR'log/2d_ablation/'                    # Change to your log path
 EXP_DIR=$LOG_DIR$IDENTIFIER$TIMESTAMP/
 mkdir -p $EXP_DIR
 cp -r scripts/$THIS_FILE $EXP_DIR # Copy this script to the experiment directory
 cp -r $CONFIG_DIR $EXP_DIR        # Copy the config file to the experiment directory
 
-for SHAPE_TYPE in 'circle' 'L' 'square' 'snowflake' 'starhex' 'button' 'target' 'bearing' 'snake' 'seaurchin' 'peace' 'boomerangs' 'fragments' 'house'; do
+for SHAPE_TYPE in 'house' 'target' 'circle' 'L' 'square' 'snowflake' 'starhex' 'button' 'bearing' 'snake' 'seaurchin' 'peace' 'boomerangs' 'fragments'; do
     cp -r scripts/$THIS_FILE $LOG_DIR
     cp -r $CONFIG_DIR $LOG_DIR
     echo $SHAPE_TYPE

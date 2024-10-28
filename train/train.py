@@ -173,7 +173,7 @@ if __name__ == "__main__":
             sampling_std=args.nonmnfld_sample_std,
             n_random_samples=args.n_random_samples,
             resample=True,
-            compute_sal_dist_gt=True if "sal" in args.loss_type else False,
+            compute_sal_dist_gt=True if "sal" in args.loss_type and args.loss_weights[5] > 0 else False,
         )
         in_dim = 3
     elif args.task == "2d":
@@ -187,7 +187,7 @@ if __name__ == "__main__":
             sampling_std=args.nonmnfld_sample_std,
             n_random_samples=args.n_random_samples,
             resample=True,
-            compute_sal_dist_gt=True if "sal" in args.loss_type else False,
+            compute_sal_dist_gt=True if "sal" in args.loss_type and args.loss_weights[5] > 0 else False,
         )
         in_dim = 2
 
@@ -200,7 +200,7 @@ if __name__ == "__main__":
     # Set up model
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_idx)
-    device = torch.device("cuda")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = model.Network(
         latent_size=args.latent_size,
@@ -442,7 +442,11 @@ if __name__ == "__main__":
         test_data = next(iter(test_dataloader))
         mnfld_points = test_data["mnfld_points"].to(device)
         model_path = os.path.join(log_dir, "trained_models", f"model.pth")
-        model.load_state_dict(torch.load(model_path, weights_only=True))
+        if torch.cuda.is_available():
+            map_location = torch.device('cuda')
+        else:
+            map_location = torch.device('cpu')
+        model.load_state_dict(torch.load(model_path, weights_only=True, map_location=map_location))
 
         utils.log_string(f"Visualizing final model", log_file)
 
@@ -453,7 +457,7 @@ if __name__ == "__main__":
         vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
             vis_grid_points[0].detach().cpu().numpy()
         )  # (vis_grid_res * vis_grid_res, 1)
-
+    
         visualize_model(
             x_grid=x,
             y_grid=y,
@@ -463,6 +467,7 @@ if __name__ == "__main__":
             data=test_data,
             batch_idx="final",
             args=args,
+            shape=train_set,
         )
 
     # Save video
