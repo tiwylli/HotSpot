@@ -5,15 +5,15 @@ import os
 import trimesh
 from scipy.spatial import cKDTree as KDTree
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-# import surface_recon_args as parser
-import parser
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils import parser
+import logging
 
 args = parser.get_train_args()
 
 scan_path = os.path.join(args.data_dir, "scans")
 gt_path = os.path.join(args.data_dir, "ground_truth")
-mesh_path = args.results_path
+mesh_path = args.log_dir
 
 # Or set manually
 # scan_path = '/home/chamin/DiGSGithub/DiBS/data/deep_geometric_prior_data/scans'
@@ -21,18 +21,18 @@ mesh_path = args.results_path
 # mesh_path = '/home/chamin/DiGSGithub/DiBS/surface_reconstruction/log/surface_reconstruction2/DiGS_surf_recon_experiment/result_meshes'
 
 # Print metrics to file in logdir as well
-out_path = os.path.join(args.logdir, 'metric_summary.txt')
-import builtins as __builtin__
-def print(*args, **kwargs):
-    # Override print function to also print to file
-    __builtin__.print(*args, **kwargs)
-    with open(out_path, 'a') as fp:
-        __builtin__.print(*args, file=fp, **kwargs)
+out_path = os.path.join(args.log_dir, 'metric_summary.txt')
 
-print("Metrics on SRB (DC, DH, DC-> DH->)")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[
+        logging.FileHandler(out_path, mode="w"),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+logging.info("Metrics on SRB (DC, DH, DC-> DH->)")
 
-
-# eval_type = "DeepSDF"
 eval_type = "Default"
 
 def compute_dists(recon_points, gt_points, eval_type="Default"):
@@ -60,7 +60,10 @@ shapes = ['anchor', 'daratech', 'dc', 'gargoyle', 'lord_quas']
 for shape in shapes:
     scan_shape_path = os.path.join(scan_path, '{}.ply'.format(shape))
     gt_shape_path = os.path.join(gt_path, '{}.xyz'.format(shape))
-    recon_shape_path = os.path.join(mesh_path, '{}.ply'.format(shape))
+    recon_shape_path = os.path.join(mesh_path, shape, shape, "output.ply")
+    print(scan_shape_path)
+    print(gt_shape_path)
+    print(recon_shape_path)
     # recon_shape_path = os.path.join(mesh_path, '{}_iter_6000.ply'.format(shape))
     # print(recon_shape_path)
     if not os.path.exists(recon_shape_path):
