@@ -217,6 +217,8 @@ if __name__ == "__main__":
         heat_decay=args.heat_decay,
         eikonal_decay=args.eikonal_decay,
         heat_lambda_decay=args.heat_lambda_decay,
+        boundary_coef_decay=args.boundary_coef_decay,
+        importance_sampling=args.importance_sampling,
     )
     num_batches = len(train_dataloader)
 
@@ -407,6 +409,10 @@ if __name__ == "__main__":
                 if args.eikonal_decay is not None:
                     criterion.update_eikonal_weight(
                         batch_idx, args.n_iterations, args.eikonal_decay_params
+                    )
+                if args.boundary_coef_decay is not None:
+                    criterion.update_boundary_coef(
+                        batch_idx, args.n_iterations, args.boundary_coef_decay_params
                     )
 
                 scheduler.step()

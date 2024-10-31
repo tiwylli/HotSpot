@@ -4,6 +4,7 @@ import torch
 import os
 import numpy as np
 
+
 def get_train_args():
     parser = configargparse.ArgParser(description="Local implicit functions experiment.")
     parser.add_argument("--config", is_config_file=True, help="Config file path.")
@@ -31,20 +32,19 @@ def get_train_args():
         "--gt_meshes_dir",
         type=str,
         default="../data/ShapeNetCore.v1",
-        help="Path to gt mesh folder."
+        help="Path to gt mesh folder.",
     )
     # - 2D basic shape dataset
     parser.add_argument(
-        "--shape_type", type=str, default="L", help="Shape dataset to load. (circle | square | L |starhex | button)."
+        "--shape_type",
+        type=str,
+        default="L",
+        help="Shape dataset to load. (circle | square | L |starhex | button).",
     )
 
     # Training
-    parser.add_argument(
-        "--train", action="store_true", help="Indicator to run training."
-    )
-    parser.add_argument(
-        "--eval", action="store_true", help="Indicator to run evaluation."
-    )
+    parser.add_argument("--train", action="store_true", help="Indicator to run training.")
+    parser.add_argument("--eval", action="store_true", help="Indicator to run evaluation.")
     parser.add_argument("--gpu_idx", type=int, default=0, help="Set < 0 to use CPU.")
     parser.add_argument("--log_dir", type=str, default="./log/debug", help="Log directory.")
     parser.add_argument("--seed", type=int, default=3627473, help="Random seed.")
@@ -69,10 +69,15 @@ def get_train_args():
         "--num_workers", type=int, default=4, help="Number of workers for dataloader."
     )
     parser.add_argument(
-        "--compute_losses_on_vis_grid", action="store_true", help="Compute losses on visualization grid."
+        "--compute_losses_on_vis_grid",
+        action="store_true",
+        help="Compute losses on visualization grid.",
     )
     parser.add_argument(
-        "--clip_grad_norm", type=float, default=10.0, help="Clip gradient norm. Set to <=0 to disable."
+        "--clip_grad_norm",
+        type=float,
+        default=10.0,
+        help="Clip gradient norm. Set to <=0 to disable.",
     )
 
     # Visualization and logging
@@ -131,18 +136,12 @@ def get_train_args():
         default=100,
         help="Number of normals to visualize.",
     )
-    parser.add_argument(
-        "--vis_heat", action="store_true", help="Indicator to visualize heat."
-    )
+    parser.add_argument("--vis_heat", action="store_true", help="Indicator to visualize heat.")
     parser.add_argument(
         "--vis_diff", action="store_true", help="Indicator to visualize difference image."
     )
-    parser.add_argument(
-        "--save_video", action="store_true", help="Indicator to save video."
-    )
-    parser.add_argument(
-        "--video_fps", type=int, default=6, help="Frames per second for video."
-    )
+    parser.add_argument("--save_video", action="store_true", help="Indicator to save video.")
+    parser.add_argument("--video_fps", type=int, default=6, help="Frames per second for video.")
     parser.add_argument(
         "--vis_final", action="store_true", help="Indicator to visualize final result."
     )
@@ -271,6 +270,19 @@ def get_train_args():
         help="Decay schedule for heat lambda. Not effective if heat_lambda_decay = False. Format: [start, (location, value)*, end]",
     )
     parser.add_argument(
+        "--boundary_coef_decay",
+        type=str,
+        default=None,
+        help="Boundary coefficient decay schedule: none | step | linear.",
+    )
+    parser.add_argument(
+        "--boundary_coef_decay_params",
+        nargs="+",
+        type=float,
+        default=[],
+        help="Decay schedule for boundary coefficient. Not effective if boundary_coef_decay = False. Format: [start, (location, value)*, end]",
+    )
+    parser.add_argument(
         "--n_repeat_period",
         type=int,
         default=30,
@@ -289,6 +301,9 @@ def get_train_args():
     )
     parser.add_argument(
         "--n_random_samples", type=int, default=4096, help="Number of random samples."
+    )
+    parser.add_argument(
+        "--importance_sampling", action="store_false", help="Indicator to use importance sampling."
     )
 
     # Misc
