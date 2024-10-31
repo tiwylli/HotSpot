@@ -16,7 +16,7 @@ loss_weights = [3000, 100, 0, 50, 0, 0, 0]
 [sampling]
 grid_res = 256
 nonmnfld_sample_type = "uniform"
-n_random_samples = 15000
+n_random_samples = 300000
 n_points = 15000
 grid_range = 1.2
 nonmnfld_sample_std = 0.5
