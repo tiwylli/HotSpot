@@ -1,9 +1,9 @@
 #!/bin/bash
-DIR=$(dirname $(dirname $(dirname "$(readlink -f "$0")")))  # Should point to your DiGS path
+DIR=$(dirname $(dirname "$(readlink -f "$0")"))  # Should point to your DiGS path
 cd $DIR/data/
 
 # Install gdown if not already installed
-pip install --user gdown
+pip install gdown
 
 # Get preprocessed subset of ShapeNet data (370.96MB)
 # Google Drive link: https://drive.google.com/file/d/14CW_a0gS3ARJsIonyqPc5eKT3iVcCWZ0/view?usp=sharing

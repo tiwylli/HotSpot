@@ -28,7 +28,7 @@ grid_range = 1.2
 #nonmnfld_sample_std = 1.0
 
 [training]
-train = true
+train = false
 eval = true
 task = "2d"
 n_iterations = 20000
@@ -42,7 +42,8 @@ log_interval = 100
 vis_grid_res = 256
 vis_grid_range = 1.2
 vis_contour_interval = 0.025
-vis_normals = true
+vis_final = true
+vis_normals = false
 n_vis_normals = 100
 save_video = true
 compute_losses_on_vis_grid = false
