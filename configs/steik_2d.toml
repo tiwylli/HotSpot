@@ -14,7 +14,8 @@ loss_type = 'siren_wo_n_w_div'
 loss_weights = [3e3, 1e2, 1e2, 5e1, 1e2, 0.0, 0.0]
 div_type = "dir_l1"
 div_decay = "linear"
-div_decay_params = [1e2, 0.2, 1e2, 0.4, 0.0, 0.0]
+#div_decay_params = [1e2, 0.2, 1e2, 0.4, 0.0, 0.0]
+div_decay_params = [1e2, 0.6, 1e2, 0.7, 0.0, 0.0]
 
 [sampling]
 grid_res = 256
@@ -26,14 +27,14 @@ grid_range = 1.2
 
 [training]
 train = true
-# eval = true
+eval = true
 task = "2d"
 n_iterations = 20000
 gpu_idx = 0
 lr = 5e-5
 # heat_lambda = 60.0
-vis_interval = 100
-log_interval = 100
+vis_interval = 1000
+log_interval = 1000
 num_workers = 2
 clip_grad_norm = 0
 

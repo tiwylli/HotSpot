@@ -17,7 +17,7 @@ neuron_type = "linear"         # 'linear' | 'quadratic'
 
 [loss]
 loss_type = 'sal'
-loss_weights = [90, 0, 0, 0, 0, 70, 0]
+loss_weights = [90, 0, 0, 0, 0, 60, 0]
 
 [sampling]
 grid_res = 256
@@ -29,7 +29,7 @@ grid_range = 1.2
 
 [training]
 train = true
-eval = false
+eval = true
 task = "2d"
 n_iterations = 20000
 gpu_idx = 0
