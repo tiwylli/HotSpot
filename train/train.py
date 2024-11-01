@@ -156,6 +156,7 @@ if __name__ == "__main__":
             n_random_samples=args.n_random_samples,
             resample=True,
             compute_sal_dist_gt=True if "sal" in args.loss_type and args.loss_weights[5] > 0 else False,
+            scale_method=args.pcd_scale_method,
         )
         in_dim = 3
     elif args.task == "2d":
