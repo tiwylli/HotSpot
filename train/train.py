@@ -26,19 +26,15 @@ def visualize_model(
     x_grid,
     y_grid,
     mnfld_points,
-    vis_pred,
+    vis_grid_pred,
+    mnfld_points_pred,
     vis_grid_dists_gt,
     data,
     batch_idx,
     args,
     shape=None,
 ):
-    vis_grid_pred = vis_pred[
-        "nonmanifold_pnts_pred"
-    ]  # (batch_size, vis_grid_res * vis_grid_res, 1)
-
     if args.vis_normals:
-        mnfld_points_pred = vis_pred["manifold_pnts_pred"]
         mnfld_normals_pred = utils.gradient(mnfld_points, mnfld_points_pred)
         mnfld_normals_pred = mnfld_normals_pred / torch.norm(
             mnfld_normals_pred, dim=-1, keepdim=True
@@ -69,7 +65,11 @@ def visualize_model(
         grid_range=args.vis_grid_range,
         contour_interval=args.vis_contour_interval,
         contour_range=args.vis_contour_range,
-        gt_traces=shape.get_trace(color="rgb(128, 128, 128)") if args.vis_gt_shape and shape is not None else [],
+        gt_traces=(
+            shape.get_trace(color="rgb(128, 128, 128)")
+            if args.vis_gt_shape and shape is not None
+            else []
+        ),
     )
     img = Image.fromarray(sdf_contour_img)
     img.save(os.path.join(output_dir, "sdf_" + batch_idx_suffix + ".png"))
@@ -155,7 +155,9 @@ if __name__ == "__main__":
             sampling_std=args.nonmnfld_sample_std,
             n_random_samples=args.n_random_samples,
             resample=True,
-            compute_sal_dist_gt=True if "sal" in args.loss_type and args.loss_weights[5] > 0 else False,
+            compute_sal_dist_gt=(
+                True if "sal" in args.loss_type and args.loss_weights[5] > 0 else False
+            ),
             scale_method=args.pcd_scale_method,
         )
         in_dim = 3
@@ -170,7 +172,9 @@ if __name__ == "__main__":
             sampling_std=args.nonmnfld_sample_std,
             n_random_samples=args.n_random_samples,
             resample=True,
-            compute_sal_dist_gt=True if "sal" in args.loss_type and args.loss_weights[5] > 0 else False,
+            compute_sal_dist_gt=(
+                True if "sal" in args.loss_type and args.loss_weights[5] > 0 else False
+            ),
         )
         in_dim = 2
 
@@ -223,10 +227,16 @@ if __name__ == "__main__":
     )
     num_batches = len(train_dataloader)
 
+    cp, scale = train_set.cp, train_set.scale
+    default_cp, default_scale = train_set.get_cp_and_scale(scale_method="default")
     # Set up visualization grid
+    x_vis, y_vis = np.linspace(
+        -args.vis_grid_range, args.vis_grid_range, args.vis_grid_res
+    ), np.linspace(-args.vis_grid_range, args.vis_grid_range, args.vis_grid_res)
     x, y = np.linspace(-args.vis_grid_range, args.vis_grid_range, args.vis_grid_res), np.linspace(
         -args.vis_grid_range, args.vis_grid_range, args.vis_grid_res
     )
+    x, y = x * default_scale / scale, y * default_scale / scale
     xx, yy = np.meshgrid(x, y)
     xx, yy = xx.ravel(), yy.ravel()
     vis_grid_points = np.stack([xx, yy], axis=-1)
@@ -285,10 +295,11 @@ if __name__ == "__main__":
                     )
 
                 visualize_model(
-                    x_grid=x,
-                    y_grid=y,
+                    x_grid=x_vis,
+                    y_grid=y_vis,
                     mnfld_points=mnfld_points,
-                    vis_pred=vis_pred,
+                    vis_grid_pred=vis_pred["nonmanifold_pnts_pred"] * scale / default_scale,
+                    mnfld_points_pred=vis_pred["manifold_pnts_pred"],
                     vis_grid_dists_gt=vis_grid_dists_gt,
                     data=data,
                     batch_idx=batch_idx,
@@ -433,9 +444,9 @@ if __name__ == "__main__":
         mnfld_points.requires_grad_()
         model_path = os.path.join(log_dir, "trained_models", f"model.pth")
         if torch.cuda.is_available():
-            map_location = torch.device('cuda')
+            map_location = torch.device("cuda")
         else:
-            map_location = torch.device('cpu')
+            map_location = torch.device("cpu")
         model.load_state_dict(torch.load(model_path, weights_only=True, map_location=map_location))
 
         utils.log_string(f"Visualizing final model", log_file)
@@ -447,10 +458,10 @@ if __name__ == "__main__":
         vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
             vis_grid_points[0].detach().cpu().numpy()
         )  # (vis_grid_res * vis_grid_res, 1)
-    
+
         visualize_model(
-            x_grid=x,
-            y_grid=y,
+            x_grid=x_vis,
+            y_grid=y_vis,
             mnfld_points=mnfld_points,
             vis_pred=vis_pred,
             vis_grid_dists_gt=vis_grid_dists_gt,

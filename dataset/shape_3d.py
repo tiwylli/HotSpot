@@ -63,8 +63,11 @@ class ReconDataset(ShapeBase):
         if self.scale_method == "default":
             self.scale = np.abs(points).max()
         elif self.scale_method == "mean":
-            # scale such that 80% of the points are within the sphere with radius 0.3
-            self.scale = np.percentile(np.linalg.norm(points, axis=-1), 70) / 0.5
+            # scale such that 70% of the points are within the sphere with radius 0.4
+            self.scale = np.percentile(np.linalg.norm(points, axis=-1), 70) / 0.45
+            self.scale = max(self.scale, np.abs(points).max())
+        elif self.scale_method == "test":
+            self.scale = np.percentile(np.linalg.norm(points, axis=-1), 70) / 0.4
             self.scale = max(self.scale, np.abs(points).max())
         points = points / self.scale
 
@@ -77,7 +80,10 @@ class ReconDataset(ShapeBase):
         if scale_method == "default":
             scale = np.abs(points).max()
         elif scale_method == "mean":
-            scale = np.percentile(np.linalg.norm(points, axis=-1), 70) / 0.5
+            scale = np.percentile(np.linalg.norm(points, axis=-1), 70) / 0.45
+            scale = max(scale, np.abs(points).max())
+        elif scale_method == "test":
+            scale = np.percentile(np.linalg.norm(points, axis=-1), 70) / 0.4
             scale = max(scale, np.abs(points).max())
         return cp, scale
 

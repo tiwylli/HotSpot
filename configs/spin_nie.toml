@@ -14,11 +14,11 @@ n_repeat_period = 30
 loss_type = "igr_w_heat"
 loss_weights = [350, 0, 0, 1, 0, 0, 20]
 heat_decay = "linear"
-heat_decay_params = [20, 0.8, 20, 0.1]
+heat_decay_params = [20, 0.8, 20, 2]
 eikonal_decay = "linear"
 eikonal_decay_params = [1, 0.2, 1, 10]
 heat_lambda_decay = "linear"
-heat_lambda_decay_params = [4, 0.2, 4, 30]
+heat_lambda_decay_params = [3, 0.2, 3, 30]
 
 [sampling]
 grid_res = 256
@@ -39,7 +39,7 @@ n_iterations = 10001
 gpu_idx = 0
 lr = 5e-5
 grad_clip_norm = 10.0
-heat_lambda = 4.0
+heat_lambda = 3.0
 vis_interval = 1000
 log_interval = 100
 
@@ -47,7 +47,7 @@ log_interval = 100
 vis_grid_res = 256
 vis_grid_range = 1.0
 vis_contour_interval = 0.025
-# vis_heat = true
+vis_heat = true
 # save_video = true
 # video_fps = 6
 # vis_final = true
