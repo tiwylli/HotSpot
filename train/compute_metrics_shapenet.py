@@ -148,17 +148,13 @@ for shape_class in order:
 
     RMSEs[shape_class] = []
     MAEs[shape_class] = []
-    MAPEs[shape_class] = []
     SMAPEs[shape_class] = []
 
     RMSEs_near_surface[shape_class] = []
     MAEs_near_surface[shape_class] = []
-    MAPEs_near_surface[shape_class] = []
     SMAPEs_near_surface[shape_class] = []
-    
+
     for shape_file in shape_files:
-        # if "d153ae6d65b31e00fcb8d8c6d4df8143" not in shape_file:
-        #     continue
         shape = shape_file.split("/")[-2]
         print(f"Computing metrics for {shape_class}|{shape}")
         recon_shape_path = os.path.join(mesh_path, shape_class, shape_file)
@@ -206,9 +202,11 @@ for shape_class in order:
         )
         model.to(device)
 
+        # Compute surface metrics
         eval_points_np = (gen_points - cp) / scale
         eval_points = torch.tensor(eval_points_np, device=device, dtype=torch.float32)
-        res = model.decoder(eval_points)
+        with torch.no_grad():
+            res = model.decoder(eval_points)
 
         pred_occupancies = (res.reshape(-1) < 0).int().detach().cpu().numpy()
         iou = (occupancies & pred_occupancies).sum() / (occupancies | pred_occupancies).sum()
@@ -222,16 +220,23 @@ for shape_class in order:
         chamfers[shape_class].append(chamfer_dist)
         hausdorffs[shape_class].append(hausdorff_dist)
 
-        dists_pred = res.detach().cpu().numpy()
-        dists_pred = dists_pred * scale / default_scale
+        # Compute distance metrics
+        gen_points_unit = gen_points / np.max(gen_points) # Transform the uniforms samples to [-1,1]^3
+        eval_points_dists_np = gen_points_unit * default_scale / scale # If the predicted SDF is spatially scaled by (scale / default_scale), it will correspond to StEik visualization space
+        eval_points_dists = torch.tensor(eval_points_dists_np, device=device, dtype=torch.float32)
+        with torch.no_grad():
+            res_dists = model.decoder(eval_points_dists)
+
+        dists_pred = res_dists.detach().cpu().numpy()
+        dists_pred = dists_pred * scale / default_scale # The SDF values should be scaled by (scale / default_scale) to be in the same space as the StEik visualization space
 
         vm, fm = pcu.load_mesh_vf(gt_mesh_path, dtype=np.float32)
         # vm, fm = pcu.make_mesh_watertight(v, f, 20000)
         vm = vm.astype(np.float32)
 
         dists_gt, _, _ = pcu.signed_distance_to_mesh(
-            gen_points.astype(np.float32), vm, fm
-        )
+            (gen_points_unit * default_scale + cp).astype(np.float32), vm, fm
+        ) # "(points - cp) / default_scale" will transform the mesh/points to the visualization space, so take the inverse of that to transform the evaluation points to the mesh space
         dists_gt = dists_gt[..., None]
         dists_gt = dists_gt / default_scale
 
@@ -240,9 +245,47 @@ for shape_class in order:
 
         # fig = go.Figure()
 
-        # fig.add_trace(go.Scatter3d(x=gen_points[..., 0], y=gen_points[..., 1], z=gen_points[..., 2], mode='markers', marker=dict(size=1, color=dists_gt[..., 0], colorscale='RdBu_r', opacity=0.8, cmin=-1, cmax=1), name='gt'))
+        # fig.add_trace(go.Scatter3d(x=gen_points_unit[..., 0], y=gen_points_unit[..., 1], z=gen_points_unit[..., 2], mode='markers', marker=dict(size=1, color=dists_gt[..., 0], colorscale='RdBu_r', opacity=0.8, cmin=-1, cmax=1), name='gt'))
 
-        # fig.add_trace(go.Scatter3d(x=gen_points[..., 0], y=gen_points[..., 1], z=gen_points[..., 2], mode='markers', marker=dict(size=1, color=dists_pred[..., 0], colorscale='RdBu_r', opacity=0.8, cmin=-1, cmax=1), name='pred'))
+        # fig.add_trace(go.Scatter3d(x=gen_points_unit[..., 0], y=gen_points_unit[..., 1], z=gen_points_unit[..., 2], mode='markers', marker=dict(size=1, color=dists_pred[..., 0], colorscale='RdBu_r', opacity=0.8, cmin=-1, cmax=1), name='pred'))
+
+        # dists_gt_occupancies = dists_gt < 0
+        # dists_gt_occupancies_mask = dists_gt_occupancies[..., 0]
+        # dists_gt_occupancies_points = gen_points_unit[dists_gt_occupancies_mask]
+
+        # dists_pred_occupancies = dists_pred < 0
+        # dists_pred_occupancies_mask = dists_pred_occupancies[..., 0]
+        # dists_pred_occupancies_points = gen_points_unit[dists_pred_occupancies_mask]
+
+        # fig.add_trace(
+        #     go.Scatter3d(
+        #         x=dists_gt_occupancies_points[..., 0],
+        #         y=dists_gt_occupancies_points[..., 1],
+        #         z=dists_gt_occupancies_points[..., 2],
+        #         mode="markers",
+        #         marker=dict(size=1, color="blue", opacity=0.5),
+        #     )
+        # )
+
+        # fig.add_trace(
+        #     go.Scatter3d(
+        #         x=dists_pred_occupancies_points[..., 0],
+        #         y=dists_pred_occupancies_points[..., 1],
+        #         z=dists_pred_occupancies_points[..., 2],
+        #         mode="markers",
+        #         marker=dict(size=1, color="red", opacity=0.5),
+        #     )
+        # )
+
+        # fig.add_trace(
+        #     go.Scatter3d(
+        #         x=gen_points_unit[..., 0],
+        #         y=gen_points_unit[..., 1],
+        #         z=gen_points_unit[..., 2],
+        #         mode="markers",
+        #         marker=dict(size=1, color="black", opacity=0.1),
+        #     )
+        # )
 
         # fig.write_html("dists_compare.html")
 
@@ -290,6 +333,16 @@ for shape_class in order:
         #         marker=dict(size=1, color="red", opacity=0.5),
         #     )
         # )
+
+        # fig.add_trace(
+        #     go.Scatter3d(
+        #         x=eval_points_np[..., 0],
+        #         y=eval_points_np[..., 1],
+        #         z=eval_points_np[..., 2],
+        #         mode="markers",
+        #         marker=dict(size=1, color="black", opacity=0.1),
+        #     )
+        # )
         # fig.write_html("occupancies_compare.html")
 
         # exit(0)
@@ -298,10 +351,12 @@ for shape_class in order:
         mae = np.mean(np.abs(dists_gt - dists_pred))
         smape = 2 * np.mean(np.abs(dists_gt - dists_pred) / (np.abs(dists_gt) + np.abs(dists_pred)))
 
-        # compute these 4 metrics for points where dists_gt < 0.2
-        rmse_near_surface = np.sqrt(np.mean((dists_gt[dists_gt < 0.2] - dists_pred[dists_gt < 0.2]) ** 2))
-        mae_near_surface = np.mean(np.abs(dists_gt[dists_gt < 0.2] - dists_pred[dists_gt < 0.2]))
-        smape_near_surface = 2 * np.mean(np.abs(dists_gt[dists_gt < 0.2] - dists_pred[dists_gt < 0.2]) / (np.abs(dists_gt[dists_gt < 0.2]) + np.abs(dists_pred[dists_gt < 0.2])))
+        # compute these 4 metrics for points where |dists_gt| < threshold
+        threshold = 0.1
+        where_gt = np.abs(dists_gt) < threshold
+        rmse_near_surface = np.sqrt(np.mean((dists_gt[where_gt] - dists_pred[where_gt]) ** 2))
+        mae_near_surface = np.mean(np.abs(dists_gt[where_gt] - dists_pred[where_gt]))
+        smape_near_surface = 2 * np.mean(np.abs(dists_gt[where_gt] - dists_pred[where_gt]) / (np.abs(dists_gt[where_gt]) + np.abs(dists_pred[where_gt])))
 
         RMSEs[shape_class].append(rmse)
         MAEs[shape_class].append(mae)
@@ -309,7 +364,7 @@ for shape_class in order:
 
         RMSEs_near_surface[shape_class].append(rmse_near_surface)
         MAEs_near_surface[shape_class].append(mae_near_surface)
-        SMAPEs_near_surface[shape_class].append(smape_near_surface)        
+        SMAPEs_near_surface[shape_class].append(smape_near_surface)
 
         logging.info(
             f"{shape_class}|{shape}: IoU = {iou:.4f}, Chamfer = {chamfer_dist:.4f}, Hausdorff = {hausdorff_dist:.4f}; RMSE = {rmse:.4f}, MAE = {mae:.4f}, SMAPE = {smape:.4f}; RMSE_near_surface = {rmse_near_surface:.4f}, MAE_near_surface = {mae_near_surface:.4f}, SMAPE_near_surface = {smape_near_surface:.4f}"
@@ -385,7 +440,9 @@ RMSEs_near_surface = np.array([item for sublist in RMSEs_near_surface.values() f
 RMSEs_near_surface = RMSEs_near_surface[np.isfinite(RMSEs_near_surface)]
 MAEs_near_surface = np.array([item for sublist in MAEs_near_surface.values() for item in sublist])
 MAEs_near_surface = MAEs_near_surface[np.isfinite(MAEs_near_surface)]
-SMAPES_near_surface = np.array([item for sublist in SMAPEs_near_surface.values() for item in sublist])
+SMAPEs_near_surface = np.array(
+    [item for sublist in SMAPEs_near_surface.values() for item in sublist]
+)
 SMAPEs_near_surface = SMAPEs_near_surface[np.isfinite(SMAPEs_near_surface)]
 
 logging.info("All shape classes")
