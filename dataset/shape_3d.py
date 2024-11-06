@@ -26,10 +26,12 @@ class ReconDataset(ShapeBase):
         requires_curvatures=False,
         grid_range=1.1,
         compute_sal_dist_gt=False,
+        scale_method="default",
     ):
         self.file_path = file_path
         self.requires_dist = requires_dist
         self.requires_curvatures = requires_curvatures
+        self.scale_method = scale_method
         # assumes a subdirectory names "estimated props" in dataset path
         self.nonmnfld_dist, self.nonmnfld_n, self.mnfld_curvs = None, None, None
         # Load data
@@ -58,10 +60,32 @@ class ReconDataset(ShapeBase):
         self.cp = points.mean(axis=0)
         points = points - self.cp[None, :]
         # self.scale = np.linalg.norm(points, axis=-1).max(-1)
-        self.scale = np.abs(points).max()
+        if self.scale_method == "default":
+            self.scale = np.abs(points).max()
+        elif self.scale_method == "mean":
+            # scale such that 70% of the points are within the sphere with radius 0.4
+            self.scale = np.percentile(np.linalg.norm(points, axis=-1), 70) / 0.45
+            self.scale = max(self.scale, np.abs(points).max())
+        elif self.scale_method == "test":
+            self.scale = np.percentile(np.linalg.norm(points, axis=-1), 70) / 0.4
+            self.scale = max(self.scale, np.abs(points).max())
         points = points / self.scale
 
         return points
+
+    def get_cp_and_scale(self, scale_method):
+        points = np.asarray(self.o3d_point_cloud.points, dtype=np.float32)
+        cp = points.mean(axis=0)
+        points = points - cp[None, :]
+        if scale_method == "default":
+            scale = np.abs(points).max()
+        elif scale_method == "mean":
+            scale = np.percentile(np.linalg.norm(points, axis=-1), 70) / 0.45
+            scale = max(scale, np.abs(points).max())
+        elif scale_method == "test":
+            scale = np.percentile(np.linalg.norm(points, axis=-1), 70) / 0.4
+            scale = max(scale, np.abs(points).max())
+        return cp, scale
 
     def get_mnfld_normals(self):
         normals = np.asarray(self.o3d_point_cloud.normals, dtype=np.float32)

@@ -16,7 +16,7 @@ def fuse_pcd(data_root, scene_title, number_of_points=10**6, ref_title="points.p
     blender_to_opencv = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
 
     mesh_vertices = np.asarray(mesh.vertices)
-    mesh_vertices = mesh_vertices @ blender_to_opencv.T
+    # mesh_vertices = mesh_vertices @ blender_to_opencv.T
     mesh.vertices = o3d.utility.Vector3dVector(mesh_vertices)
 
     # sample points from mesh

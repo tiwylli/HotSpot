@@ -34,6 +34,12 @@ def get_train_args():
         default="../data/ShapeNetCore.v1",
         help="Path to gt mesh folder.",
     )
+    parser.add_argument(
+        "--pcd_scale_method",
+        type=str,
+        default="default",
+        help="Method to scale point cloud. (default | mean).",
+    )
     # - 2D basic shape dataset
     parser.add_argument(
         "--shape_type",
