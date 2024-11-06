@@ -75,11 +75,6 @@ def get_train_args():
         "--num_workers", type=int, default=4, help="Number of workers for dataloader."
     )
     parser.add_argument(
-        "--compute_losses_on_vis_grid",
-        action="store_true",
-        help="Compute losses on visualization grid.",
-    )
-    parser.add_argument(
         "--clip_grad_norm",
         type=float,
         default=10.0,

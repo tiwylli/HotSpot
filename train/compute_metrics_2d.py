@@ -9,7 +9,7 @@ from skimage import measure
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import dataset.shape_2d as dataset
-import models.Net as model
+import models.Net as Net
 import utils.parser as parser
 import plotly.graph_objects as go
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     )
     logging.info(f"Computing metrics in {exp_path}")
 
-    model = model.Network(
+    model = Net.Network(
         latent_size=args.latent_size,
         in_dim=2,
         decoder_hidden_dim=args.decoder_hidden_dim,
