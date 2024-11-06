@@ -12,20 +12,20 @@ n_repeat_period = 30
 
 [loss]
 loss_type = "igr_w_heat"
-loss_weights = [500, 0, 0, 1, 0, 0, 20]
+loss_weights = [350, 0, 0, 1, 0, 0, 2]
 heat_decay = "linear"
-heat_decay_params = [5, 0.8, 10, 2] 
+heat_decay_params = [2, 0.8, 0.5, 0.5] 
 eikonal_decay = "linear"
-eikonal_decay_params = [1, 0.2, 1, 10]
+eikonal_decay_params = [1, 0.2, 1, 1]
 heat_lambda_decay = "linear"
-heat_lambda_decay_params = [3, 0.2, 3, 20]
+heat_lambda_decay_params = [5, 0.2, 5, 10]
 
 [sampling]
 grid_res = 256
 # nonmnfld_sample_type = "uniform"
 nonmnfld_sample_type = "uniform_central_gaussian"
-n_random_samples = 15000
-n_points = 30000
+n_random_samples = 7500
+n_points = 15000
 grid_range = 1.1
 nonmnfld_sample_std = 0.5
 
