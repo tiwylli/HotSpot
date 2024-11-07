@@ -14,6 +14,7 @@ from dataset import shape_2d, shape_3d
 import basic_shape_dataset2d
 import models.Net as model
 import models.Heat as heatModel
+import models.SkipNet as skipModel
 from models.losses import Loss
 
 import utils.utils as utils
@@ -191,18 +192,21 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_idx)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = model.Network(
-        latent_size=args.latent_size,
-        in_dim=in_dim,
-        decoder_hidden_dim=args.decoder_hidden_dim,
-        nl=args.nl,
-        encoder_type=args.encoder_type,
-        decoder_n_hidden_layers=args.decoder_n_hidden_layers,
-        init_type=args.init_type,
-        neuron_type=args.neuron_type,
-        sphere_init_params=args.sphere_init_params,
-        n_repeat_period=args.n_repeat_period,
-    )
+    # model = model.Network(
+    #     latent_size=args.latent_size,
+    #     in_dim=in_dim,
+    #     decoder_hidden_dim=args.decoder_hidden_dim,
+    #     nl=args.nl,
+    #     encoder_type=args.encoder_type,
+    #     decoder_n_hidden_layers=args.decoder_n_hidden_layers,
+    #     init_type=args.init_type,
+    #     neuron_type=args.neuron_type,
+    #     sphere_init_params=args.sphere_init_params,
+    #     n_repeat_period=args.n_repeat_period,
+    # )
+    
+    model = skipModel.SkipNet()
+    
     # Uncomment to use small model
     # model = heatModel.Net(radius_init=args.sphere_init_params[1])
     model.to(device)
