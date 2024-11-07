@@ -87,7 +87,7 @@ class SkipNet(nn.Module):
         nonmanifold_pnts_pred = None
 
         batch_size = non_mnfld_pnts.shape[0]
-        
+
         if mnfld_pnts is not None:
             manifold_pnts_pred = self.forward_pts(mnfld_pnts.view(-1, mnfld_pnts.shape[-1])).reshape(batch_size, -1)
         else:

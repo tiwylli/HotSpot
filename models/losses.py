@@ -77,14 +77,28 @@ def heat_loss(points, preds, grads=None, sample_pdfs=None, heat_lambda=8, in_mnf
 
     return loss
 
+def phase_loss(points, preds, sample_pdfs=None, epsilon=0.01):
+    grads = torch.autograd.grad(
+        outputs=preds,
+        inputs=points,
+        grad_outputs=torch.ones_like(preds),
+        create_graph=True,
+        retain_graph=True,
+    )[0]
+    loss = epsilon * grads.norm(2, dim=-1) ** 2 + preds ** 2 - 2 * torch.abs(preds) + 1
+    loss = loss.mean()
+    
+    return loss
+
 class Loss(nn.Module):
     def __init__(
         self,
-        weights=[3e3, 1e2, 1e2, 5e1, 1e2],
-        loss_type="siren",
+        weights,
+        loss_type,
         div_decay="none",
         div_type="dir_l1",
         heat_lambda=100,
+        phase_epsilon=0.01,
         heat_decay="none",
         heat_lambda_decay="none",
         eikonal_decay="none",
@@ -97,12 +111,14 @@ class Loss(nn.Module):
         self.div_decay = div_decay
         self.div_type = div_type
         self.heat_lambda = heat_lambda
+        self.phase_epsilon = phase_epsilon
         self.heat_decay = heat_decay
         self.eikonal_decay = eikonal_decay
         self.heat_lambda_decay = heat_lambda_decay
         self.boundary_coef_decay = boundary_coef_decay
         self.use_div = True if "div" in self.loss_type else False
         self.use_heat = True if "heat" in self.loss_type else False
+        self.use_phase = True if "phase" in self.loss_type else False
         self.importance_sampling = importance_sampling
 
     def forward(self, output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs=None, mnfld_normals_gt=None, nonmnfld_dists_gt=None, nonmnfld_dists_sal=None):
@@ -115,22 +131,28 @@ class Loss(nn.Module):
 
         nonmnfld_pred = output_pred["nonmanifold_pnts_pred"]
         mnfld_pred = output_pred["manifold_pnts_pred"]
-        latent_reg = output_pred["latent_reg"]
-        latent = output_pred["latent"]
+        latent_reg = output_pred.get("latent_reg", None)
+        latent = output_pred.get("latent", None)
 
         div_term = torch.tensor([0.0], device=mnfld_points.device)
 
+        if self.use_phase:
+            nonmnfld_dist_pred = - np.sqrt(self.heat_lambda) * torch.log(1 - torch.abs(nonmnfld_pred)) * torch.sign(nonmnfld_pred)
+        else:
+            nonmnfld_dist_pred = nonmnfld_pred
+
         # compute gradients for div (divergence), curl and curv (curvature)
         if mnfld_pred is not None:
-            mnfld_grad = utils.gradient(mnfld_points, mnfld_pred)
+            mnfld_dist_pred = - np.sqrt(self.heat_lambda) * torch.log(1 - torch.abs(mnfld_pred)) * torch.sign(mnfld_pred)
+            mnfld_dist_pred = mnfld_pred
+            mnfld_grad = utils.gradient(mnfld_points, mnfld_dist_pred)
         else:
             mnfld_grad = None
 
-        nonmnfld_grad = utils.gradient(nonmnfld_points, nonmnfld_pred)
+        nonmnfld_grad = utils.gradient(nonmnfld_points, nonmnfld_dist_pred)
 
         # div_term
         if self.use_div and self.weights[4] > 0.0:
-
             if self.div_type == "full_l2":
                 nonmnfld_divergence = full_div(nonmnfld_points, nonmnfld_grad)
                 nonmnfld_divergence_term = torch.clamp(torch.square(nonmnfld_divergence), 0.1, 50)
@@ -151,7 +173,7 @@ class Loss(nn.Module):
             div_term = nonmnfld_divergence_term.mean()  # + mnfld_divergence_term.mean()
 
         # eikonal term
-        eikonal_term = eikonal_loss(nonmnfld_grad, mnfld_grad=mnfld_grad, nonmnfld_pdfs=nonmnfld_pdfs, eikonal_type="abs")
+        eikonal_term = eikonal_loss(nonmnfld_grad, mnfld_grad=mnfld_grad, nonmnfld_pdfs=nonmnfld_pdfs, eikonal_type="abs" if self.loss_type != "phase" else "squared")
 
         # latent regulariation for multiple shape learning
         latent_reg_term = latent_rg_loss(latent_reg, device)
@@ -171,16 +193,13 @@ class Loss(nn.Module):
             normal_term = torch.tensor([0.0], device=mnfld_points.device)
 
         # signed distance function term
-        sdf_term = torch.abs(mnfld_pred).mean()
+        boundary_term = torch.abs(mnfld_pred).mean()
 
         # inter term
         inter_term = torch.exp(-1e2 * torch.abs(nonmnfld_pred)).mean()
 
         # heat term
         heat_term = torch.tensor([0.0], device=mnfld_points.device)
-        # print("nonmnfld_pdf.shape:", nonmnfld_pdfs.shape)
-        # print("mnfld_points.shape:", mnfld_points.shape)
-        # print("nonmnfld_points.shape:", nonmnfld_points.shape)
         if self.use_heat and self.weights[6] > 0.0:
             heat_term = heat_loss(
                 points=nonmnfld_points,
@@ -201,6 +220,11 @@ class Loss(nn.Module):
             heat_term /= nonmnfld_points.reshape(-1, 2).shape[0]
             # heat_term /= nonmnfld_points.reshape(-1, 2).shape[0] + mnfld_points.reshape(-1, 2).shape[0]
 
+        # phase term
+        phase_term = torch.tensor([0.0], device=mnfld_points.device)
+        if self.use_phase and self.weights[7] > 0.0:
+            phase_term = phase_loss(points=mnfld_points, preds=mnfld_pred, sample_pdfs=None, epsilon=self.phase_epsilon)
+
         # nonmanifold prediction value loss
         nonmnfld_dists_loss = torch.tensor([0.0], device=mnfld_points.device)
         if nonmnfld_dists_gt is not None:
@@ -220,7 +244,7 @@ class Loss(nn.Module):
         # losses used in the paper
         if self.loss_type == "siren":  # SIREN loss
             loss = (
-                self.weights[0] * sdf_term
+                self.weights[0] * boundary_term
                 + self.weights[1] * inter_term
                 + self.weights[2] * normal_term
                 + self.weights[3] * eikonal_term
@@ -228,24 +252,24 @@ class Loss(nn.Module):
         elif self.loss_type == "siren_wo_n":  # SIREN loss without normal constraint
             self.weights[2] = 0
             loss = (
-                self.weights[0] * sdf_term
+                self.weights[0] * boundary_term
                 + self.weights[1] * inter_term
                 + self.weights[3] * eikonal_term
             )
         elif self.loss_type == "igr":  # IGR loss
             self.weights[1] = 0
             loss = (
-                self.weights[0] * sdf_term
+                self.weights[0] * boundary_term
                 + self.weights[2] * normal_term
                 + self.weights[3] * eikonal_term
             )
         elif self.loss_type == "igr_wo_n":  # IGR without normals loss
             self.weights[1] = 0
             self.weights[2] = 0
-            loss = self.weights[0] * sdf_term + self.weights[3] * eikonal_term
+            loss = self.weights[0] * boundary_term + self.weights[3] * eikonal_term
         elif self.loss_type == "siren_w_div":  # SIREN loss with divergence term
             loss = (
-                self.weights[0] * sdf_term
+                self.weights[0] * boundary_term
                 + self.weights[1] * inter_term
                 + self.weights[2] * normal_term
                 + self.weights[3] * eikonal_term
@@ -255,31 +279,37 @@ class Loss(nn.Module):
             self.loss_type == "siren_wo_n_w_div"
         ):  # SIREN loss without normals and with divergence constraint
             loss = (
-                self.weights[0] * sdf_term
+                self.weights[0] * boundary_term
                 + self.weights[1] * inter_term
                 + self.weights[3] * eikonal_term
                 + self.weights[4] * div_term
             )
         elif self.loss_type == "igr_wo_eik_w_heat":
             loss = (
-                self.weights[0] * sdf_term
+                self.weights[0] * boundary_term
                 # + self.weights[3] * eikonal_term
                 + self.weights[6] * heat_term
             )
         elif self.loss_type == "igr_w_heat":
             loss = (
-                self.weights[0] * sdf_term
+                self.weights[0] * boundary_term
                 + self.weights[3] * eikonal_term
                 + self.weights[6] * heat_term
             )
         elif self.loss_type == "sal":
             loss = (
-                self.weights[0] * sdf_term
+                self.weights[0] * boundary_term
                 + self.weights[5] * sal_term
+            )
+        elif self.loss_type == "phase":
+            loss = (
+                self.weights[0] * boundary_term
+                + self.weights[3] * eikonal_term
+                + self.weights[7] * phase_term
             )
         elif self.loss_type == "everything_including_div_heat_sal":
             loss = (
-                self.weights[0] * sdf_term
+                self.weights[0] * boundary_term
                 + self.weights[1] * inter_term
                 + self.weights[2] * normal_term
                 + self.weights[3] * eikonal_term
@@ -296,7 +326,7 @@ class Loss(nn.Module):
 
         return {
             "loss": loss,
-            "sdf_term": sdf_term,
+            "boundary_term": boundary_term,
             "inter_term": inter_term,
             "latent_reg_term": latent_reg_term,
             "eikonal_term": eikonal_term,

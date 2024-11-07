@@ -187,7 +187,7 @@ def get_train_args():
         "--loss_type",
         type=str,
         default="siren",
-        help="Loss type to use: SPIN: igr[_wo_eik]_w_heat, StEik: siren[_wo_n]_w_div, siren[_wo_n], igr[_wo_n]",
+        help="Loss type to use: SPIN: igr[_wo_eik]_w_heat, StEik: siren[_wo_n]_w_div, siren[_wo_n], igr[_wo_n], PHASE: phase",
     )
     parser.add_argument(
         "--div_decay",
@@ -230,6 +230,12 @@ def get_train_args():
     )
     parser.add_argument(
         "--heat_lambda", type=float, default=30, help="Heat loss weight for eikonal loss."
+    )
+    parser.add_argument(
+        "--phase_epsilon",
+        type=float,
+        default=0.01,
+        help="Epsilon for phase loss.",
     )
     parser.add_argument(
         "--heat_decay",

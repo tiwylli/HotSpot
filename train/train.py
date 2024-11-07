@@ -11,16 +11,28 @@ import torch.optim.lr_scheduler as lr_scheduler
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dataset import shape_2d, shape_3d
-import basic_shape_dataset2d
-import models.Net as model
-import models.Heat as heatModel
-import models.SkipNet as skipModel
+import models.Net as Net
+import models.SkipNet as SkipNet
 from models.losses import Loss
 
 import utils.utils as utils
 import utils.visualizations as vis
 from utils import parser
 import copy
+
+
+def occupancy_to_sdf(occupancy, epsilon):
+    sdf = - np.sqrt(epsilon) * torch.log(1 - torch.abs(occupancy)) * torch.sign(occupancy)
+    return sdf
+
+def unpack_pred_dists(pred, args):
+    mnfld_pred = pred["manifold_pnts_pred"]
+    nonmnfld_pred = pred["nonmanifold_pnts_pred"]
+    # if args.loss_type == "phase":
+    #     mnfld_pred = occupancy_to_sdf(mnfld_pred, args.phase_epsilon)
+    #     nonmnfld_pred = occupancy_to_sdf(nonmnfld_pred, args.phase_epsilon)
+    
+    return mnfld_pred, nonmnfld_pred
 
 
 def visualize_model(
@@ -192,26 +204,25 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_idx)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # model = model.Network(
-    #     latent_size=args.latent_size,
-    #     in_dim=in_dim,
-    #     decoder_hidden_dim=args.decoder_hidden_dim,
-    #     nl=args.nl,
-    #     encoder_type=args.encoder_type,
-    #     decoder_n_hidden_layers=args.decoder_n_hidden_layers,
-    #     init_type=args.init_type,
-    #     neuron_type=args.neuron_type,
-    #     sphere_init_params=args.sphere_init_params,
-    #     n_repeat_period=args.n_repeat_period,
-    # )
     
-    model = skipModel.SkipNet(
-        in_dim=in_dim,
-        decoder_hidden_dim=512,
-        nl="relu",
-        decoder_n_hidden_layers=8,
-        init_type="gemetric_relu",
-    )
+    if args.loss_type == "phase":    
+        model = SkipNet.SkipNet(
+            in_dim=in_dim,
+            nl=args.nl,
+        )
+    else:
+        model = Net.Network(
+            latent_size=args.latent_size,
+            in_dim=in_dim,
+            decoder_hidden_dim=args.decoder_hidden_dim,
+            nl=args.nl,
+            encoder_type=args.encoder_type,
+            decoder_n_hidden_layers=args.decoder_n_hidden_layers,
+            init_type=args.init_type,
+            neuron_type=args.neuron_type,
+            sphere_init_params=args.sphere_init_params,
+            n_repeat_period=args.n_repeat_period,
+        )
     
     # Uncomment to use small model
     # model = heatModel.Net(radius_init=args.sphere_init_params[1])
@@ -232,6 +243,7 @@ if __name__ == "__main__":
         div_decay=args.div_decay,
         div_type=args.div_type,
         heat_lambda=args.heat_lambda,
+        phase_epsilon=args.phase_epsilon,
         heat_decay=args.heat_decay,
         eikonal_decay=args.eikonal_decay,
         heat_lambda_decay=args.heat_lambda_decay,
@@ -297,7 +309,6 @@ if __name__ == "__main__":
                     model.load_state_dict(torch.load(model_path, weights_only=True))
 
                 utils.log_string(f"Visualizing epoch {batch_idx}", log_file)
-
                 output_dir = os.path.join(log_dir, "vis")
                 os.makedirs(output_dir, exist_ok=True)
                 model_copy = copy.deepcopy(model)
@@ -311,12 +322,14 @@ if __name__ == "__main__":
                         args.vis_grid_res, args.vis_grid_res
                     )
 
+                mnfld_points_pred, vis_grid_pred = unpack_pred_dists(vis_pred, args)
+
                 visualize_model(
                     x_grid=x_vis,
                     y_grid=y_vis,
                     mnfld_points=mnfld_points,
-                    vis_grid_pred=vis_pred["nonmanifold_pnts_pred"] * scale / default_scale,
-                    mnfld_points_pred=vis_pred["manifold_pnts_pred"],
+                    vis_grid_pred=vis_grid_pred * scale / default_scale,
+                    mnfld_points_pred=mnfld_points_pred,
                     vis_grid_dists_gt=vis_grid_dists_gt,
                     data=data,
                     batch_idx=batch_idx,
@@ -395,12 +408,13 @@ if __name__ == "__main__":
                     )
                     utils.log_string("", log_file)
 
-            # Update weights
+            # Update lambda
             if args.heat_lambda_decay is not None:
                 criterion.update_heat_lambda(
                     batch_idx, args.n_iterations, args.heat_lambda_decay_params
                 )
 
+            # Update weights
             if args.train:
                 if "div" in args.loss_type:
                     criterion.update_div_weight(batch_idx, args.n_iterations, args.div_decay_params)
@@ -449,11 +463,14 @@ if __name__ == "__main__":
             vis_grid_points[0].detach().cpu().numpy()
         )  # (vis_grid_res * vis_grid_res, 1)
 
+        mnfld_points_pred, vis_grid_pred = unpack_pred_dists(vis_pred, args)
+        
         visualize_model(
             x_grid=x_vis,
             y_grid=y_vis,
             mnfld_points=mnfld_points,
-            vis_pred=vis_pred,
+            vis_grid_pred=vis_grid_pred * scale / default_scale,
+            mnfld_points_pred=mnfld_points_pred,
             vis_grid_dists_gt=vis_grid_dists_gt,
             data=test_data,
             batch_idx="final",
