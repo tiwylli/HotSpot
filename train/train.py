@@ -332,21 +332,6 @@ if __name__ == "__main__":
                 # Log losses on samples
                 utils.log_losses(log_writer_train, batch_idx, num_batches, loss_dict)
 
-                # [Optional] Compute losses on visualization grid
-                if args.compute_losses_on_vis_grid > 0:
-                    vis_pred = model(vis_grid_points, mnfld_points)
-                    vis_grid_dists_gt, _ = train_set.get_points_distances_and_normals(
-                        vis_grid_points[0].detach().cpu().numpy()
-                    )  # (vis_grid_res * vis_grid_res, 1)
-                    vis_loss_dict, _ = criterion(
-                        vis_pred,
-                        mnfld_points,
-                        vis_grid_points,
-                        None,
-                        None,
-                        torch.tensor(vis_grid_dists_gt, dtype=torch.float32).to(device),
-                    )
-
                 # Backpropagate and update weights
                 loss_dict["loss"].backward()
                 if args.clip_grad_norm > 0:
@@ -366,7 +351,7 @@ if __name__ == "__main__":
                             len(train_set),
                             100.0 * batch_idx / len(train_dataloader),
                             loss_dict["loss"].item(),
-                            weights[0] * loss_dict["sdf_term"].item(),
+                            weights[0] * loss_dict["boundary_term"].item(),
                             weights[1] * loss_dict["inter_term"].item(),
                             weights[2] * loss_dict["normal_term"].item(),
                             weights[3] * loss_dict["eikonal_term"].item(),
@@ -383,7 +368,7 @@ if __name__ == "__main__":
                             batch_idx,
                             len(train_set),
                             100.0 * batch_idx / len(train_dataloader),
-                            loss_dict["sdf_term"].item(),
+                            loss_dict["boundary_term"].item(),
                             loss_dict["inter_term"].item(),
                             loss_dict["normal_term"].item(),
                             loss_dict["eikonal_term"].item(),
@@ -394,18 +379,6 @@ if __name__ == "__main__":
                         ),
                         log_file,
                     )
-                    # Log losses on visualization grid
-                    if args.compute_losses_on_vis_grid > 0:
-                        utils.log_string(
-                            "Iteration: {:4d}/{} ({:.0f}%) L_s in visualization range : L_Eknl: {:.5f}, L_Diff: {:.5f}".format(
-                                batch_idx,
-                                len(train_set),
-                                100.0 * batch_idx / len(train_dataloader),
-                                vis_loss_dict["eikonal_term"].item(),
-                                vis_loss_dict["diff_term"].item(),
-                            ),
-                            log_file,
-                        )
                     utils.log_string("", log_file)
 
             # Update weights

@@ -16,14 +16,14 @@ import torch
 from dataset import shape_3d
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import models.Net as model
+import models.Net as Net
 import logging
 import point_cloud_utils as pcu
 
 device = torch.device("cuda")
 args = parser.get_train_args()
 
-model = model.Network(
+model = Net.Network(
     latent_size=args.latent_size,
     in_dim=3,
     decoder_hidden_dim=args.decoder_hidden_dim,

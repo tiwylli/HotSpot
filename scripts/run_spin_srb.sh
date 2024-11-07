@@ -13,9 +13,9 @@ cp -r scripts/$THIS_FILE $EXP_DIR # Copy this script to the experiment directory
 cp -r $CONFIG_DIR $EXP_DIR        # Copy the config file to the experiment directory
 
 for SHAPE_NAME in 'anchor' 'daratech' 'dc' 'gargoyle' 'lord_quas' ; do # use the shapes you want in the dataset
+# for SHAPE_NAME in 'anchor' ; do # use the shapes you want in the dataset
     FOLDER_DIR=${DATASET_DIR}/scans
     echo $SHAPE_NAME
-    # for FILE_NAME in 'd16bb6b2f26084556acbef8d3bef8f28.ply' 'd284b73d5983b60f51f77a6d7299806.ply'; do # use the scans you want
     FILE_NAME=$SHAPE_NAME.ply
     python3 train/train.py --config $CONFIG_DIR --log_dir $LOG_DIR/$IDENTIFIER$TIMESTAMP/$SHAPE_NAME --data_dir $FOLDER_DIR --file_name $FILE_NAME --model_dir $MODEL_DIR
 done
