@@ -3,13 +3,18 @@ import torch
 import torch.nn as nn
 
 class FourierLayer(nn.Module):
-    def __init__(self, in_features, out_features, k=6):
+    def __init__(self, in_features, k=6):
         super().__init__()
-        B = torch.randn(in_features, out_features // 2) * k
+        self.k = k
+        B = torch.arange(0, k).float()
+        B = B.repeat(in_features, 1).t().reshape(-1)
+        B = torch.pow(2, B)
+        B = B * np.pi
         self.register_buffer("B", B)
 
     def forward(self, x):
-        x_proj = torch.matmul(2 * np.pi * x, self.B)
+        x = x.repeat(1, self.k)
+        x_proj = x * self.B
         out = torch.cat([torch.sin(x_proj), torch.cos(x_proj)], dim=-1)
         return out
 
@@ -21,6 +26,7 @@ class SkipNet(nn.Module):
         nl="relu", # relu or softplus
         skip_layers=[3],
         ff_layers=[0],
+        k = 6,
         decoder_n_hidden_layers=8,
         init_type="geometric_relu"
     ):
@@ -28,7 +34,6 @@ class SkipNet(nn.Module):
         
         self.init_type = init_type
         self.num_layers = decoder_n_hidden_layers
-
         
         if nl == "softplus":
             self.activation = nn.Softplus(beta=100)
@@ -41,7 +46,8 @@ class SkipNet(nn.Module):
             
         for l in range(0, self.num_layers):
             if l in ff_layers:
-                layer = FourierLayer(self.dims[l], self.dims[l + 1])
+                layer = FourierLayer(self.dims[l], k)
+                self.dims[l + 1] = 2 * k * self.dims[l]
             else:
                 if l in skip_layers:
                     layer = nn.Linear(self.dims[l] + in_dim, self.dims[l + 1])
