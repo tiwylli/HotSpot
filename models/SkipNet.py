@@ -5,7 +5,7 @@ import torch.nn as nn
 class FourierLayer(nn.Module):
     def __init__(self, in_features, out_features, k=6):
         super().__init__()
-        B = torch.randn(in_features, out_features) * k
+        B = torch.randn(in_features, out_features // 2) * k
         self.register_buffer("B", B)
 
     def forward(self, x):
@@ -79,6 +79,8 @@ class SkipNet(nn.Module):
             # Apply activation function unless it's the last layer
             if l < self.num_layers - 1:
                 x = self.activation(x)
+            
+        return x
 
     def forward(self, non_mnfld_pnts, mnfld_pnts=None):
         manifold_pnts_pred = None

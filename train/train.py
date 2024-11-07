@@ -205,7 +205,13 @@ if __name__ == "__main__":
     #     n_repeat_period=args.n_repeat_period,
     # )
     
-    model = skipModel.SkipNet()
+    model = skipModel.SkipNet(
+        in_dim=in_dim,
+        decoder_hidden_dim=512,
+        nl="relu",
+        decoder_n_hidden_layers=8,
+        init_type="gemetric_relu",
+    )
     
     # Uncomment to use small model
     # model = heatModel.Net(radius_init=args.sphere_init_params[1])
