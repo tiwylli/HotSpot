@@ -234,8 +234,12 @@ if __name__ == "__main__":
     )
     num_batches = len(train_dataloader)
 
-    cp, scale = train_set.cp, train_set.scale
-    default_cp, default_scale = train_set.get_cp_and_scale(scale_method="default")
+    scale = 1.0
+    default_scale = 1.0
+    if in_dim == 3:
+        cp, scale = train_set.cp, train_set.scale
+        default_cp, default_scale = train_set.get_cp_and_scale(scale_method="default")
+
     # Set up visualization grid
     x_vis, y_vis = np.linspace(
         -args.vis_grid_range, args.vis_grid_range, args.vis_grid_res
