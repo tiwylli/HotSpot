@@ -20,7 +20,6 @@ import utils.utils as utils
 import utils.visualizations as vis
 from utils import parser
 import copy
-from scipy.spatial import ConvexHull
 
 
 def visualize_model(
@@ -183,27 +182,6 @@ if __name__ == "__main__":
     train_dataloader = torch.utils.data.DataLoader(
         train_set, batch_size=1, shuffle=True, num_workers=args.num_workers, pin_memory=True
     )
-    
-    # # Set up adaptive lambda for heat loss
-    # hull = ConvexHull(train_set.mnfld_points)
-    # volume = hull.volume
-    # point_cloud = train_set.mnfld_points
-    # print(f"Volume of the point cloud: {volume}")
-    # print(f"Number of points in the point cloud: {point_cloud.shape[0]}")
-    # print(f"Estimated density of the point cloud: {point_cloud.shape[0]/volume}")
-    
-    # target_volume = 0.5
-    # denomenator = np.power(volume / target_volume, 1/in_dim)
-    # if denomenator < 1: denomenator = 1
-    # # use this ratio to scale the heat lambda
-    # args.heat_lambda = args.heat_lambda / denomenator
-    # for i in range(len(args.heat_lambda_decay_params)):
-    #     if i % 2 == 0 or i == len(args.heat_lambda_decay_params) - 1:
-    #         args.heat_lambda_decay_params[i] = args.heat_lambda_decay_params[i] / denomenator
-    # print(f"Adaptive ratio: {denomenator}")
-    # print(f"Adaptive heat lambda: {args.heat_lambda}")
-    # print(f"Adaptive heat lambda decay params: {args.heat_lambda_decay_params}")
-    
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     
