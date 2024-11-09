@@ -27,8 +27,8 @@ def fuse_pcd(input_path, output_path, filename, number_of_points=10**6):
     print(f"Saved point cloud: {output_file}")
 
 if __name__ == "__main__":
-    input_dir = "/pv-stao3/SPIN/data/ishit_nie/ground_truth"  # Input directory
-    output_dir = "/pv-stao3/SPIN/data/ishit_nie/point_cloud"  # Output directory
+    input_dir = "/pv-stao3/SPIN/data/NIE/ground_truth"  # Input directory
+    output_dir = "/pv-stao3/SPIN/data/NIE/point_cloud"  # Output directory
 
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
