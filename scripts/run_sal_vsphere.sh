@@ -5,7 +5,7 @@ TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
 IDENTIFIER='SAL' # change to your desired identifier
 
 CONFIG_DIR=$ROOT_DIR"configs/sal_vsphere.toml" # change to your config file path
-DATASET_DIR=$ROOT_DIR'data/complex_vsphere/'    # change to your dataset path
+DATASET_DIR=$ROOT_DIR'data/complex_vsphere/point_cloud'    # change to your dataset path
 LOG_DIR=$ROOT_DIR'log/3D/complex_vsphere/'                    # change to your desired log path
 EXP_DIR=$LOG_DIR$IDENTIFIER$TIMESTAMP/
 mkdir -p $EXP_DIR

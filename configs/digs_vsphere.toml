@@ -27,11 +27,11 @@ grid_range = 1.1
 train = true
 eval = true
 task = "3d"
-n_iterations = 10000
+n_iterations = 10001
 gpu_idx = 0
 lr = 5e-5
 grad_clip_norm = 10.0
-vis_interval = 100
+vis_interval = 1000
 log_interval = 100
 num_workers = 4
 
