@@ -59,8 +59,12 @@ def compute_dists(recon_points, gt_points, eval_type="Default"):
     return chamfer_dist, hausdorff_distance, cd_re2gt, cd_gt2re, hd_re2gt, hd_gt2re
 
 
-# shapes = ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]
-shapes = ["anchor"]
+shapes = ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]
+chamfer_dists = []
+hausdorff_dists = []
+cd_re2gts = []
+cd_gt2res = []
+#shapes = ["anchor"]
 for shape in shapes:
     scan_shape_path = os.path.join(scan_path, "{}.ply".format(shape))
     gt_shape_path = os.path.join(gt_path, "{}.xyz".format(shape))
@@ -88,3 +92,17 @@ for shape in shapes:
             shape, chamfer_dist, hausdorff_distance, sc_cd_re2gt, sc_hd_re2gt
         )
     )
+    chamfer_dists.append(chamfer_dist)
+    hausdorff_dists.append(hausdorff_distance)
+    cd_re2gts.append(cd_re2gt)
+    cd_gt2res.append(cd_gt2re)
+    
+logging.info(
+    "{: <10} {:.3f} {:.3f} {:.3f} {:.3f}".format(
+        "Average",
+        np.mean(chamfer_dists),
+        np.mean(hausdorff_dists),
+        np.mean(cd_re2gts),
+        np.mean(cd_gt2res),
+    )
+)
