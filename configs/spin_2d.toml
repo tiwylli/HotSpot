@@ -49,4 +49,3 @@ vis_heat = true
 vis_gt_shape = true
 save_video = true
 video_fps = 6
-compute_losses_on_vis_grid = false

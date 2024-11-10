@@ -43,6 +43,7 @@ class SkipNet(nn.Module):
         self.skip_layers = skip_layers
         self.ff_layers = ff_layers
         self.dims = [in_dim] + [decoder_hidden_dim] * (decoder_n_hidden_layers - 1) + [1]
+        self.sigmoid = nn.Tanh()
             
         for l in range(0, self.num_layers):
             if l in ff_layers:
@@ -85,6 +86,8 @@ class SkipNet(nn.Module):
             # Apply activation function unless it's the last layer
             if l < self.num_layers - 1:
                 x = self.activation(x)
+
+        x = self.sigmoid(x)
             
         return x
 

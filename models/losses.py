@@ -67,7 +67,7 @@ def heat_loss(points, preds, grads=None, sample_pdfs=None, heat_lambda=8, in_mnf
         )[0]
     heat = torch.exp(-heat_lambda * preds.abs())
     if not in_mnfld:
-        loss = (0.5 * heat**2 * (grads.norm(2, dim=-1) ** 2 + 1))
+        loss = 0.5 * heat**2 * (grads.norm(2, dim=-1) ** 2 + 1)
     else:
         loss = (0.5 * heat**2 * (grads.norm(2, dim=-1) ** 2 + 1)) - heat
     if sample_pdfs is not None:
@@ -77,6 +77,7 @@ def heat_loss(points, preds, grads=None, sample_pdfs=None, heat_lambda=8, in_mnf
 
     return loss
 
+
 def phase_loss(points, preds, sample_pdfs=None, epsilon=0.01):
     grads = torch.autograd.grad(
         outputs=preds,
@@ -85,10 +86,11 @@ def phase_loss(points, preds, sample_pdfs=None, epsilon=0.01):
         create_graph=True,
         retain_graph=True,
     )[0]
-    loss = epsilon * grads.norm(2, dim=-1) ** 2 + preds ** 2 - 2 * torch.abs(preds) + 1
+    loss = epsilon * grads.norm(2, dim=-1) ** 2 + preds**2 - 2 * torch.abs(preds) + 1
     loss = loss.mean()
-    
+
     return loss
+
 
 class Loss(nn.Module):
     def __init__(
@@ -121,7 +123,16 @@ class Loss(nn.Module):
         self.use_phase = True if "phase" in self.loss_type else False
         self.importance_sampling = importance_sampling
 
-    def forward(self, output_pred, mnfld_points, nonmnfld_points, nonmnfld_pdfs=None, mnfld_normals_gt=None, nonmnfld_dists_gt=None, nonmnfld_dists_sal=None):
+    def forward(
+        self,
+        output_pred,
+        mnfld_points,
+        nonmnfld_points,
+        nonmnfld_pdfs=None,
+        mnfld_normals_gt=None,
+        nonmnfld_dists_gt=None,
+        nonmnfld_dists_sal=None,
+    ):
         dims = mnfld_points.shape[-1]
         device = mnfld_points.device
 
@@ -137,19 +148,37 @@ class Loss(nn.Module):
         div_term = torch.tensor([0.0], device=mnfld_points.device)
 
         if self.use_phase:
-            nonmnfld_dist_pred = - np.sqrt(self.heat_lambda) * torch.log(1 - torch.abs(nonmnfld_pred)) * torch.sign(nonmnfld_pred)
+            nonmnfld_dist_pred = (
+                -(self.phase_epsilon**0.5)
+                * torch.log(1 - torch.abs(nonmnfld_pred))
+                * torch.sign(nonmnfld_pred)
+            )
         else:
             nonmnfld_dist_pred = nonmnfld_pred
 
         # compute gradients for div (divergence), curl and curv (curvature)
         if mnfld_pred is not None:
-            mnfld_dist_pred = - np.sqrt(self.heat_lambda) * torch.log(1 - torch.abs(mnfld_pred)) * torch.sign(mnfld_pred)
-            mnfld_dist_pred = mnfld_pred
+            if self.use_phase:
+                mnfld_dist_pred = (
+                    -(self.phase_epsilon**0.5)
+                    * torch.log(1 - torch.abs(mnfld_pred))
+                    * torch.sign(mnfld_pred)
+                )
+            else:
+                mnfld_dist_pred = mnfld_pred
             mnfld_grad = utils.gradient(mnfld_points, mnfld_dist_pred)
         else:
             mnfld_grad = None
 
         nonmnfld_grad = utils.gradient(nonmnfld_points, nonmnfld_dist_pred)
+
+        # if mnfld_dist_pred or nonmnfld_dist_pred is nan, print and exit
+        if torch.isnan(mnfld_grad).any():
+            print("mnfld_grad", mnfld_grad)
+            raise ValueError("NaN in mnfld gradients")
+        if torch.isnan(nonmnfld_grad).any():
+            print("nonmnfld_grad", nonmnfld_grad)
+            raise ValueError("NaN in nonmnfld gradients")
 
         # div_term
         if self.use_div and self.weights[4] > 0.0:
@@ -173,7 +202,12 @@ class Loss(nn.Module):
             div_term = nonmnfld_divergence_term.mean()  # + mnfld_divergence_term.mean()
 
         # eikonal term
-        eikonal_term = eikonal_loss(nonmnfld_grad, mnfld_grad=mnfld_grad, nonmnfld_pdfs=nonmnfld_pdfs, eikonal_type="abs" if self.loss_type != "phase" else "squared")
+        eikonal_term = eikonal_loss(
+            nonmnfld_grad,
+            mnfld_grad=mnfld_grad,
+            nonmnfld_pdfs=nonmnfld_pdfs,
+            eikonal_type="abs" if self.loss_type != "phase" else "squared",
+        )
 
         # latent regulariation for multiple shape learning
         latent_reg_term = latent_rg_loss(latent_reg, device)
@@ -196,19 +230,19 @@ class Loss(nn.Module):
         boundary_term = torch.abs(mnfld_pred).mean()
 
         # inter term
-        inter_term = torch.exp(-1e2 * torch.abs(nonmnfld_pred)).mean()
+        inter_term = torch.exp(-1e2 * torch.abs(nonmnfld_dist_pred)).mean()
 
         # heat term
         heat_term = torch.tensor([0.0], device=mnfld_points.device)
         if self.use_heat and self.weights[6] > 0.0:
             heat_term = heat_loss(
                 points=nonmnfld_points,
-                preds=nonmnfld_pred,
+                preds=nonmnfld_dist_pred,
                 grads=nonmnfld_grad,
                 sample_pdfs=nonmnfld_pdfs if self.importance_sampling else None,
                 heat_lambda=self.heat_lambda,
                 in_mnfld=False,
-            ) 
+            )
             # + heat_loss(
             #     points=mnfld_points,
             #     preds=manifold_pred,
@@ -223,12 +257,16 @@ class Loss(nn.Module):
         # phase term
         phase_term = torch.tensor([0.0], device=mnfld_points.device)
         if self.use_phase and self.weights[7] > 0.0:
-            phase_term = phase_loss(points=mnfld_points, preds=mnfld_pred, sample_pdfs=None, epsilon=self.phase_epsilon)
+            phase_term = phase_loss(
+                points=mnfld_points, preds=mnfld_pred, sample_pdfs=None, epsilon=self.phase_epsilon
+            )
 
         # nonmanifold prediction value loss
         nonmnfld_dists_loss = torch.tensor([0.0], device=mnfld_points.device)
         if nonmnfld_dists_gt is not None:
-            nonmnfld_dists_loss = torch.abs(nonmnfld_pred.squeeze() - nonmnfld_dists_gt.squeeze()).mean()
+            nonmnfld_dists_loss = torch.abs(
+                nonmnfld_pred.squeeze() - nonmnfld_dists_gt.squeeze()
+            ).mean()
 
         # SAL loss term
         sal_term = torch.tensor([0.0], device=mnfld_points.device)
@@ -297,10 +335,7 @@ class Loss(nn.Module):
                 + self.weights[6] * heat_term
             )
         elif self.loss_type == "sal":
-            loss = (
-                self.weights[0] * boundary_term
-                + self.weights[5] * sal_term
-            )
+            loss = self.weights[0] * boundary_term + self.weights[5] * sal_term
         elif self.loss_type == "phase":
             loss = (
                 self.weights[0] * boundary_term
@@ -334,8 +369,8 @@ class Loss(nn.Module):
             "div_term": div_term,
             "sal_term": sal_term,
             "heat_term": heat_term,
-            "diff_term": nonmnfld_dists_loss
-                }, mnfld_grad
+            "diff_term": nonmnfld_dists_loss,
+        }, mnfld_grad
 
     def update_div_weight(self, current_iteration, n_iterations, params=None):
         # `params`` should be (start_weight, *optional middle, end_weight) where optional middle is of the form [percent, value]*
@@ -448,10 +483,12 @@ class Loss(nn.Module):
 
         curr = current_iteration / n_iterations
         we, e = min(
-            [tup for tup in self.eikonal_decay_params_list if tup[1] >= curr], key=lambda tup: tup[1]
+            [tup for tup in self.eikonal_decay_params_list if tup[1] >= curr],
+            key=lambda tup: tup[1],
         )
         w0, s = max(
-            [tup for tup in self.eikonal_decay_params_list if tup[1] <= curr], key=lambda tup: tup[1]
+            [tup for tup in self.eikonal_decay_params_list if tup[1] <= curr],
+            key=lambda tup: tup[1],
         )
 
         # Divergence term anealing functions
@@ -496,10 +533,12 @@ class Loss(nn.Module):
 
         curr = current_iteration / n_iterations
         we, e = min(
-            [tup for tup in self.heat_lambda_decay_params_list if tup[1] >= curr], key=lambda tup: tup[1]
+            [tup for tup in self.heat_lambda_decay_params_list if tup[1] >= curr],
+            key=lambda tup: tup[1],
         )
         w0, s = max(
-            [tup for tup in self.heat_lambda_decay_params_list if tup[1] <= curr], key=lambda tup: tup[1]
+            [tup for tup in self.heat_lambda_decay_params_list if tup[1] <= curr],
+            key=lambda tup: tup[1],
         )
 
         # Divergence term anealing functions
@@ -544,10 +583,12 @@ class Loss(nn.Module):
 
         curr = current_iteration / n_iterations
         we, e = min(
-            [tup for tup in self.boundary_coef_decay_params_list if tup[1] >= curr], key=lambda tup: tup[1]
+            [tup for tup in self.boundary_coef_decay_params_list if tup[1] >= curr],
+            key=lambda tup: tup[1],
         )
         w0, s = max(
-            [tup for tup in self.boundary_coef_decay_params_list if tup[1] <= curr], key=lambda tup: tup[1]
+            [tup for tup in self.boundary_coef_decay_params_list if tup[1] <= curr],
+            key=lambda tup: tup[1],
         )
 
         # Divergence term anealing functions
@@ -558,7 +599,9 @@ class Loss(nn.Module):
                 self.weights[0] = w0 + (we - w0) * (current_iteration / n_iterations - s) / (e - s)
             else:
                 self.weights[0] = we
-        elif self.boundary_coef_decay == "quintic":  # linearly decrease weight from iter s to iter e
+        elif (
+            self.boundary_coef_decay == "quintic"
+        ):  # linearly decrease weight from iter s to iter e
             if current_iteration < s * n_iterations:
                 self.weights[0] = w0
             elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:

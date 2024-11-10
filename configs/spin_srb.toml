@@ -18,7 +18,7 @@ heat_decay_params = [20, 0.8, 20, 0.1]
 eikonal_decay = "linear"
 eikonal_decay_params = [1, 0.2, 1, 10]
 heat_lambda_decay = "linear"
-heat_lambda_decay_params = [8, 0.2, 8, 30]
+heat_lambda_decay_params = [3, 0.2, 3, 12]
 
 [sampling]
 grid_res = 256
