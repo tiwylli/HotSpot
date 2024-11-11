@@ -1,8 +1,8 @@
 ROOT_DIR=$(dirname $(dirname "$(readlink -f "$0")"))'/'
 MODEL_DIR=$ROOT_DIR'models'
 THIS_FILE=$(basename "$0")
-TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
-IDENTIFIER='SAL' # change to your desired identifier
+# TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
+IDENTIFIER='SAL-100k' # change to your desired identifier
 
 CONFIG_DIR=$ROOT_DIR"configs/sal_vsphere.toml" # change to your config file path
 DATASET_DIR=$ROOT_DIR'data/complex_vsphere/point_cloud'    # change to your dataset path
