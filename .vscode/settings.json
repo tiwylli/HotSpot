@@ -1,0 +1,9 @@
+{
+    "python.analysis.exclude": [
+        "data/**",
+        "dataset/**",
+        "log/**",
+        "sanitychecks_out/**",
+        "surface_reconstruction/**"
+    ],
+}

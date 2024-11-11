@@ -22,16 +22,17 @@ import copy
 
 
 def occupancy_to_sdf(occupancy, epsilon):
-    sdf = - np.sqrt(epsilon) * torch.log(1 - torch.abs(occupancy)) * torch.sign(occupancy)
+    sdf = -(epsilon ** 0.5) * torch.log(1 - torch.abs(occupancy)) * torch.sign(occupancy)
     return sdf
+
 
 def unpack_pred_dists(pred, args):
     mnfld_pred = pred["manifold_pnts_pred"]
     nonmnfld_pred = pred["nonmanifold_pnts_pred"]
-    # if args.loss_type == "phase":
-    #     mnfld_pred = occupancy_to_sdf(mnfld_pred, args.phase_epsilon)
-    #     nonmnfld_pred = occupancy_to_sdf(nonmnfld_pred, args.phase_epsilon)
-    
+    if args.loss_type == "phase":
+        mnfld_pred = occupancy_to_sdf(mnfld_pred, args.phase_epsilon)
+        nonmnfld_pred = occupancy_to_sdf(nonmnfld_pred, args.phase_epsilon)
+
     return mnfld_pred, nonmnfld_pred
 
 
@@ -152,7 +153,6 @@ if __name__ == "__main__":
     os.system("cp %s %s" % (__file__, log_dir))  # backup the current training file
     os.system("cp %s %s" % ("./models/Net.py", log_dir))  # backup the models files
     os.system("cp %s %s" % ("./models/losses.py", log_dir))  # backup the losses files
-        
 
     # Set up dataloader
     torch.manual_seed(0)
@@ -197,18 +197,17 @@ if __name__ == "__main__":
     )
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-    
 
     # Set up model
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_idx)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    
-    if args.loss_type == "phase":    
+    if args.loss_type == "phase":
         model = SkipNet.SkipNet(
             in_dim=in_dim,
             nl=args.nl,
+            ff_layers=[],
         )
     else:
         model = Net.Network(
@@ -223,7 +222,7 @@ if __name__ == "__main__":
             sphere_init_params=args.sphere_init_params,
             n_repeat_period=args.n_repeat_period,
         )
-    
+
     # Uncomment to use small model
     # model = heatModel.Net(radius_init=args.sphere_init_params[1])
     model.to(device)
@@ -464,7 +463,7 @@ if __name__ == "__main__":
         )  # (vis_grid_res * vis_grid_res, 1)
 
         mnfld_points_pred, vis_grid_pred = unpack_pred_dists(vis_pred, args)
-        
+
         visualize_model(
             x_grid=x_vis,
             y_grid=y_vis,
