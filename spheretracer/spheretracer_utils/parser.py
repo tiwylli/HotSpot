@@ -1,0 +1,336 @@
+# This file is partly based on DiGS: https://github.com/Chumbyte/DiGS
+import configargparse
+import torch
+import os
+import numpy as np
+import glob
+
+def get_raytracer_args():
+    parser = configargparse.ArgParser(description="Local implicit functions experiment.")
+    parser.add_argument("--config", is_config_file=True, help="Config file path.")
+    # Dataset
+    parser.add_argument("--task", type=str, default="3d", help="3d | 2d.")
+    parser.add_argument(
+        "--data_dir",
+        type=str,
+        default="../data/deep_geometric_prior_data",
+        help="Path to dataset folder.",
+    )
+    parser.add_argument(
+        "--raw_dataset_path",
+        type=str,
+        default="../data/deep_geometric_prior_data",
+        help="Path to dataset folder.",
+    )
+    parser.add_argument(
+        "--file_name",
+        type=str,
+        default="",
+        help="Name of file to reconstruct (within the dataset path).",
+    )
+    parser.add_argument(
+        "--gt_meshes_dir",
+        type=str,
+        default="../data/ShapeNetCore.v1",
+        help="Path to gt mesh folder.",
+    )
+    parser.add_argument(
+        "--pcd_scale_method",
+        type=str,
+        default="default",
+        help="Method to scale point cloud. (default | mean).",
+    )
+    # - 2D basic shape dataset
+    parser.add_argument(
+        "--shape_type",
+        type=str,
+        default="L",
+        help="Shape dataset to load. (circle | square | L |starhex | button).",
+    )
+
+    # Training
+    parser.add_argument("--train", action="store_true", help="Indicator to run training.")
+    parser.add_argument("--eval", action="store_true", help="Indicator to run evaluation.")
+    parser.add_argument("--gpu_idx", type=int, default=0, help="Set < 0 to use CPU.")
+    parser.add_argument("--log_dir", type=str, default="./log/debug", help="Log directory.")
+    parser.add_argument("--seed", type=int, default=3627473, help="Random seed.")
+    parser.add_argument(
+        "--n_iterations",
+        type=int,
+        default=5000,
+        help="Number of iterations in the generated train and test set.",
+    )
+    parser.add_argument("--parallel", type=int, default=False, help="Use data parallel.")
+    parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate.")
+    parser.add_argument(
+        "--grad_clip_norm", type=float, default=10.0, help="Value to clip gradients to."
+    )
+    parser.add_argument(
+        "--batch_size", type=int, default=1, help="Number of samples in a minibatch."
+    )
+    parser.add_argument(
+        "--n_points", type=int, default=30000, help="Number of points in each point cloud."
+    )
+    parser.add_argument(
+        "--num_workers", type=int, default=4, help="Number of workers for dataloader."
+    )
+    parser.add_argument(
+        "--clip_grad_norm",
+        type=float,
+        default=10.0,
+        help="Clip gradient norm. Set to <=0 to disable.",
+    )
+
+    # Visualization and logging
+    parser.add_argument(
+        "--results_path",
+        type=str,
+        default="./log/surface_reconstruction/DiGS_surf_recon_experiment/result_meshes",
+        help="Path to results directory.",
+    )
+    parser.add_argument(
+        "--saved_model_dir",
+        type=str,
+        default="./log/surface_reconstruction/DiGS_surf_recon_experiment/trained_models",
+        help="Path to saved model directory.",
+    )
+    parser.add_argument(
+        "--vis_interval",
+        type=int,
+        default=100,
+        help="Number of iterations between visualizations.",
+    )
+    parser.add_argument(
+        "--vis_contour_range",
+        nargs="+",
+        type=float,
+        default=None,
+        help="Range of the contour plot.",
+    )
+    parser.add_argument(
+        "--log_interval",
+        type=int,
+        default=100,
+        help="Number of iterations between logging.",
+    )
+    parser.add_argument(
+        "--vis_grid_range",
+        type=float,
+        default=1.2,
+        help="Range of the grid to sample points while visualizing.",
+    )
+    parser.add_argument(
+        "--vis_grid_res", type=int, default=512, help="Grid resolution for reconstruction."
+    )
+    parser.add_argument(
+        "--vis_contour_interval",
+        type=float,
+        default=0.05,
+        help="Interval for level set visualization.",
+    )
+    parser.add_argument(
+        "--vis_normals", action="store_true", help="Indicator to visualize normals."
+    )
+    parser.add_argument(
+        "--n_vis_normals",
+        type=int,
+        default=100,
+        help="Number of normals to visualize.",
+    )
+    parser.add_argument("--vis_heat", action="store_true", help="Indicator to visualize heat.")
+    parser.add_argument(
+        "--vis_diff", action="store_true", help="Indicator to visualize difference image."
+    )
+    parser.add_argument("--save_video", action="store_true", help="Indicator to save video.")
+    parser.add_argument("--video_fps", type=int, default=6, help="Frames per second for video.")
+    parser.add_argument(
+        "--vis_final", action="store_true", help="Indicator to visualize final result."
+    )
+    parser.add_argument(
+        "--compute_metrics", action="store_true", help="Indicator to compute metrics."
+    )
+    parser.add_argument(
+        "--vis_gt_shape", action="store_true", help="Indicator to visualize ground truth shape."
+    )
+
+    # Network architecture and loss
+    parser.add_argument(
+        "--decoder_hidden_dim", type=int, default=256, help="Length of decoder hidden dim."
+    )
+    parser.add_argument(
+        "--encoder_hidden_dim", type=int, default=128, help="Length of encoder hidden dim."
+    )
+    parser.add_argument(
+        "--decoder_n_hidden_layers", type=int, default=8, help="Number of decoder hidden layers."
+    )
+    parser.add_argument(
+        "--nl", type=str, default="softplus", help="Type of non-linearity: sine | relu."
+    )
+    parser.add_argument(
+        "--latent_size",
+        type=int,
+        default=0,
+        help="Number of elements in the latent vector. Use 0 for reconstruction.",
+    )
+    parser.add_argument(
+        "--sphere_init_params",
+        nargs="+",
+        type=float,
+        default=[1.6, 1.0],
+        help="Radius and scaling.",
+    )
+    parser.add_argument("--neuron_type", type=str, default="quadratic", help="Type of neuron.")
+    parser.add_argument(
+        "--encoder_type", type=str, default="none", help="Type of encoder: none | pointnet."
+    )
+    parser.add_argument(
+        "--loss_type",
+        type=str,
+        default="siren",
+        help="Loss type to use: SPIN: igr[_wo_eik]_w_heat, StEik: siren[_wo_n]_w_div, siren[_wo_n], igr[_wo_n], PHASE: phase",
+    )
+    parser.add_argument(
+        "--div_decay",
+        type=str,
+        default="linear",
+        help="Divergence term coefficient decay schedule: none | step | linear.",
+    )
+    parser.add_argument(
+        "--div_decay_params",
+        nargs="+",
+        type=float,
+        default=[0.0, 0.5, 0.75],
+        help="Decay schedule for divergence term coefficient. Not effective if div_decay = False. Format: [start, (location, value)*, end]",
+    )
+    parser.add_argument(
+        "--div_type",
+        type=str,
+        default="dir_l1",
+        help="Divergence term norm: dir_l1 | dir_l2 | full_l1 | full_l2.",
+    )
+    parser.add_argument("--grid_res", type=int, default=128, help="Uniform grid resolution.")
+    parser.add_argument(
+        "--nonmnfld_sample_type",
+        type=str,
+        default="uniform",
+        help="How to sample points off the manifold. Currently supported sample types: grid | central_gaussian | grid_central_gaussian | uniform_central_gaussian.",
+    )
+    parser.add_argument(
+        "--init_type",
+        type=str,
+        default="mfgi",
+        help="Initialization type: siren | geometric_sine | geometric_relu | mfgi.",
+    )
+    parser.add_argument(
+        "--loss_weights",
+        nargs="+",
+        type=float,
+        default=[2e4, 1e2, 1e2, 5e1, 1e2, 0, 8e2],
+        help="Loss terms weights: sdf | inter | normal | eikonal | div | sal | heat.",
+    )
+    parser.add_argument(
+        "--heat_lambda", type=float, default=30, help="Heat loss weight for eikonal loss."
+    )
+    parser.add_argument(
+        "--phase_epsilon",
+        type=float,
+        default=0.01,
+        help="Epsilon for phase loss.",
+    )
+    parser.add_argument(
+        "--heat_decay",
+        type=str,
+        default=None,
+        help="Heat coefficient decay schedule: none | step | linear.",
+    )
+    parser.add_argument(
+        "--heat_decay_params",
+        nargs="+",
+        type=float,
+        default=[],
+        help="Decay schedule for heat coefficient. Not effective if heat_decay = False. Format: [start, (location, value)*, end]",
+    )
+    parser.add_argument(
+        "--eikonal_decay",
+        type=str,
+        default=None,
+        help="Eikonal coefficient decay schedule: none | step | linear.",
+    )
+    parser.add_argument(
+        "--eikonal_decay_params",
+        nargs="+",
+        type=float,
+        default=[],
+        help="Decay schedule for eikonal coefficient. Not effective if eikonal_decay = False. Format: [start, (location, value)*, end]",
+    )
+    parser.add_argument(
+        "--heat_lambda_decay",
+        type=str,
+        default=None,
+        help="Heat lambda decay schedule: none | step | linear.",
+    )
+    parser.add_argument(
+        "--heat_lambda_decay_params",
+        nargs="+",
+        type=float,
+        default=[],
+        help="Decay schedule for heat lambda. Not effective if heat_lambda_decay = False. Format: [start, (location, value)*, end]",
+    )
+    parser.add_argument(
+        "--boundary_coef_decay",
+        type=str,
+        default=None,
+        help="Boundary coefficient decay schedule: none | step | linear.",
+    )
+    parser.add_argument(
+        "--boundary_coef_decay_params",
+        nargs="+",
+        type=float,
+        default=[],
+        help="Decay schedule for boundary coefficient. Not effective if boundary_coef_decay = False. Format: [start, (location, value)*, end]",
+    )
+    parser.add_argument(
+        "--n_repeat_period",
+        type=int,
+        default=30,
+        help="Number of periods to repeat the input signal.",
+    )
+
+    # Sampling
+    parser.add_argument(
+        "--grid_range", type=float, default=1.2, help="Range of the grid to sample points."
+    )
+    parser.add_argument(
+        "--nonmnfld_sample_std",
+        type=float,
+        default=0.09,
+        help="Standard deviation of the gaussian distribution to sample points off the origin.",
+    )
+    parser.add_argument(
+        "--n_random_samples", type=int, default=4096, help="Number of random samples."
+    )
+    parser.add_argument(
+        "--importance_sampling", action="store_false", help="Indicator to use importance sampling."
+    )
+
+    # Misc
+    parser.add_argument(
+        "--model_dir", type=str, default="./models", help="Path to model directory for backup."
+    )
+
+
+    parser.add_argument(
+        '--model_path',  type=str, help="Path to trained_model (.pth)."
+    )
+    parser.add_argument(
+        '--model_name', type=str, help="Name of the trained model."
+    )
+    parser.add_argument(
+        '--dataset_file_path', type=str, help="Path to dataset (.ply)"
+    )
+    parser.add_argument(
+        '--output_path', type=str, help="Path to output holder"
+    )
+
+    args = parser.parse_args()
+    return args
