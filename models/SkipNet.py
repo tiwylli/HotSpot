@@ -84,7 +84,7 @@ class SkipNet(nn.Module):
             x = layer(x)
 
             # Apply activation function unless it's the last layer
-            if l < self.num_layers - 1:
+            if l < self.num_layers - 1 and l not in self.ff_layers:
                 x = self.activation(x)
 
         x = self.sigmoid(x)

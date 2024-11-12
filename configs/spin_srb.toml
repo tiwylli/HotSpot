@@ -12,13 +12,13 @@ n_repeat_period = 30
 
 [loss]
 loss_type = "igr_w_heat"
-loss_weights = [350, 0, 0, 1, 0, 0, 20]
+loss_weights = [500, 0, 0, 1, 0, 0, 20]
 heat_decay = "linear"
-heat_decay_params = [20, 0.8, 20, 0.1]
+heat_decay_params = [8, 0.6, 1, 1]
 eikonal_decay = "linear"
-eikonal_decay_params = [1, 0.2, 1, 10]
+eikonal_decay_params = [3, 0.2, 3, 3]
 heat_lambda_decay = "linear"
-heat_lambda_decay_params = [3, 0.2, 3, 12]
+heat_lambda_decay_params = [15, 0.2, 15, 15]
 
 [sampling]
 grid_res = 256
