@@ -2,8 +2,10 @@
 model_dir = "models"
 
 [network]
-decoder_n_hidden_layers = 5
-decoder_hidden_dim = 128
+# decoder_n_hidden_layers = 5
+# decoder_hidden_dim = 128
+decoder_n_hidden_layers = 4
+decoder_hidden_dim = 256
 nl = "sine"
 sphere_init_params = [1.6, 0.1]
 init_type = "mfgi"
@@ -11,7 +13,8 @@ neuron_type = "linear"
 
 [loss]
 loss_type = "siren_wo_n_w_div"
-loss_weights = [5e3, 1e2, 1e2, 5e1, 1e2, 0, 0]
+#loss_weights = [5e3, 1e2, 1e2, 5e1, 1e2, 0, 0]
+loss_weights = [3e3, 1e2, 1e2, 5e1, 1e2, 0, 0]
 div_type = "full_l1"
 div_decay = "linear"
 div_decay_params = [100.0, 0.2, 100.0, 0.4, 0.0, 0.0]

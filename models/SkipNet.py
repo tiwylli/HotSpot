@@ -2,6 +2,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+class Decoder(nn.Module):
+    def forward(self, *args, **kwargs):
+        return self.forward_pts(*args, **kwargs)
+
 class FourierLayer(nn.Module):
     def __init__(self, in_features, k=6):
         super().__init__()
