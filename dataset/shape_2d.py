@@ -745,6 +745,10 @@ def get2D_dataset(
             (0.3, 0.8)
         ])
         out_shape = Union(shapes=[facade, window, door, handle, roof, chimney])
+    elif shape_type == "phase_exp":
+        circle1 = Circle(*args, r=0.05, center=(-0.9, -0.9), outward_normal=True)
+        circle2 = Circle(*args, r=0.05, center=(0.9, 0.9), outward_normal=True)
+        out_shape = Union(shapes=[circle1, circle2])
     else:
         raise Warning("Unsupportaed shape")
 

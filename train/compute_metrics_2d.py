@@ -10,6 +10,7 @@ from skimage import measure
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import dataset.shape_2d as dataset
 import models.Net as Net
+import models.SkipNet as SkipNet
 import utils.parser as parser
 import plotly.graph_objects as go
 
@@ -57,17 +58,25 @@ if __name__ == "__main__":
     )
     logging.info(f"Computing metrics in {exp_path}")
 
-    model = Net.Network(
-        latent_size=args.latent_size,
-        in_dim=2,
-        decoder_hidden_dim=args.decoder_hidden_dim,
-        nl=args.nl,
-        encoder_type=args.encoder_type,
-        decoder_n_hidden_layers=args.decoder_n_hidden_layers,
-        init_type=args.init_type,
-        neuron_type=args.neuron_type,
-        sphere_init_params=args.sphere_init_params,
-    )
+    if args.loss_type == "phase":
+        model = SkipNet.SkipNet(
+            in_dim=2,
+            nl=args.nl,
+            ff_layers=[],
+            clamp=0.999999,
+        )
+    else:    
+        model = Net.Network(
+            latent_size=args.latent_size,
+            in_dim=2,
+            decoder_hidden_dim=args.decoder_hidden_dim,
+            nl=args.nl,
+            encoder_type=args.encoder_type,
+            decoder_n_hidden_layers=args.decoder_n_hidden_layers,
+            init_type=args.init_type,
+            neuron_type=args.neuron_type,
+            sphere_init_params=args.sphere_init_params,
+        )
 
     IoUs = []
     chamfer_distances = []
@@ -107,7 +116,8 @@ if __name__ == "__main__":
     vis_grid_points = torch.tensor(vis_grid_points, dtype=torch.float32).to(device)
 
     for shape_name in shape_names:
-        gt_shape_weights_path = os.path.join(exp_path, shape_name, "trained_models", "model.pth")
+        # gt_shape_weights_path = os.path.join(exp_path, shape_name, "trained_models", "model.pth")
+        gt_shape_weights_path = os.path.join(exp_path, shape_name + "-5.0", "trained_models", "model.pth")
 
         test_set = dataset.get2D_dataset(
             n_points=args.n_points,
@@ -125,12 +135,16 @@ if __name__ == "__main__":
 
         # Compute IoU
         with torch.no_grad():
-            dists_pred = model.decoder(vis_grid_points).cpu().numpy()
+            dists_pred = model(vis_grid_points)["nonmanifold_pnts_pred"].cpu().numpy()
+        dists_pred = dists_pred.squeeze()
+        if args.loss_type == "phase":
+            dists_pred = - (args.phase_epsilon ** 0.5) * np.log(1 - np.abs(dists_pred)) * np.sign(dists_pred)
         occupancies_pred = (dists_pred.reshape(-1) < 0).astype(int)
 
         dists_gt, _ = test_set.get_points_distances_and_normals(
             vis_grid_points.squeeze().detach().cpu().numpy()
         )
+        dists_gt = dists_gt.squeeze()
         occupancies_gt = (dists_gt.reshape(-1) < 0).astype(int)
 
         iou = (occupancies_gt & occupancies_pred).sum() / (occupancies_gt | occupancies_pred).sum()

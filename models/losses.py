@@ -156,6 +156,12 @@ class Loss(nn.Module):
         else:
             nonmnfld_dist_pred = nonmnfld_pred
 
+        # if nonmnfld_dist_pred has nan or inf, print and exit
+        if torch.isnan(nonmnfld_dist_pred).any():
+            raise ValueError("NaN in nonmnfld_dist_pred")
+        if torch.isinf(nonmnfld_dist_pred).any():
+            raise ValueError("Inf in nonmnfld_dist_pred")
+
         # compute gradients for div (divergence), curl and curv (curvature)
         if mnfld_pred is not None:
             if self.use_phase:
@@ -214,7 +220,7 @@ class Loss(nn.Module):
 
         # normal term
         if mnfld_normals_gt is not None:
-            if "igr" in self.loss_type:
+            if "igr" in self.loss_type or "phase" in self.loss_type:
                 normal_term = ((mnfld_grad - mnfld_normals_gt).abs()).norm(2, dim=1).mean()
             else:
                 normal_term = (
@@ -339,6 +345,7 @@ class Loss(nn.Module):
         elif self.loss_type == "phase":
             loss = (
                 self.weights[0] * boundary_term
+                + self.weights[2] * normal_term
                 + self.weights[3] * eikonal_term
                 + self.weights[7] * phase_term
             )

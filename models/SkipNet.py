@@ -2,10 +2,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-class Decoder(nn.Module):
-    def forward(self, *args, **kwargs):
-        return self.forward_pts(*args, **kwargs)
-
 class FourierLayer(nn.Module):
     def __init__(self, in_features, k=6):
         super().__init__()
@@ -32,12 +28,14 @@ class SkipNet(nn.Module):
         ff_layers=[0],
         k = 6,
         decoder_n_hidden_layers=8,
-        init_type="geometric_relu"
+        init_type="geometric_relu",
+        clamp=1.0,
     ):
         super(SkipNet, self).__init__()
         
         self.init_type = init_type
         self.num_layers = decoder_n_hidden_layers
+        self.clamp = clamp
         
         if nl == "softplus":
             self.activation = nn.Softplus(beta=100)
@@ -92,6 +90,7 @@ class SkipNet(nn.Module):
                 x = self.activation(x)
 
         x = self.sigmoid(x)
+        x = torch.clamp(x, -self.clamp, self.clamp)
             
         return x
 
