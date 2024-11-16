@@ -295,6 +295,12 @@ def get_train_args():
         default=30,
         help="Number of periods to repeat the input signal.",
     )
+    parser.add_argument(
+        "--skipnet_clamp",
+        type=float,
+        default=1.0, # no clamp
+        help="Clamp value for the output of the skipnet.",
+    )
 
     # Sampling
     parser.add_argument(

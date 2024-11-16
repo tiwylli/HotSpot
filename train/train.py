@@ -22,7 +22,7 @@ import copy
 
 
 def occupancy_to_sdf(occupancy, epsilon):
-    sdf = -(epsilon ** 0.5) * torch.log(1 - torch.abs(occupancy)) * torch.sign(occupancy)
+    sdf = -(epsilon**0.5) * torch.log(1 - torch.abs(occupancy)) * torch.sign(occupancy)
     return sdf
 
 
@@ -134,6 +134,24 @@ def visualize_model(
         img = Image.fromarray(diff_contour_img)
         img.save(os.path.join(output_dir, "diff_" + batch_idx_suffix + ".png"))
 
+    if args.vis_final:
+        gt_contour_img = vis.plot_contours(
+            x_grid=x_grid,
+            y_grid=y_grid,
+            z_grid=vis_grid_dists_gt.reshape(args.vis_grid_res, args.vis_grid_res),
+            mnfld_points=None,
+            mnfld_normals=None,
+            mnfld_normals_gt=None,
+            colorscale="RdBu_r",
+            show_scale=True,
+            show_ax=True,
+            title_text=f"GT",
+            grid_range=args.vis_grid_range,
+            contour_interval=args.vis_contour_interval,
+        )
+        img = Image.fromarray(gt_contour_img)
+        img.save(os.path.join(output_dir, "gt.png"))
+
     utils.log_string("", log_file)
 
 
@@ -208,6 +226,7 @@ if __name__ == "__main__":
             in_dim=in_dim,
             nl=args.nl,
             ff_layers=[],
+            clamp=args.skipnet_clamp,
         )
     else:
         model = Net.Network(
@@ -433,7 +452,7 @@ if __name__ == "__main__":
                 scheduler.step()
 
     # Save final model
-    if args.train:
+    if args.train and not args.vis_final:
         utils.log_string("Saving final model to file model.pth", log_file)
         torch.save(model.state_dict(), os.path.join(model_outdir, "model.pth"))
 
@@ -445,7 +464,7 @@ if __name__ == "__main__":
         test_data = next(iter(test_dataloader))
         mnfld_points = test_data["mnfld_points"].to(device)
         mnfld_points.requires_grad_()
-        model_path = os.path.join(log_dir, "trained_models", f"model.pth")
+        model_path = os.path.join(log_dir, "trained_models", f"model_10000.pth")
         if torch.cuda.is_available():
             map_location = torch.device("cuda")
         else:
