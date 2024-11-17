@@ -12,6 +12,6 @@ tensorboardX
 requests
 psutil
 # plotly # should install plotly-orca from conda
-kaleido
+kaleido==0.2.1
 opencv-python
 point_cloud_utils

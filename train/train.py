@@ -148,6 +148,7 @@ def visualize_model(
             title_text=f"GT",
             grid_range=args.vis_grid_range,
             contour_interval=args.vis_contour_interval,
+            contour_range=args.vis_contour_range,
         )
         img = Image.fromarray(gt_contour_img)
         img.save(os.path.join(output_dir, "gt.png"))
@@ -464,7 +465,7 @@ if __name__ == "__main__":
         test_data = next(iter(test_dataloader))
         mnfld_points = test_data["mnfld_points"].to(device)
         mnfld_points.requires_grad_()
-        model_path = os.path.join(log_dir, "trained_models", f"model_10000.pth")
+        model_path = os.path.join(log_dir, "trained_models", f"model.pth")
         if torch.cuda.is_available():
             map_location = torch.device("cuda")
         else:
