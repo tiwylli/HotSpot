@@ -134,7 +134,7 @@ def visualize_model(
         img = Image.fromarray(diff_contour_img)
         img.save(os.path.join(output_dir, "diff_" + batch_idx_suffix + ".png"))
 
-    if args.vis_final:
+    if args.vis_final and vis_grid_dists_gt is not None:
         gt_contour_img = vis.plot_contours(
             x_grid=x_grid,
             y_grid=y_grid,
