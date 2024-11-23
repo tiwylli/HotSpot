@@ -1,7 +1,7 @@
 import torch
 import numpy  as np
+import os 
 import sys
-import os
 
 from ray_tracing import RayTracing
 from pyhocon import ConfigFactory
@@ -72,45 +72,57 @@ def eval(conf, args, img_size, compute_iters=True, compute_depth=False, compute_
     # get trained sdf & ray_tracer model
     sdf_model, scale = get_sdf_model(args, args.model_path, args.dataset_file_path)
     ray_tracer = RayTracing(**conf.get_config('model.ray_tracer'))
-    # combined model
     m = model(sdf_model, ray_tracer)
     # generate camera pose and params for rendering
-    poses, uv_batches, intrinsics = generate_eval_cams(img_size=img_size, radius=1.0, num_views=36, height=0.5, fov=60, batch_size=10000)
+    poses, uv_batches, intrinsics = generate_eval_cams(img_size=img_size, radius=1.0, num_views=10, height=0.5, fov=60, batch_size=10000)
     object_mask = torch.ones(10000, device="cuda:0", dtype=torch.bool)
-    width = img_size[0]
-
+    width, height = img_size[0], img_size[1]
+    
+    all_iters_combined = []
     for itr, pose in enumerate(poses):
-        all_dists, all_masks, all_iters, all_grads = [], [], [], []
+        all_dists, all_masks, all_iters, all_normals = [], [], [], []
         for uv in uv_batches:
             with torch.no_grad():
                 dists, masks, iters, points = m.render(uv, pose, intrinsics, object_mask, scale)
                 all_masks.extend(masks.detach().cpu().numpy())
                 all_dists.extend(dists.detach().cpu().numpy())
                 all_iters.extend(iters.detach().cpu().numpy())
+                all_iters_combined.extend(iters.detach().cpu().numpy())
             if compute_grads:
                 out = sdf_model.decoder(points.requires_grad_(True)/scale)[:, 0] * scale
-                grad = torch.norm(gradient(points, out), dim=1)
-                all_grads.extend(grad.detach().cpu().numpy())
+                #grad to normal
+                grad = gradient(points, out).detach().cpu().numpy()
+                norm = np.linalg.norm(grad , axis = -1, keepdims = True)
+                norm = np.where(norm == 0, 1e-10, norm)
+                normal = grad / norm
+                #normal to rgb
+                normalized_normal = np.clip((normal + 1) /2, 0, 1)
+                all_normals.extend(normalized_normal)
 
         mask_map = np.array(all_masks).reshape(-1, width)
         if compute_iters:
             iters_map = np.array(all_iters).reshape(-1, width)
-            iters_masked = np.where(mask_map == 0, 0, iters_map).flatten()
         if compute_grads:
-            grad_map = np.array(all_grads).reshape(-1, width)
-            grad_map_masked = np.where(mask_map == 0, np.nan, grad_map)
+            grad_map = np.array(all_normals).reshape(height, width, -1)
+            mask_map_3d = np.repeat(mask_map[:, :, np.newaxis], 3, axis=2)
+            grad_map_masked = np.where(mask_map_3d == 0, np.nan, grad_map)
         if compute_depth:
             depth_map= np.array(all_dists).reshape(-1, width) 
             depth_map_masked = np.where(mask_map == 0, np.nan, depth_map)
 
         # save iteration Map
-        save_map_img(iters_map, itr, args.model_name, args.output_path)
+        save_map_img(iters_map, itr, args.model_name, args.output_path, map_type="iteration")
+        # save depth Map
+        save_map_img(depth_map_masked, itr, args.model_name, args.output_path, map_type="depth")
+        # save normal Map
+        save_map_img(grad_map_masked, itr, args.model_name, args.output_path, map_type="normal")
         # save hist
         save_hist(all_iters, itr, args.model_name, args.output_path)
+    save_hist(all_iters_combined, "all", args.model_name, args.output_path)
               
 
 if __name__ == '__main__':
     conf = ConfigFactory.parse_file('ray_tracer.conf')
-    img_size = [1600, 1200]
+    img_size = [500, 500]
     args = parser.get_raytracer_args()
-    eval(conf, args, img_size) 
+    eval(conf, args, img_size, compute_iters=True, compute_depth=True, compute_grads=True) 
