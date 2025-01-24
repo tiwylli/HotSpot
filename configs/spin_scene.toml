@@ -1,0 +1,52 @@
+[paths]
+model_dir = "models"
+
+[network]
+decoder_n_hidden_layers = 8
+decoder_hidden_dim = 256
+nl = "sine"
+sphere_init_params = [1.6, 0.1]
+init_type = "mfgi"
+neuron_type = "quadratic"
+
+[loss]
+loss_type = "igr_w_heat"
+loss_weights = [350, 0, 0, 1, 0, 0, 20]
+heat_decay = "linear"
+heat_decay_params = [20, 0.8, 20, 0.1]
+eikonal_decay = "linear"
+eikonal_decay_params = [1, 0.2, 1, 10]
+heat_lambda_decay = "linear"
+heat_lambda_decay_params = [8, 0.2, 8, 30]
+
+[sampling]
+grid_res = 256
+# nonmnfld_sample_type = "uniform"
+nonmnfld_sample_type = "uniform_central_gaussian"
+n_random_samples = 7500
+n_points = 15000
+grid_range = 1.1
+nonmnfld_sample_std = 0.5
+pcd_scale_method = "mean"
+
+[training]
+train = true
+eval = true
+task = "3d"
+n_iterations = 10001
+gpu_idx = 0
+lr = 5e-5
+grad_clip_norm = 10.0
+heat_lambda = 8.0
+vis_interval = 500
+log_interval = 100
+
+[visualization]
+vis_grid_res = 256
+vis_grid_range = 1.2
+vis_contour_interval = 0.05
+# vis_heat = true
+# save_video = true
+# video_fps = 6
+# vis_final = true
+# vis_contour_range = [-1.5, 1.5]

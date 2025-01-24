@@ -3,6 +3,7 @@
         "data/**",
         "dataset/**",
         "log/**",
+        "out/**",
         "sanitychecks_out/**",
         "surface_reconstruction/**"
     ],

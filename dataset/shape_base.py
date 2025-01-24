@@ -322,10 +322,13 @@ class ShapeBase(data.Dataset):
 
         ret_dist = {
             "mnfld_points": self.mnfld_points[mnfld_idx, :],  # (n_points, dim)
-            "mnfld_normals_gt": self.mnfld_normals[mnfld_idx, :],  # (n_points, dim)
+            # "mnfld_normals_gt": self.mnfld_normals[mnfld_idx, :],  # (n_points, dim)
             "nonmnfld_points": self.nonmnfld_points,  # (n_nonmnfld_samples, dim)
             "nonmnfld_pdfs": self.nonmnfld_pdfs,  # (n_nonmnfld_samples, 1)
         }
+
+        if self.mnfld_normals.shape[0] != 0:
+            ret_dist["mnfld_normals_gt"] = self.mnfld_normals[mnfld_idx, :]
 
         if self.nonmnfld_dist_gt is not None:
             ret_dist["nonmnfld_dists_gt"] = self.nonmnfld_dist_gt

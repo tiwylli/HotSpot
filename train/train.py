@@ -300,7 +300,7 @@ if __name__ == "__main__":
         for batch_idx, data in enumerate(train_dataloader):
             # Load data
             mnfld_points = data["mnfld_points"].to(device)
-            mnfld_normals_gt = data["mnfld_normals_gt"].to(device)
+            mnfld_normals_gt = data.get("mnfld_normals_gt", None)
             nonmnfld_points = data["nonmnfld_points"].to(device)
             nonmnfld_pdfs = data["nonmnfld_pdfs"].to(device)
             # nonmnfld_dists_gt = data["nonmnfld_dists_gt"].to(device)
@@ -372,7 +372,7 @@ if __name__ == "__main__":
                     None,
                     nonmnfld_dists_sal,
                 )
-                # Updatae learning rate
+                # Update learning rate
                 lr = torch.tensor(optimizer.param_groups[0]["lr"])
                 loss_dict["lr"] = lr
                 # Log losses on samples
@@ -518,7 +518,7 @@ if __name__ == "__main__":
                 None,
             )  # free up memory
             mesh_dict = utils.implicit2mesh(
-                decoder=model.decoder,
+                decoder=model,
                 latent=None,
                 grid_res=256,
                 translate=-cp,

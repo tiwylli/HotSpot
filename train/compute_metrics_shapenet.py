@@ -17,24 +17,33 @@ from dataset import shape_3d
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import models.Net as Net
+import models.SkipNet as SkipNet
 import logging
 import point_cloud_utils as pcu
 
 device = torch.device("cuda")
 args = parser.get_train_args()
 
-model = Net.Network(
-    latent_size=args.latent_size,
-    in_dim=3,
-    decoder_hidden_dim=args.decoder_hidden_dim,
-    nl=args.nl,
-    encoder_type=args.encoder_type,
-    decoder_n_hidden_layers=args.decoder_n_hidden_layers,
-    neuron_type=args.neuron_type,
-    init_type=args.init_type,
-    sphere_init_params=args.sphere_init_params,
-    n_repeat_period=args.n_repeat_period,
-)
+if args.loss_type == "phase":
+    model = SkipNet.SkipNet(
+        in_dim=3,
+        nl=args.nl,
+        ff_layers=[],
+        clamp=args.skipnet_clamp,
+    )
+else:    
+    model = Net.Network(
+        latent_size=args.latent_size,
+        in_dim=3,
+        decoder_hidden_dim=args.decoder_hidden_dim,
+        nl=args.nl,
+        encoder_type=args.encoder_type,
+        decoder_n_hidden_layers=args.decoder_n_hidden_layers,
+        neuron_type=args.neuron_type,
+        init_type=args.init_type,
+        sphere_init_params=args.sphere_init_params,
+        n_repeat_period=args.n_repeat_period,
+    )
 
 dataset_path = args.data_dir
 raw_dataset_path = args.raw_dataset_path
@@ -206,7 +215,7 @@ for shape_class in order:
         eval_points_np = (gen_points - cp) / scale
         eval_points = torch.tensor(eval_points_np, device=device, dtype=torch.float32)
         with torch.no_grad():
-            res = model.decoder(eval_points)
+            res = model(eval_points)["nonmanifold_pnts_pred"].squeeze()
 
         pred_occupancies = (res.reshape(-1) < 0).int().detach().cpu().numpy()
         iou = (occupancies & pred_occupancies).sum() / (occupancies | pred_occupancies).sum()
@@ -225,7 +234,7 @@ for shape_class in order:
         eval_points_dists_np = gen_points_unit * default_scale / scale # If the predicted SDF is spatially scaled by (scale / default_scale), it will correspond to StEik visualization space
         eval_points_dists = torch.tensor(eval_points_dists_np, device=device, dtype=torch.float32)
         with torch.no_grad():
-            res_dists = model.decoder(eval_points_dists)
+            res_dists = model(eval_points_dists)["nonmanifold_pnts_pred"].squeeze()
 
         dists_pred = res_dists.detach().cpu().numpy()
         dists_pred = dists_pred * scale / default_scale # The SDF values should be scaled by (scale / default_scale) to be in the same space as the StEik visualization space
@@ -237,7 +246,7 @@ for shape_class in order:
         dists_gt, _, _ = pcu.signed_distance_to_mesh(
             (gen_points_unit * default_scale + cp).astype(np.float32), vm, fm
         ) # "(points - cp) / default_scale" will transform the mesh/points to the visualization space, so take the inverse of that to transform the evaluation points to the mesh space
-        dists_gt = dists_gt[..., None]
+        # dists_gt = dists_gt[..., None]
         dists_gt = dists_gt / default_scale
 
         # # use plotly to visualize dists_gt on gen_points

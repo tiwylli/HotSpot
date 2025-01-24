@@ -102,7 +102,6 @@ if __name__ == "__main__":
         "fragments",
         "house",
     ]
-    #shape_names = ["seaurchin"]
     shape_names = sorted(shape_names)
 
     # Initialize visualization grid
@@ -116,8 +115,7 @@ if __name__ == "__main__":
     vis_grid_points = torch.tensor(vis_grid_points, dtype=torch.float32).to(device)
 
     for shape_name in shape_names:
-        # gt_shape_weights_path = os.path.join(exp_path, shape_name, "trained_models", "model.pth")
-        gt_shape_weights_path = os.path.join(exp_path, shape_name + "-5.0", "trained_models", "model.pth")
+        gt_shape_weights_path = os.path.join(exp_path, shape_name, "trained_models", "model.pth")
 
         test_set = dataset.get2D_dataset(
             n_points=args.n_points,
@@ -189,8 +187,12 @@ if __name__ == "__main__":
             dists_pred.reshape(args.vis_grid_res, args.vis_grid_res), level=0
         )
         contours = [contour / (args.vis_grid_res - 1) * 2 * args.vis_grid_range - args.vis_grid_range for contour in contours]
-        pred_points = np.concatenate(contours, axis=0)
-        pred_points = np.stack([pred_points[:, 1], pred_points[:, 0]], axis=-1)
+        if len(contours) == 0:
+            chamfer_dist = np.nan
+            hausdorff_dist = np.nan
+        else:
+            pred_points = np.concatenate(contours, axis=0)
+            pred_points = np.stack([pred_points[:, 1], pred_points[:, 0]], axis=-1)
 
         chamfer_dist, hausdorff_dist, cd_re2gt, cd_gt2re, hd_re2gt, hd_gt2re = compute_dists(
             pred_points, gt_points
