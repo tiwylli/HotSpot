@@ -220,6 +220,7 @@ class Loss(nn.Module):
 
         # normal term
         if mnfld_normals_gt is not None:
+            mnfld_normals_gt = mnfld_normals_gt.to(mnfld_points.device)
             if "igr" in self.loss_type or "phase" in self.loss_type:
                 normal_term = ((mnfld_grad - mnfld_normals_gt).abs()).norm(2, dim=1).mean()
             else:
