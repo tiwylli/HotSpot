@@ -19,6 +19,7 @@ import utils.utils as utils
 import utils.visualizations as vis
 from utils import parser
 import copy
+import time
 
 
 def occupancy_to_sdf(occupancy, epsilon):
@@ -167,7 +168,7 @@ if __name__ == "__main__":
         args.log_dir, args.file_name.split(".")[0]
     )  # Concatenate the log directory with the file name if file name is given
 
-    # set up logging
+    # Set up logging
     log_file, log_writer_train, log_writer_test, model_outdir = utils.setup_logdir(log_dir, args)
     os.system("cp %s %s" % (__file__, log_dir))  # backup the current training file
     os.system("cp %s %s" % ("./models/Net.py", log_dir))  # backup the models files
@@ -175,7 +176,7 @@ if __name__ == "__main__":
 
     # Set up dataloader
     torch.manual_seed(0)
-    # change random seed for training set (so it will be different from test set
+    # Change random seed for training set (so it will be different from test set)
     np.random.seed(0)
     if args.task == "3d":
         train_set = shape_3d.ReconDataset(
@@ -243,7 +244,7 @@ if __name__ == "__main__":
             n_repeat_period=args.n_repeat_period,
         )
 
-    # Uncomment to use small model
+    # # Uncomment to use small model
     # model = heatModel.Net(radius_init=args.sphere_init_params[1])
     model.to(device)
     if args.parallel:
@@ -296,6 +297,7 @@ if __name__ == "__main__":
     vis_grid_points.requires_grad_()
 
     if not args.vis_final:
+        train_start_time = time.perf_counter()
         # Iteratively train the model
         for batch_idx, data in enumerate(train_dataloader):
             # Load data
@@ -451,6 +453,11 @@ if __name__ == "__main__":
                     )
 
                 scheduler.step()
+        train_end_time = time.perf_counter()
+
+        utils.log_string(
+            f"Training time: {train_end_time - train_start_time:.2f} seconds", log_file
+        )
 
     # Save final model
     if args.train and not args.vis_final:

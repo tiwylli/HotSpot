@@ -208,18 +208,18 @@ class Loss(nn.Module):
             div_term = nonmnfld_divergence_term.mean()  # + mnfld_divergence_term.mean()
 
         # eikonal term
-        eikonal_term = eikonal_loss(
-            nonmnfld_grad,
-            mnfld_grad=mnfld_grad,
-            nonmnfld_pdfs=nonmnfld_pdfs,
-            eikonal_type="abs" if self.loss_type != "phase" else "squared",
-        )
-
-        # latent regulariation for multiple shape learning
-        latent_reg_term = latent_rg_loss(latent_reg, device)
+        eikonal_term = torch.tensor([0.0], device=mnfld_points.device)
+        if self.weights[3] > 0.0:
+            eikonal_term = eikonal_loss(
+                nonmnfld_grad,
+                mnfld_grad=mnfld_grad,
+                nonmnfld_pdfs=nonmnfld_pdfs,
+                eikonal_type="abs" if self.loss_type != "phase" else "squared",
+            )
 
         # normal term
-        if mnfld_normals_gt is not None:
+        normal_term = torch.tensor([0.0], device=mnfld_points.device)
+        if mnfld_normals_gt is not None and self.weights[2] > 0.0:
             mnfld_normals_gt = mnfld_normals_gt.to(mnfld_points.device)
             if "igr" in self.loss_type or "phase" in self.loss_type:
                 normal_term = ((mnfld_grad - mnfld_normals_gt).abs()).norm(2, dim=1).mean()
@@ -230,14 +230,14 @@ class Loss(nn.Module):
                         torch.nn.functional.cosine_similarity(mnfld_grad, mnfld_normals_gt, dim=-1)
                     )
                 ).mean()
-        else:
-            normal_term = torch.tensor([0.0], device=mnfld_points.device)
 
         # signed distance function term
         boundary_term = torch.abs(mnfld_pred).mean()
 
         # inter term
-        inter_term = torch.exp(-1e2 * torch.abs(nonmnfld_dist_pred)).mean()
+        inter_term = torch.tensor([0.0], device=mnfld_points.device)
+        if self.weights[1] > 0.0:
+            inter_term = torch.exp(-1e2 * torch.abs(nonmnfld_dist_pred)).mean()
 
         # heat term
         heat_term = torch.tensor([0.0], device=mnfld_points.device)
@@ -363,8 +363,11 @@ class Loss(nn.Module):
         else:
             raise Warning("unrecognized loss type")
 
-        # If multiple surface reconstruction, then latent and latent_reg are defined so reg_term need to be used
+        # latent regulariation for multiple shape learning
+        latent_reg_term = torch.tensor([0.0], device=mnfld_points.device)
         if latent is not None and latent_reg is not None:
+            latent_reg_term = latent_rg_loss(latent_reg, device)
+        # If multiple surface reconstruction, then latent and latent_reg are defined so reg_term need to be used
             loss += self.weights[5] * latent_reg_term
 
         return {
