@@ -26,6 +26,61 @@ def eikonal_loss(nonmnfld_grad, mnfld_grad, nonmnfld_pdfs, eikonal_type="abs"):
     return eikonal_term
 
 
+def relaxing_eikonal_loss(
+    nonmnfld_grad, mnfld_grad, nonmnfld_pdfs, eikonal_type="abs", sigma_min=0.8
+):
+    if nonmnfld_grad is not None and mnfld_grad is not None:
+        all_grads = torch.cat([nonmnfld_grad, mnfld_grad], dim=-2)
+    elif nonmnfld_grad is not None:
+        all_grads = nonmnfld_grad
+    elif mnfld_grad is not None:
+        all_grads = mnfld_grad
+
+    grad_norm = all_grads.norm(2, dim=-1) + 1e-12
+    term = torch.relu(-(grad_norm - sigma_min))
+    if eikonal_type == "abs":
+        eikonal_term = term.abs().mean()
+    else:
+        eikonal_term = term.square().mean()
+    return eikonal_term
+    if nonmnfld_grad is not None and mnfld_grad is not None:
+        all_grads = torch.cat([nonmnfld_grad, mnfld_grad], dim=-2)
+    elif nonmnfld_grad is not None:
+        all_grads = nonmnfld_grad
+    elif mnfld_grad is not None:
+        all_grads = mnfld_grad
+
+    eikonal_term = torch.relu(-all_grads.norm(2, dim=2) - sigma_min).mean()
+
+    return eikonal_term
+
+
+def singular_hessian_loss(mnfld_points, nonmnfld_points, mnfld_grad, nonmnfld_grad):
+    nonmnfld_dx = utils.gradient(nonmnfld_points, nonmnfld_grad[:, :, 0])
+    nonmnfld_dy = utils.gradient(nonmnfld_points, nonmnfld_grad[:, :, 1])
+    mnfld_dx = utils.gradient(mnfld_points, mnfld_grad[:, :, 0])
+    mnfld_dy = utils.gradient(mnfld_points, mnfld_grad[:, :, 1])
+
+    nonmnfld_dz = utils.gradient(nonmnfld_points, nonmnfld_grad[:, :, 2])
+    nonmnfld_hessian_term = torch.stack((nonmnfld_dx, nonmnfld_dy, nonmnfld_dz), dim=-1)
+
+    mnfld_dz = utils.gradient(mnfld_points, mnfld_grad[:, :, 2])
+    mnfld_hessian_term = torch.stack((mnfld_dx, mnfld_dy, mnfld_dz), dim=-1)
+
+    nonmnfld_det = torch.det(nonmnfld_hessian_term)
+    mnfld_det = torch.det(mnfld_hessian_term)
+
+    morse_mnfld = torch.tensor([0.0], device=mnfld_points.device)
+    morse_nonmnfld = torch.tensor([0.0], device=mnfld_points.device)
+    # div_type == 'l1':
+    morse_nonmnfld = nonmnfld_det.abs().mean()
+    morse_mnfld = mnfld_det.abs().mean()
+
+    morse_loss = 0.5 * (morse_nonmnfld + morse_mnfld)
+
+    return morse_loss
+
+
 def latent_rg_loss(latent_reg, device):
     # compute the VAE latent representation regularization loss
     if latent_reg is not None:
@@ -106,6 +161,7 @@ class Loss(nn.Module):
         eikonal_decay="none",
         boundary_coef_decay="none",
         importance_sampling=True,
+        morse_decay="none",
     ):
         super().__init__()
         self.weights = weights  # sdf, intern, normal, eikonal, div
@@ -122,6 +178,7 @@ class Loss(nn.Module):
         self.use_heat = True if "heat" in self.loss_type else False
         self.use_phase = True if "phase" in self.loss_type else False
         self.importance_sampling = importance_sampling
+        self.morse_decay = morse_decay
 
     def forward(
         self,
@@ -210,11 +267,24 @@ class Loss(nn.Module):
         # eikonal term
         eikonal_term = torch.tensor([0.0], device=mnfld_points.device)
         if self.weights[3] > 0.0:
-            eikonal_term = eikonal_loss(
-                nonmnfld_grad,
-                mnfld_grad=mnfld_grad,
-                nonmnfld_pdfs=nonmnfld_pdfs,
-                eikonal_type="abs" if self.loss_type != "phase" else "squared",
+            if self.loss_type == "nsh":
+                eikonal_term = relaxing_eikonal_loss(
+                    nonmnfld_grad,
+                    mnfld_grad=mnfld_grad,
+                    nonmnfld_pdfs=nonmnfld_pdfs,
+                )
+            else:
+                eikonal_term = eikonal_loss(
+                    nonmnfld_grad,
+                    mnfld_grad=mnfld_grad,
+                    nonmnfld_pdfs=nonmnfld_pdfs,
+                    eikonal_type="abs" if self.loss_type != "phase" else "squared",
+                )
+
+        singular_hessian_term = torch.tensor([0.0], device=mnfld_points.device)
+        if len(self.weights) > 8 and self.weights[8] > 0.0:
+            singular_hessian_term = singular_hessian_loss(
+                mnfld_points, nonmnfld_points, mnfld_grad, nonmnfld_grad
             )
 
         # normal term
@@ -350,6 +420,13 @@ class Loss(nn.Module):
                 + self.weights[3] * eikonal_term
                 + self.weights[7] * phase_term
             )
+        elif self.loss_type == "nsh":
+            loss = (
+                self.weights[0] * boundary_term
+                + self.weights[1] * inter_term
+                + self.weights[3] * eikonal_term
+                + self.weights[8] * singular_hessian_term
+            )
         elif self.loss_type == "everything_including_div_heat_sal":
             loss = (
                 self.weights[0] * boundary_term
@@ -367,7 +444,7 @@ class Loss(nn.Module):
         latent_reg_term = torch.tensor([0.0], device=mnfld_points.device)
         if latent is not None and latent_reg is not None:
             latent_reg_term = latent_rg_loss(latent_reg, device)
-        # If multiple surface reconstruction, then latent and latent_reg are defined so reg_term need to be used
+            # If multiple surface reconstruction, then latent and latent_reg are defined so reg_term need to be used
             loss += self.weights[5] * latent_reg_term
 
         return {
@@ -383,250 +460,61 @@ class Loss(nn.Module):
             "diff_term": nonmnfld_dists_loss,
         }, mnfld_grad
 
-    def update_div_weight(self, current_iteration, n_iterations, params=None):
-        # `params`` should be (start_weight, *optional middle, end_weight) where optional middle is of the form [percent, value]*
-        # Thus (1e2, 0.5, 1e2 0.7 0.0, 0.0) means that the weight at [0, 0.5, 0.75, 1] of the training process, the weight should
-        #   be [1e2,1e2,0.0,0.0]. Between these points, the weights change as per the div_decay parameter, e.g. linearly, quintic, step etc.
-        #   Thus the weight stays at 1e2 from 0-0.5, decay from 1e2 to 0.0 from 0.5-0.75, and then stays at 0.0 from 0.75-1.
-
-        if not hasattr(self, "decay_params_list"):
+    def update_weight(self, weight_index, current_iteration, n_iterations, params, decay_type):
+        if not hasattr(self, f"{weight_index}_decay_params_list"):
             assert len(params) >= 2, params
             assert len(params[1:-1]) % 2 == 0
-            self.decay_params_list = list(
-                zip([params[0], *params[1:-1][1::2], params[-1]], [0, *params[1:-1][::2], 1])
+            setattr(
+                self,
+                f"weight[{weight_index}]_decay_params_list",
+                list(zip([params[0], *params[1:-1][1::2], params[-1]], [0, *params[1:-1][::2], 1])),
             )
 
+        decay_params_list = getattr(self, f"weight[{weight_index}]_decay_params_list")
         curr = current_iteration / n_iterations
-        we, e = min(
-            [tup for tup in self.decay_params_list if tup[1] >= curr], key=lambda tup: tup[1]
-        )
-        w0, s = max(
-            [tup for tup in self.decay_params_list if tup[1] <= curr], key=lambda tup: tup[1]
-        )
+        we, e = min([tup for tup in decay_params_list if tup[1] >= curr], key=lambda tup: tup[1])
+        w0, s = max([tup for tup in decay_params_list if tup[1] <= curr], key=lambda tup: tup[1])
 
-        # Divergence term anealing functions
-        if self.div_decay == "linear":  # linearly decrease weight from iter s to iter e
+        if decay_type == "linear":
             if current_iteration < s * n_iterations:
-                self.weights[4] = w0
+                self.weights[weight_index] = w0
             elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
-                self.weights[4] = w0 + (we - w0) * (current_iteration / n_iterations - s) / (e - s)
+                self.weights[weight_index] = w0 + (we - w0) * (
+                    current_iteration / n_iterations - s
+                ) / (e - s)
             else:
-                self.weights[4] = we
-        elif self.div_decay == "quintic":  # linearly decrease weight from iter s to iter e
+                self.weights[weight_index] = we
+        elif decay_type == "quintic":
             if current_iteration < s * n_iterations:
-                self.weights[4] = w0
+                self.weights[weight_index] = w0
             elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
-                self.weights[4] = w0 + (we - w0) * (
+                self.weights[weight_index] = w0 + (we - w0) * (
                     1 - (1 - (current_iteration / n_iterations - s) / (e - s)) ** 5
                 )
             else:
-                self.weights[4] = we
-        elif self.div_decay == "step":  # change weight at s
+                self.weights[weight_index] = we
+        elif decay_type == "step":
             if current_iteration < s * n_iterations:
-                self.weights[4] = w0
+                self.weights[weight_index] = w0
             else:
-                self.weights[4] = we
-        elif self.div_decay == "none":
+                self.weights[weight_index] = we
+        elif decay_type == "none":
             pass
         else:
-            raise Warning("unsupported div decay value")
+            raise Warning("unsupported decay value")
+
+    def update_div_weight(self, current_iteration, n_iterations, params=None):
+        self.update_weight(4, current_iteration, n_iterations, params, self.div_decay)
 
     def update_heat_weight(self, current_iteration, n_iterations, params=None):
-        # `params`` should be (start_weight, *optional middle, end_weight) where optional middle is of the form [percent, value]*
-        # Thus (1e2, 0.5, 1e2 0.7 0.0, 0.0) means that the weight at [0, 0.5, 0.75, 1] of the training process, the weight should
-        #   be [1e2,1e2,0.0,0.0]. Between these points, the weights change as per the div_decay parameter, e.g. linearly, quintic, step etc.
-        #   Thus the weight stays at 1e2 from 0-0.5, decay from 1e2 to 0.0 from 0.5-0.75, and then stays at 0.0 from 0.75-1.
-
-        if not hasattr(self, "heat_decay_params_list"):
-            assert len(params) >= 2, params
-            assert len(params[1:-1]) % 2 == 0
-            self.heat_decay_params_list = list(
-                zip([params[0], *params[1:-1][1::2], params[-1]], [0, *params[1:-1][::2], 1])
-            )
-
-        curr = current_iteration / n_iterations
-        we, e = min(
-            [tup for tup in self.heat_decay_params_list if tup[1] >= curr], key=lambda tup: tup[1]
-        )
-        w0, s = max(
-            [tup for tup in self.heat_decay_params_list if tup[1] <= curr], key=lambda tup: tup[1]
-        )
-
-        # Divergence term anealing functions
-        if self.heat_decay == "linear":  # linearly decrease weight from iter s to iter e
-            if current_iteration < s * n_iterations:
-                self.weights[6] = w0
-            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
-                self.weights[6] = w0 + (we - w0) * (current_iteration / n_iterations - s) / (e - s)
-            else:
-                self.weights[6] = we
-        elif self.heat_decay == "quintic":  # linearly decrease weight from iter s to iter e
-            if current_iteration < s * n_iterations:
-                self.weights[6] = w0
-            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
-                self.weights[6] = w0 + (we - w0) * (
-                    1 - (1 - (current_iteration / n_iterations - s) / (e - s)) ** 5
-                )
-            else:
-                self.weights[6] = we
-        elif self.heat_decay == "step":  # change weight at s
-            if current_iteration < s * n_iterations:
-                self.weights[6] = w0
-            else:
-                self.weights[6] = we
-        elif self.heat_decay == "none":
-            pass
-        else:
-            raise Warning("unsupported heat decay value")
+        self.update_weight(6, current_iteration, n_iterations, params, self.heat_decay)
 
     def update_eikonal_weight(self, current_iteration, n_iterations, params=None):
-        # `params`` should be (start_weight, *optional middle, end_weight) where optional middle is of the form [percent, value]*
-        # Thus (1e2, 0.5, 1e2 0.7 0.0, 0.0) means that the weight at [0, 0.5, 0.75, 1] of the training process, the weight should
-        #   be [1e2,1e2,0.0,0.0]. Between these points, the weights change as per the div_decay parameter, e.g. linearly, quintic, step etc.
-        #   Thus the weight stays at 1e2 from 0-0.5, decay from 1e2 to 0.0 from 0.5-0.75, and then stays at 0.0 from 0.75-1.
-
-        if not hasattr(self, "eikonal_decay_params_list"):
-            assert len(params) >= 2, params
-            assert len(params[1:-1]) % 2 == 0
-            self.eikonal_decay_params_list = list(
-                zip([params[0], *params[1:-1][1::2], params[-1]], [0, *params[1:-1][::2], 1])
-            )
-
-        curr = current_iteration / n_iterations
-        we, e = min(
-            [tup for tup in self.eikonal_decay_params_list if tup[1] >= curr],
-            key=lambda tup: tup[1],
-        )
-        w0, s = max(
-            [tup for tup in self.eikonal_decay_params_list if tup[1] <= curr],
-            key=lambda tup: tup[1],
-        )
-
-        # Divergence term anealing functions
-        if self.eikonal_decay == "linear":
-            if current_iteration < s * n_iterations:
-                self.weights[3] = w0
-            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
-                self.weights[3] = w0 + (we - w0) * (current_iteration / n_iterations - s) / (e - s)
-            else:
-                self.weights[3] = we
-        elif self.eikonal_decay == "quintic":
-            if current_iteration < s * n_iterations:
-                self.weights[3] = w0
-            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
-                self.weights[3] = w0 + (we - w0) * (
-                    1 - (1 - (current_iteration / n_iterations - s) / (e - s)) ** 5
-                )
-            else:
-                self.weights[3] = we
-        elif self.eikonal_decay == "step":
-            if current_iteration < s * n_iterations:
-                self.weights[3] = w0
-            else:
-                self.weights[3] = we
-        elif self.eikonal_decay == "none":
-            pass
-        else:
-            raise Warning("unsupported eikonal decay value")
-
-    def update_heat_lambda(self, current_iteration, n_iterations, params=None):
-        # `params`` should be (start_weight, *optional middle, end_weight) where optional middle is of the form [percent, value]*
-        # Thus (1e2, 0.5, 1e2 0.7 0.0, 0.0) means that the weight at [0, 0.5, 0.75, 1] of the training process, the weight should
-        #   be [1e2,1e2,0.0,0.0]. Between these points, the weights change as per the div_decay parameter, e.g. linearly, quintic, step etc.
-        #   Thus the weight stays at 1e2 from 0-0.5, decay from 1e2 to 0.0 from 0.5-0.75, and then stays at 0.0 from 0.75-1.
-
-        if not hasattr(self, "heat_lambda_decay_params_list"):
-            assert len(params) >= 2, params
-            assert len(params[1:-1]) % 2 == 0
-            self.heat_lambda_decay_params_list = list(
-                zip([params[0], *params[1:-1][1::2], params[-1]], [0, *params[1:-1][::2], 1])
-            )
-
-        curr = current_iteration / n_iterations
-        we, e = min(
-            [tup for tup in self.heat_lambda_decay_params_list if tup[1] >= curr],
-            key=lambda tup: tup[1],
-        )
-        w0, s = max(
-            [tup for tup in self.heat_lambda_decay_params_list if tup[1] <= curr],
-            key=lambda tup: tup[1],
-        )
-
-        # Divergence term anealing functions
-        if self.heat_lambda_decay == "linear":  # linearly decrease weight from iter s to iter e
-            if current_iteration < s * n_iterations:
-                self.heat_lambda = w0
-            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
-                self.heat_lambda = w0 + (we - w0) * (current_iteration / n_iterations - s) / (e - s)
-            else:
-                self.heat_lambda = we
-        elif self.heat_lambda_decay == "quintic":  # linearly decrease weight from iter s to iter e
-            if current_iteration < s * n_iterations:
-                self.heat_lambda = w0
-            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
-                self.heat_lambda = w0 + (we - w0) * (
-                    1 - (1 - (current_iteration / n_iterations - s) / (e - s)) ** 5
-                )
-            else:
-                self.heat_lambda = we
-        elif self.heat_lambda_decay == "step":  # change weight at s
-            if current_iteration < s * n_iterations:
-                self.heat_lambda = w0
-            else:
-                self.heat_lambda = we
-        elif self.heat_lambda_decay == "none":
-            pass
-        else:
-            raise Warning("unsupported heat decay value")
+        self.update_weight(3, current_iteration, n_iterations, params, self.eikonal_decay)
 
     def update_boundary_coef(self, current_iteration, n_iterations, params=None):
-        # `params`` should be (start_weight, *optional middle, end_weight) where optional middle is of the form [percent, value]*
-        # Thus (1e2, 0.5, 1e2 0.7 0.0, 0.0) means that the weight at [0, 0.5, 0.75, 1] of the training process, the weight should
-        #   be [1e2,1e2,0.0,0.0]. Between these points, the weights change as per the div_decay parameter, e.g. linearly, quintic, step etc.
-        #   Thus the weight stays at 1e2 from 0-0.5, decay from 1e2 to 0.0 from 0.5-0.75, and then stays at 0.0 from 0.75-1.
+        self.update_weight(0, current_iteration, n_iterations, params, self.boundary_coef_decay)
 
-        if not hasattr(self, "boundary_coef_decay_params_list"):
-            assert len(params) >= 2, params
-            assert len(params[1:-1]) % 2 == 0
-            self.boundary_coef_decay_params_list = list(
-                zip([params[0], *params[1:-1][1::2], params[-1]], [0, *params[1:-1][::2], 1])
-            )
-
-        curr = current_iteration / n_iterations
-        we, e = min(
-            [tup for tup in self.boundary_coef_decay_params_list if tup[1] >= curr],
-            key=lambda tup: tup[1],
-        )
-        w0, s = max(
-            [tup for tup in self.boundary_coef_decay_params_list if tup[1] <= curr],
-            key=lambda tup: tup[1],
-        )
-
-        # Divergence term anealing functions
-        if self.boundary_coef_decay == "linear":  # linearly decrease weight from iter s to iter e
-            if current_iteration < s * n_iterations:
-                self.weights[0] = w0
-            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
-                self.weights[0] = w0 + (we - w0) * (current_iteration / n_iterations - s) / (e - s)
-            else:
-                self.weights[0] = we
-        elif (
-            self.boundary_coef_decay == "quintic"
-        ):  # linearly decrease weight from iter s to iter e
-            if current_iteration < s * n_iterations:
-                self.weights[0] = w0
-            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
-                self.weights[0] = w0 + (we - w0) * (
-                    1 - (1 - (current_iteration / n_iterations - s) / (e - s)) ** 5
-                )
-            else:
-                self.weights[0] = we
-        elif self.boundary_coef_decay == "step":  # change weight at s
-            if current_iteration < s * n_iterations:
-                self.weights[0] = w0
-            else:
-                self.weights[0] = we
-        elif self.boundary_coef_decay == "none":
-            pass
-        else:
-            raise Warning("unsupported heat decay value")
+    def update_morse_weight(self, current_iteration, n_iterations, params=None):
+        self.update_weight(8, current_iteration, n_iterations, params, self.morse_decay)
+        print(f"nsh weight updated to {self.weights[8]}")

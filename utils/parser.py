@@ -226,7 +226,7 @@ def get_train_args():
         nargs="+",
         type=float,
         default=[2e4, 1e2, 1e2, 5e1, 1e2, 0, 8e2],
-        help="Loss terms weights: sdf | inter | normal | eikonal | div | sal | heat.",
+        help="Loss terms weights: sdf | inter | normal | eikonal | div | sal | heat | phase | nsh.",
     )
     parser.add_argument(
         "--heat_lambda", type=float, default=30, help="Heat loss weight for eikonal loss."
@@ -288,6 +288,19 @@ def get_train_args():
         type=float,
         default=[],
         help="Decay schedule for boundary coefficient. Not effective if boundary_coef_decay = False. Format: [start, (location, value)*, end]",
+    )
+    parser.add_argument(
+        "--morse_decay",
+        type=str,
+        default=None,
+        help="Neural singular hessian coefficient decay schedule: none | step | linear.",
+    )
+    parser.add_argument(
+        "--morse_decay_params",
+        nargs="+",
+        type=float,
+        default=[],
+        help="Decay schedule for nsh weight. Not effective if heat_decay = False. Format: [start, (location, value)*, end]",
     )
     parser.add_argument(
         "--n_repeat_period",

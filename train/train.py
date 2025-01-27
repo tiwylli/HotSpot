@@ -269,6 +269,7 @@ if __name__ == "__main__":
         heat_lambda_decay=args.heat_lambda_decay,
         boundary_coef_decay=args.boundary_coef_decay,
         importance_sampling=args.importance_sampling,
+        morse_decay=args.morse_decay,
     )
     num_batches = len(train_dataloader)
 
@@ -389,7 +390,7 @@ if __name__ == "__main__":
                 # Log training stats and save model
                 if batch_idx % args.log_interval == 0:
                     weights = criterion.weights
-                    utils.log_string(f"Current heat lambda: {criterion.heat_lambda}", log_file)
+                    # utils.log_string(f"Current heat lambda: {criterion.heat_lambda}", log_file)
                     utils.log_string("Weights: {}, lr={:.3e}".format(weights, lr), log_file)
                     # Log weighted losses
                     utils.log_string(
@@ -450,6 +451,10 @@ if __name__ == "__main__":
                 if args.boundary_coef_decay is not None:
                     criterion.update_boundary_coef(
                         batch_idx, args.n_iterations, args.boundary_coef_decay_params
+                    )
+                if args.morse_decay is not None:
+                    criterion.update_morse_weight(
+                        batch_idx, args.n_iterations, args.morse_decay_params
                     )
 
                 scheduler.step()

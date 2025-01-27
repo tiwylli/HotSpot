@@ -441,7 +441,13 @@ def implicit2mesh(
                 dim=1,
             )
         point = get_cuda_ifavailable(point, device=device)
-        z.append(decoder(point.type(torch.float32))["nonmanifold_pnts_pred"].detach().cpu().numpy().squeeze())
+        z.append(
+            decoder(point.type(torch.float32))["nonmanifold_pnts_pred"]
+            .detach()
+            .cpu()
+            .numpy()
+            .squeeze()
+        )
     z = (
         np.concatenate(z, axis=0)
         .reshape(
