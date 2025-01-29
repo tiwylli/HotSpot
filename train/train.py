@@ -157,6 +157,27 @@ def visualize_model(
     utils.log_string("", log_file)
 
 
+def update_weights(args, criterion, batch_idx):
+    if "div" in args.loss_type:
+        criterion.update_div_weight(batch_idx, args.n_iterations, args.div_decay_params)
+    if args.heat_decay is not None:
+        criterion.update_heat_weight(
+            batch_idx, args.n_iterations, args.heat_decay_params
+        )
+    if args.eikonal_decay is not None:
+        criterion.update_eikonal_weight(
+            batch_idx, args.n_iterations, args.eikonal_decay_params
+        )
+    if args.boundary_coef_decay is not None:
+        criterion.update_boundary_coef(
+            batch_idx, args.n_iterations, args.boundary_coef_decay_params
+        )
+    if args.morse_decay is not None:
+        criterion.update_morse_weight(
+            batch_idx, args.n_iterations, args.morse_decay_params
+        )
+
+
 if __name__ == "__main__":
     args = parser.get_train_args()
 
@@ -438,26 +459,9 @@ if __name__ == "__main__":
 
             # Update weights
             if args.train:
-                if "div" in args.loss_type:
-                    criterion.update_div_weight(batch_idx, args.n_iterations, args.div_decay_params)
-                if args.heat_decay is not None:
-                    criterion.update_heat_weight(
-                        batch_idx, args.n_iterations, args.heat_decay_params
-                    )
-                if args.eikonal_decay is not None:
-                    criterion.update_eikonal_weight(
-                        batch_idx, args.n_iterations, args.eikonal_decay_params
-                    )
-                if args.boundary_coef_decay is not None:
-                    criterion.update_boundary_coef(
-                        batch_idx, args.n_iterations, args.boundary_coef_decay_params
-                    )
-                if args.morse_decay is not None:
-                    criterion.update_morse_weight(
-                        batch_idx, args.n_iterations, args.morse_decay_params
-                    )
-
+                update_weights(args, criterion, batch_idx)
                 scheduler.step()
+
         train_end_time = time.perf_counter()
 
         utils.log_string(

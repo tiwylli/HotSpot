@@ -517,4 +517,3 @@ class Loss(nn.Module):
 
     def update_morse_weight(self, current_iteration, n_iterations, params=None):
         self.update_weight(8, current_iteration, n_iterations, params, self.morse_decay)
-        print(f"nsh weight updated to {self.weights[8]}")
