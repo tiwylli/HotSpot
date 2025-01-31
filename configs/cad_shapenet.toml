@@ -10,10 +10,10 @@ init_type = "siren"
 neuron_type = "linear"
 
 [loss]
-loss_type = "nsh"
-loss_weights = [7e3, 6e2, 1e2, 5e1, 0, 0, 0, 0, 3]
-morse_decay = 'linear'
-morse_decay_params = [3, 0.2, 3, 0.4, 0.001, 0.0001]
+loss_type = "cad"
+loss_weights = [7e3, 6e2, 1e2, 5e1, 0, 0, 0, 0, 0, 10]
+cad_decay = 'linear'
+cad_decay_params = [10, 0.2, 10, 0.5, 0.001, 0]
 
 [sampling]
 grid_res = 256
@@ -23,7 +23,7 @@ n_random_samples = 15000
 n_points = 15000
 grid_range = 1.1
 nonmnfld_sample_std = 0.5
-pcd_scale_method = "mean"
+pcd_scale_method = "default"
 # seed = 20241101
 
 [training]

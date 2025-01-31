@@ -300,7 +300,20 @@ def get_train_args():
         nargs="+",
         type=float,
         default=[],
-        help="Decay schedule for nsh weight. Not effective if heat_decay = False. Format: [start, (location, value)*, end]",
+        help="Decay schedule for nsh weight. Not effective if morse_decay = False. Format: [start, (location, value)*, end]",
+    )
+    parser.add_argument(
+        "--cad_decay",
+        type=str,
+        default=None,
+        help="NeurCADRecon coefficient decay schedule: none | step | linear.",
+    )
+    parser.add_argument(
+        "--cad_decay_params",
+        nargs="+",
+        type=float,
+        default=[],
+        help="Decay schedule for NeurCADRecon weight. Not effective if cad_decay = False. Format: [start, (location, value)*, end]",
     )
     parser.add_argument(
         "--n_repeat_period",

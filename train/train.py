@@ -176,6 +176,10 @@ def update_weights(args, criterion, batch_idx):
         criterion.update_morse_weight(
             batch_idx, args.n_iterations, args.morse_decay_params
         )
+    if args.cad_decay is not None:
+        criterion.update_cad_weight(
+            batch_idx, args.n_iterations, args.cad_decay_params
+        )
 
 
 if __name__ == "__main__":
@@ -291,6 +295,7 @@ if __name__ == "__main__":
         boundary_coef_decay=args.boundary_coef_decay,
         importance_sampling=args.importance_sampling,
         morse_decay=args.morse_decay,
+        cad_decay=args.cad_decay,
     )
     num_batches = len(train_dataloader)
 

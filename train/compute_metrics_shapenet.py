@@ -31,7 +31,7 @@ if args.loss_type == "phase":
         ff_layers=[],
         clamp=args.skipnet_clamp,
     )
-else:    
+else:
     model = Net.Network(
         latent_size=args.latent_size,
         in_dim=3,
@@ -230,14 +230,20 @@ for shape_class in order:
         hausdorffs[shape_class].append(hausdorff_dist)
 
         # Compute distance metrics
-        gen_points_unit = gen_points / np.max(gen_points) # Transform the uniforms samples to [-1,1]^3
-        eval_points_dists_np = gen_points_unit * default_scale / scale # If the predicted SDF is spatially scaled by (scale / default_scale), it will correspond to StEik visualization space
+        gen_points_unit = gen_points / np.max(
+            gen_points
+        )  # Transform the uniforms samples to [-1,1]^3
+        eval_points_dists_np = (
+            gen_points_unit * default_scale / scale
+        )  # If the predicted SDF is spatially scaled by (scale / default_scale), it will correspond to StEik visualization space
         eval_points_dists = torch.tensor(eval_points_dists_np, device=device, dtype=torch.float32)
         with torch.no_grad():
             res_dists = model(eval_points_dists)["nonmanifold_pnts_pred"].squeeze()
 
         dists_pred = res_dists.detach().cpu().numpy()
-        dists_pred = dists_pred * scale / default_scale # The SDF values should be scaled by (scale / default_scale) to be in the same space as the StEik visualization space
+        dists_pred = (
+            dists_pred * scale / default_scale
+        )  # The SDF values should be scaled by (scale / default_scale) to be in the same space as the StEik visualization space
 
         vm, fm = pcu.load_mesh_vf(gt_mesh_path, dtype=np.float32)
         # vm, fm = pcu.make_mesh_watertight(v, f, 20000)
@@ -245,7 +251,7 @@ for shape_class in order:
 
         dists_gt, _, _ = pcu.signed_distance_to_mesh(
             (gen_points_unit * default_scale + cp).astype(np.float32), vm, fm
-        ) # "(points - cp) / default_scale" will transform the mesh/points to the visualization space, so take the inverse of that to transform the evaluation points to the mesh space
+        )  # "(points - cp) / default_scale" will transform the mesh/points to the visualization space, so take the inverse of that to transform the evaluation points to the mesh space
         # dists_gt = dists_gt[..., None]
         dists_gt = dists_gt / default_scale
 
@@ -365,7 +371,10 @@ for shape_class in order:
         where_gt = np.abs(dists_gt) < threshold
         rmse_near_surface = np.sqrt(np.mean((dists_gt[where_gt] - dists_pred[where_gt]) ** 2))
         mae_near_surface = np.mean(np.abs(dists_gt[where_gt] - dists_pred[where_gt]))
-        smape_near_surface = 2 * np.mean(np.abs(dists_gt[where_gt] - dists_pred[where_gt]) / (np.abs(dists_gt[where_gt]) + np.abs(dists_pred[where_gt])))
+        smape_near_surface = 2 * np.mean(
+            np.abs(dists_gt[where_gt] - dists_pred[where_gt])
+            / (np.abs(dists_gt[where_gt]) + np.abs(dists_pred[where_gt]))
+        )
 
         RMSEs[shape_class].append(rmse)
         MAEs[shape_class].append(mae)

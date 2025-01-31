@@ -8,10 +8,11 @@ nl = "softplus"
 sphere_init_params = [1.6, 1.0]
 init_type = "geometric_relu"
 neuron_type = "linear"
+skipnet_clamp = 0.99
 
 [loss]
 loss_type = "phase"
-loss_weights = [0.1, 0, 0, 1, 0, 0, 0, 1]
+loss_weights = [10, 0, 0, 0.1, 0, 0, 0, 1]
 # loss_weights = [100, 0, 0, 10, 0, 0, 0, 10]
 
 [sampling]
@@ -28,19 +29,21 @@ eval = true
 task = "2d"
 n_iterations = 10001
 gpu_idx = 0
-lr = 5e-5
+lr = 1e-4
 grad_clip_norm = 10.0
 phase_epsilon = 0.01
-vis_interval = 100
+vis_interval = 200
 log_interval = 100
 
 [visualization]
 vis_grid_res = 256
-vis_grid_range = 1.2
-vis_contour_interval = 0.025
+vis_grid_range = 2.0
+vis_contour_interval = 0.05
 # vis_normals = true
 # n_vis_normals = 100
 # vis_heat = true
 vis_gt_shape = true
 # save_video = true
 # video_fps = 6
+# vis_final = true
+# vis_contour_range = [-1.5, 1.5]

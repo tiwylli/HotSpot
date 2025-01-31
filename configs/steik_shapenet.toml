@@ -2,8 +2,8 @@
 model_dir = "models"
 
 [network]
-decoder_n_hidden_layers = 5
-decoder_hidden_dim = 128
+decoder_n_hidden_layers = 8
+decoder_hidden_dim = 256
 nl = "sine"
 sphere_init_params = [1.6, 0.1]
 init_type = "mfgi"
@@ -25,9 +25,9 @@ grid_range = 1.1
 
 [training]
 train = true
-eval = false
+# eval = true
 task = "3d"
-n_iterations = 10000
+n_iterations = 100
 gpu_idx = 0
 lr = 5e-5
 grad_clip_norm = 10.0
@@ -37,9 +37,10 @@ num_workers = 4
 
 [visualization]
 vis_grid_res = 256
-vis_grid_range = 1.1
-vis_contour_interval = 0.025
+vis_grid_range = 1.2
+vis_contour_interval = 0.05
 # vis_heat = true
 # save_video = true
 # video_fps = 6
 # vis_final = true
+# vis_contour_range = [-1.5, 1.5]

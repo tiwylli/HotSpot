@@ -61,6 +61,7 @@ def singular_hessian_loss(mnfld_points, nonmnfld_points, mnfld_grad, nonmnfld_gr
     mnfld_dx = utils.gradient(mnfld_points, mnfld_grad[:, :, 0])
     mnfld_dy = utils.gradient(mnfld_points, mnfld_grad[:, :, 1])
 
+    # if dims == 3:
     nonmnfld_dz = utils.gradient(nonmnfld_points, nonmnfld_grad[:, :, 2])
     nonmnfld_hessian_term = torch.stack((nonmnfld_dx, nonmnfld_dy, nonmnfld_dz), dim=-1)
 
@@ -72,11 +73,55 @@ def singular_hessian_loss(mnfld_points, nonmnfld_points, mnfld_grad, nonmnfld_gr
 
     morse_mnfld = torch.tensor([0.0], device=mnfld_points.device)
     morse_nonmnfld = torch.tensor([0.0], device=mnfld_points.device)
-    # div_type == 'l1':
+    # if div_type == 'l1':
     morse_nonmnfld = nonmnfld_det.abs().mean()
     morse_mnfld = mnfld_det.abs().mean()
 
     morse_loss = 0.5 * (morse_nonmnfld + morse_mnfld)
+
+    return morse_loss
+
+
+def gaussian_curvature(nonmnfld_hessian_term, morse_nonmnfld_grad):
+    device = morse_nonmnfld_grad.device
+    nonmnfld_hessian_term = torch.cat(
+        (nonmnfld_hessian_term, morse_nonmnfld_grad[:, :, :, None]), dim=-1
+    )
+    zero_grad = torch.zeros(
+        (morse_nonmnfld_grad.shape[0], morse_nonmnfld_grad.shape[1], 1, 1), device=device
+    )
+    zero_grad = torch.cat((morse_nonmnfld_grad[:, :, None, :], zero_grad), dim=-1)
+    nonmnfld_hessian_term = torch.cat((nonmnfld_hessian_term, zero_grad), dim=-2)
+    morse_nonmnfld = (-1.0 / (morse_nonmnfld_grad.norm(dim=-1) ** 2 + 1e-12)) * torch.det(
+        nonmnfld_hessian_term
+    )
+
+    morse_nonmnfld = morse_nonmnfld.abs()
+
+    curvature = morse_nonmnfld.mean()
+
+    return curvature
+
+
+def cad_loss(mnfld_points, nonmnfld_points, mnfld_grad, nonmnfld_grad):
+    nonmnfld_dx = utils.gradient(nonmnfld_points, nonmnfld_grad[:, :, 0])
+    nonmnfld_dy = utils.gradient(nonmnfld_points, nonmnfld_grad[:, :, 1])
+    mnfld_dx = utils.gradient(mnfld_points, mnfld_grad[:, :, 0])
+    mnfld_dy = utils.gradient(mnfld_points, mnfld_grad[:, :, 1])
+
+    # if dims == 3:
+    nonmnfld_dz = utils.gradient(nonmnfld_points, nonmnfld_grad[:, :, 2])
+    nonmnfld_hessian_term = torch.stack((nonmnfld_dx, nonmnfld_dy, nonmnfld_dz), dim=-1)
+
+    mnfld_dz = utils.gradient(mnfld_points, mnfld_grad[:, :, 2])
+    mnfld_hessian_term = torch.stack((mnfld_dx, mnfld_dy, mnfld_dz), dim=-1)
+
+    morse_mnfld = torch.tensor([0.0], device=mnfld_points.device)
+    morse_loss = gaussian_curvature(nonmnfld_hessian_term, nonmnfld_grad)
+    # if bidirectional_morse == True:
+    # morse_mnfld = gaussian_curvature(mnfld_hessian_term, mnfld_grad)
+
+    morse_loss = 0.5 * (morse_loss + morse_mnfld)
 
     return morse_loss
 
@@ -162,6 +207,7 @@ class Loss(nn.Module):
         boundary_coef_decay="none",
         importance_sampling=True,
         morse_decay="none",
+        cad_decay="none",
     ):
         super().__init__()
         self.weights = weights  # sdf, intern, normal, eikonal, div
@@ -179,6 +225,7 @@ class Loss(nn.Module):
         self.use_phase = True if "phase" in self.loss_type else False
         self.importance_sampling = importance_sampling
         self.morse_decay = morse_decay
+        self.cad_decay = cad_decay
 
     def forward(
         self,
@@ -286,6 +333,10 @@ class Loss(nn.Module):
             singular_hessian_term = singular_hessian_loss(
                 mnfld_points, nonmnfld_points, mnfld_grad, nonmnfld_grad
             )
+
+        cad_term = torch.tensor([0.0], device=mnfld_points.device)
+        if len(self.weights) > 9 and self.weights[9] > 0.0:
+            cad_term = cad_loss(mnfld_points, nonmnfld_points, mnfld_grad, nonmnfld_grad)
 
         # normal term
         normal_term = torch.tensor([0.0], device=mnfld_points.device)
@@ -427,6 +478,13 @@ class Loss(nn.Module):
                 + self.weights[3] * eikonal_term
                 + self.weights[8] * singular_hessian_term
             )
+        elif self.loss_type == "cad":
+            loss = (
+                self.weights[0] * boundary_term
+                + self.weights[1] * inter_term
+                + self.weights[3] * eikonal_term
+                + self.weights[9] * cad_term
+            )
         elif self.loss_type == "everything_including_div_heat_sal":
             loss = (
                 self.weights[0] * boundary_term
@@ -517,3 +575,6 @@ class Loss(nn.Module):
 
     def update_morse_weight(self, current_iteration, n_iterations, params=None):
         self.update_weight(8, current_iteration, n_iterations, params, self.morse_decay)
+
+    def update_cad_weight(self, current_iteration, n_iterations, params=None):
+        self.update_weight(9, current_iteration, n_iterations, params, self.cad_decay)
