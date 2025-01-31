@@ -1,5 +1,3 @@
-# This file is partly based on DiGS: https://github.com/Chumbyte/DiGS
-
 import numpy as np
 import torch
 import torch.nn as nn
@@ -126,16 +124,6 @@ def cad_loss(mnfld_points, nonmnfld_points, mnfld_grad, nonmnfld_grad):
     return morse_loss
 
 
-def latent_rg_loss(latent_reg, device):
-    # compute the VAE latent representation regularization loss
-    if latent_reg is not None:
-        reg_loss = latent_reg.mean()
-    else:
-        reg_loss = torch.tensor([0.0], device=device)
-
-    return reg_loss
-
-
 def directional_div(points, grads):
     dot_grad = (grads * grads).sum(dim=-1, keepdim=True)
     hvp = torch.ones_like(dot_grad)
@@ -178,54 +166,134 @@ def heat_loss(points, preds, grads=None, sample_pdfs=None, heat_lambda=8, in_mnf
     return loss
 
 
-def phase_loss(points, preds, sample_pdfs=None, epsilon=0.01):
-    grads = torch.autograd.grad(
-        outputs=preds,
-        inputs=points,
-        grad_outputs=torch.ones_like(preds),
-        create_graph=True,
-        retain_graph=True,
-    )[0]
-    loss = epsilon * grads.norm(2, dim=-1) ** 2 + preds**2 - 2 * torch.abs(preds) + 1
-    loss = loss.mean()
-
-    return loss
-
-
 class Loss(nn.Module):
     def __init__(
         self,
         weights,
         loss_type,
-        div_decay="none",
-        div_type="dir_l1",
-        heat_lambda=100,
-        phase_epsilon=0.01,
-        heat_decay="none",
-        heat_lambda_decay="none",
-        eikonal_decay="none",
-        boundary_coef_decay="none",
         importance_sampling=True,
-        morse_decay="none",
-        cad_decay="none",
     ):
         super().__init__()
         self.weights = weights  # sdf, intern, normal, eikonal, div
         self.loss_type = loss_type
-        self.div_decay = div_decay
-        self.div_type = div_type
-        self.heat_lambda = heat_lambda
-        self.phase_epsilon = phase_epsilon
-        self.heat_decay = heat_decay
-        self.eikonal_decay = eikonal_decay
-        self.heat_lambda_decay = heat_lambda_decay
-        self.boundary_coef_decay = boundary_coef_decay
-        self.use_div = True if "div" in self.loss_type else False
-        self.use_heat = True if "heat" in self.loss_type else False
-        self.use_phase = True if "phase" in self.loss_type else False
         self.importance_sampling = importance_sampling
-        self.morse_decay = morse_decay
-        self.cad_decay = cad_decay
+        self.loss_term_dict = {}
+        self.var_dict = {}
+
+        self.loss_type_to_terms = {
+            "siren": ["manifold", "area", "normal", "eikonal"],
+            "siren_wo_n": ["manifold", "area", "eikonal"],
+            "igr": ["manifold", "normal", "eikonal"],
+            "igr_wo_n": ["manifold", "eikonal"],
+            "siren_w_div": ["manifold", "area", "normal", "eikonal", "div"],
+            "siren_wo_n_w_div": ["manifold", "area", "eikonal", "div"],
+            "igr_wo_eik_w_heat": ["manifold", "heat"],
+            "igr_w_heat": ["manifold", "eikonal", "heat"],
+            "sal": ["manifold", "sal"],
+            "everything_including_div_heat_sal": [
+                "manifold",
+                "area",
+                "normal",
+                "eikonal",
+                "div",
+                "sal",
+                "heat",
+            ],
+        }
+        if self.loss_type not in self.loss_type_to_terms:
+            raise Warning("unsupported loss type")
+
+    def register_loss_term(self, name, idx, weight, schedule_type=None, schedule_params=None):
+        self.loss_term_dict[name] = {
+            "idx": idx,
+            "weight": weight,
+            "schedule_type": schedule_type,
+            "schedule_params": schedule_params,
+        }
+
+    def register_variable(self, name, value, schedule_type=None, schedule_params=None):
+        self.var_dict[name] = {
+            "value": value,
+            "schedule_type": schedule_type,
+            "schedule_params": schedule_params,
+        }
+        # create a variable with the name and value
+        setattr(self, name, value)
+
+    def _update_hyper_parameter(
+        self, param_name: str, current_iteration, n_iterations, params, schedule_type
+    ):
+        if schedule_type == "none":
+            return
+
+        if not hasattr(self, f"{param_name}_decay_params_list"):
+            assert len(params) >= 2, params
+            assert len(params[1:-1]) % 2 == 0
+            setattr(
+                self,
+                f"{param_name}_decay_params_list",
+                list(zip([params[0], *params[1:-1][1::2], params[-1]], [0, *params[1:-1][::2], 1])),
+            )
+
+        decay_params_list = getattr(self, f"{param_name}_decay_params_list")
+        curr = current_iteration / n_iterations
+        we, e = min([tup for tup in decay_params_list if tup[1] >= curr], key=lambda tup: tup[1])
+        w0, s = max([tup for tup in decay_params_list if tup[1] <= curr], key=lambda tup: tup[1])
+
+        if schedule_type == "linear":
+            if current_iteration < s * n_iterations:
+                value = w0
+            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
+                value = w0 + (we - w0) * (current_iteration / n_iterations - s) / (e - s)
+            else:
+                value = we
+        elif schedule_type == "quintic":
+            if current_iteration < s * n_iterations:
+                value = w0
+            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
+                value = w0 + (we - w0) * (
+                    1 - (1 - (current_iteration / n_iterations - s) / (e - s)) ** 5
+                )
+            else:
+                value = we
+        elif schedule_type == "step":
+            if current_iteration < s * n_iterations:
+                value = w0
+            else:
+                value = we
+        else:
+            raise Warning("unsupported decay value")
+
+        if param_name in self.loss_term_dict:
+            idx = self.loss_term_dict[param_name]["idx"]
+            self.weights[idx] = value
+        elif param_name in self.var_dict:
+            setattr(self, param_name, value)
+        else:
+            raise Warning("variable requested to update not found")
+
+    def update_all_hyper_parameters(self, current_iteration, n_iterations):
+        for key, value in self.loss_term_dict.items():
+            if value["schedule_type"] is None or self.weights[value["idx"]] == 0:
+                continue
+            self._update_hyper_parameter(
+                key,
+                current_iteration,
+                n_iterations,
+                value["schedule_params"],
+                value["schedule_type"],
+            )
+
+        for key, value in self.var_dict.items():
+            if value["schedule_type"] is None:
+                continue
+            self._update_hyper_parameter(
+                key,
+                current_iteration,
+                n_iterations,
+                value["schedule_params"],
+                value["schedule_type"],
+            )
 
     def forward(
         self,
@@ -240,27 +308,12 @@ class Loss(nn.Module):
         dims = mnfld_points.shape[-1]
         device = mnfld_points.device
 
-        #########################################
-        # Compute required terms
-        #########################################
-
         nonmnfld_pred = output_pred["nonmanifold_pnts_pred"]
         mnfld_pred = output_pred["manifold_pnts_pred"]
-        latent_reg = output_pred.get("latent_reg", None)
-        latent = output_pred.get("latent", None)
 
-        div_term = torch.tensor([0.0], device=mnfld_points.device)
+        nonmnfld_dist_pred = nonmnfld_pred
 
-        if self.use_phase:
-            nonmnfld_dist_pred = (
-                -(self.phase_epsilon**0.5)
-                * torch.log(1 - torch.abs(nonmnfld_pred))
-                * torch.sign(nonmnfld_pred)
-            )
-        else:
-            nonmnfld_dist_pred = nonmnfld_pred
-
-        # if nonmnfld_dist_pred has nan or inf, print and exit
+        # If nonmnfld_dist_pred has nan or inf, print and exit
         if torch.isnan(nonmnfld_dist_pred).any():
             raise ValueError("NaN in nonmnfld_dist_pred")
         if torch.isinf(nonmnfld_dist_pred).any():
@@ -268,21 +321,14 @@ class Loss(nn.Module):
 
         # compute gradients for div (divergence), curl and curv (curvature)
         if mnfld_pred is not None:
-            if self.use_phase:
-                mnfld_dist_pred = (
-                    -(self.phase_epsilon**0.5)
-                    * torch.log(1 - torch.abs(mnfld_pred))
-                    * torch.sign(mnfld_pred)
-                )
-            else:
-                mnfld_dist_pred = mnfld_pred
+            mnfld_dist_pred = mnfld_pred
             mnfld_grad = utils.gradient(mnfld_points, mnfld_dist_pred)
         else:
             mnfld_grad = None
 
         nonmnfld_grad = utils.gradient(nonmnfld_points, nonmnfld_dist_pred)
 
-        # if mnfld_dist_pred or nonmnfld_dist_pred is nan, print and exit
+        # if mnfld_grad or nonmnfld_grad is nan, print and exit
         if torch.isnan(mnfld_grad).any():
             print("mnfld_grad", mnfld_grad)
             raise ValueError("NaN in mnfld gradients")
@@ -290,8 +336,48 @@ class Loss(nn.Module):
             print("nonmnfld_grad", nonmnfld_grad)
             raise ValueError("NaN in nonmnfld gradients")
 
-        # div_term
-        if self.use_div and self.weights[4] > 0.0:
+        # ===============================
+        # Start to compute the loss terms
+        # ===============================
+
+        loss_terms = {}
+
+        # manifold loss
+        if "manifold" in self.loss_type_to_terms[self.loss_type]:
+            manifold_loss = torch.abs(mnfld_pred).mean()
+            loss_terms["manifold"] = manifold_loss
+
+        # area loss
+        if "area" in self.loss_type_to_terms[self.loss_type]:
+            area_loss = torch.exp(-1e2 * torch.abs(nonmnfld_dist_pred)).mean()
+            loss_terms["area"] = area_loss
+
+        # normal loss
+        if "normal" in self.loss_type_to_terms[self.loss_type] and mnfld_normals_gt is not None:
+            mnfld_normals_gt = mnfld_normals_gt.to(device)
+            if "igr" in self.loss_type or "phase" in self.loss_type:
+                normal_loss = ((mnfld_grad - mnfld_normals_gt).abs()).norm(2, dim=1).mean()
+            else:
+                normal_loss = (
+                    1
+                    - torch.abs(
+                        torch.nn.functional.cosine_similarity(mnfld_grad, mnfld_normals_gt, dim=-1)
+                    )
+                ).mean()
+            loss_terms["normal"] = normal_loss
+
+        # eikonal loss
+        if "eikonal" in self.loss_type_to_terms[self.loss_type]:
+            eikonal_term = eikonal_loss(
+                nonmnfld_grad,
+                mnfld_grad=mnfld_grad,
+                nonmnfld_pdfs=nonmnfld_pdfs,
+                eikonal_type="abs" if self.loss_type != "phase" else "squared",
+            )
+            loss_terms["eikonal"] = eikonal_term
+
+        # divergene loss
+        if "div" in self.loss_type_to_terms[self.loss_type]:
             if self.div_type == "full_l2":
                 nonmnfld_divergence = full_div(nonmnfld_points, nonmnfld_grad)
                 nonmnfld_divergence_term = torch.clamp(torch.square(nonmnfld_divergence), 0.1, 50)
@@ -309,60 +395,18 @@ class Loss(nn.Module):
                     "unsupported divergence type. only suuports dir_l1, dir_l2, full_l1, full_l2"
                 )
 
-            div_term = nonmnfld_divergence_term.mean()  # + mnfld_divergence_term.mean()
+            div_loss = nonmnfld_divergence_term.mean()  # + mnfld_divergence_term.mean()
+            loss_terms["div"] = div_loss
 
-        # eikonal term
-        eikonal_term = torch.tensor([0.0], device=mnfld_points.device)
-        if self.weights[3] > 0.0:
-            if self.loss_type == "nsh":
-                eikonal_term = relaxing_eikonal_loss(
-                    nonmnfld_grad,
-                    mnfld_grad=mnfld_grad,
-                    nonmnfld_pdfs=nonmnfld_pdfs,
-                )
-            else:
-                eikonal_term = eikonal_loss(
-                    nonmnfld_grad,
-                    mnfld_grad=mnfld_grad,
-                    nonmnfld_pdfs=nonmnfld_pdfs,
-                    eikonal_type="abs" if self.loss_type != "phase" else "squared",
-                )
+        # SAL loss
+        if "sal" in self.loss_type_to_terms[self.loss_type] and nonmnfld_dists_sal is not None:
+            sal_loss = torch.abs(
+                torch.abs(nonmnfld_pred.squeeze()) - nonmnfld_dists_sal.squeeze()
+            ).mean()
+            loss_terms["sal"] = sal_loss
 
-        singular_hessian_term = torch.tensor([0.0], device=mnfld_points.device)
-        if len(self.weights) > 8 and self.weights[8] > 0.0:
-            singular_hessian_term = singular_hessian_loss(
-                mnfld_points, nonmnfld_points, mnfld_grad, nonmnfld_grad
-            )
-
-        cad_term = torch.tensor([0.0], device=mnfld_points.device)
-        if len(self.weights) > 9 and self.weights[9] > 0.0:
-            cad_term = cad_loss(mnfld_points, nonmnfld_points, mnfld_grad, nonmnfld_grad)
-
-        # normal term
-        normal_term = torch.tensor([0.0], device=mnfld_points.device)
-        if mnfld_normals_gt is not None and self.weights[2] > 0.0:
-            mnfld_normals_gt = mnfld_normals_gt.to(mnfld_points.device)
-            if "igr" in self.loss_type or "phase" in self.loss_type:
-                normal_term = ((mnfld_grad - mnfld_normals_gt).abs()).norm(2, dim=1).mean()
-            else:
-                normal_term = (
-                    1
-                    - torch.abs(
-                        torch.nn.functional.cosine_similarity(mnfld_grad, mnfld_normals_gt, dim=-1)
-                    )
-                ).mean()
-
-        # signed distance function term
-        boundary_term = torch.abs(mnfld_pred).mean()
-
-        # inter term
-        inter_term = torch.tensor([0.0], device=mnfld_points.device)
-        if self.weights[1] > 0.0:
-            inter_term = torch.exp(-1e2 * torch.abs(nonmnfld_dist_pred)).mean()
-
-        # heat term
-        heat_term = torch.tensor([0.0], device=mnfld_points.device)
-        if self.use_heat and self.weights[6] > 0.0:
+        # heat loss
+        if "heat" in self.loss_type_to_terms[self.loss_type]:
             heat_term = heat_loss(
                 points=nonmnfld_points,
                 preds=nonmnfld_dist_pred,
@@ -381,200 +425,25 @@ class Loss(nn.Module):
             # )
             heat_term /= nonmnfld_points.reshape(-1, 2).shape[0]
             # heat_term /= nonmnfld_points.reshape(-1, 2).shape[0] + mnfld_points.reshape(-1, 2).shape[0]
+            loss_terms["heat"] = heat_term
 
-        # phase term
-        phase_term = torch.tensor([0.0], device=mnfld_points.device)
-        if self.use_phase and self.weights[7] > 0.0:
-            phase_term = phase_loss(
-                points=mnfld_points, preds=mnfld_pred, sample_pdfs=None, epsilon=self.phase_epsilon
-            )
+        # ===============================
+        # Compute the total loss
+        # ===============================
 
-        # nonmanifold prediction value loss
-        nonmnfld_dists_loss = torch.tensor([0.0], device=mnfld_points.device)
-        if nonmnfld_dists_gt is not None:
-            nonmnfld_dists_loss = torch.abs(
-                nonmnfld_pred.squeeze() - nonmnfld_dists_gt.squeeze()
-            ).mean()
+        loss = torch.tensor([0.0], device=device)
+        loss_terms_weighted = {}
+        for name, value in loss_terms.items():
+            weight = self.weights[self.loss_term_dict[name]["idx"]]
+            if weight == 0:
+                continue
+            loss_terms_weighted[name] = weight * loss_terms[name]
 
-        # SAL loss term
-        sal_term = torch.tensor([0.0], device=mnfld_points.device)
-        if nonmnfld_dists_sal is not None:
-            sal_term = torch.abs(
-                torch.abs(nonmnfld_pred.squeeze()) - nonmnfld_dists_sal.squeeze()
-            ).mean()
-
-        #########################################
-        # Losses
-        #########################################
-
-        # losses used in the paper
-        if self.loss_type == "siren":  # SIREN loss
-            loss = (
-                self.weights[0] * boundary_term
-                + self.weights[1] * inter_term
-                + self.weights[2] * normal_term
-                + self.weights[3] * eikonal_term
-            )
-        elif self.loss_type == "siren_wo_n":  # SIREN loss without normal constraint
-            self.weights[2] = 0
-            loss = (
-                self.weights[0] * boundary_term
-                + self.weights[1] * inter_term
-                + self.weights[3] * eikonal_term
-            )
-        elif self.loss_type == "igr":  # IGR loss
-            self.weights[1] = 0
-            loss = (
-                self.weights[0] * boundary_term
-                + self.weights[2] * normal_term
-                + self.weights[3] * eikonal_term
-            )
-        elif self.loss_type == "igr_wo_n":  # IGR without normals loss
-            self.weights[1] = 0
-            self.weights[2] = 0
-            loss = self.weights[0] * boundary_term + self.weights[3] * eikonal_term
-        elif self.loss_type == "siren_w_div":  # SIREN loss with divergence term
-            loss = (
-                self.weights[0] * boundary_term
-                + self.weights[1] * inter_term
-                + self.weights[2] * normal_term
-                + self.weights[3] * eikonal_term
-                + self.weights[4] * div_term
-            )
-        elif (
-            self.loss_type == "siren_wo_n_w_div"
-        ):  # SIREN loss without normals and with divergence constraint
-            loss = (
-                self.weights[0] * boundary_term
-                + self.weights[1] * inter_term
-                + self.weights[3] * eikonal_term
-                + self.weights[4] * div_term
-            )
-        elif self.loss_type == "igr_wo_eik_w_heat":
-            loss = (
-                self.weights[0] * boundary_term
-                # + self.weights[3] * eikonal_term
-                + self.weights[6] * heat_term
-            )
-        elif self.loss_type == "igr_w_heat":
-            loss = (
-                self.weights[0] * boundary_term
-                + self.weights[3] * eikonal_term
-                + self.weights[6] * heat_term
-            )
-        elif self.loss_type == "sal":
-            loss = self.weights[0] * boundary_term + self.weights[5] * sal_term
-        elif self.loss_type == "phase":
-            loss = (
-                self.weights[0] * boundary_term
-                + self.weights[2] * normal_term
-                + self.weights[3] * eikonal_term
-                + self.weights[7] * phase_term
-            )
-        elif self.loss_type == "nsh":
-            loss = (
-                self.weights[0] * boundary_term
-                + self.weights[1] * inter_term
-                + self.weights[3] * eikonal_term
-                + self.weights[8] * singular_hessian_term
-            )
-        elif self.loss_type == "cad":
-            loss = (
-                self.weights[0] * boundary_term
-                + self.weights[1] * inter_term
-                + self.weights[3] * eikonal_term
-                + self.weights[9] * cad_term
-            )
-        elif self.loss_type == "everything_including_div_heat_sal":
-            loss = (
-                self.weights[0] * boundary_term
-                + self.weights[1] * inter_term
-                + self.weights[2] * normal_term
-                + self.weights[3] * eikonal_term
-                + self.weights[4] * div_term
-                + self.weights[5] * sal_term
-                + self.weights[6] * heat_term
-            )
-        else:
-            raise Warning("unrecognized loss type")
-
-        # latent regulariation for multiple shape learning
-        latent_reg_term = torch.tensor([0.0], device=mnfld_points.device)
-        if latent is not None and latent_reg is not None:
-            latent_reg_term = latent_rg_loss(latent_reg, device)
-            # If multiple surface reconstruction, then latent and latent_reg are defined so reg_term need to be used
-            loss += self.weights[5] * latent_reg_term
+        for name, value in loss_terms_weighted.items():
+            loss += value
 
         return {
             "loss": loss,
-            "boundary_term": boundary_term,
-            "inter_term": inter_term,
-            "latent_reg_term": latent_reg_term,
-            "eikonal_term": eikonal_term,
-            "normal_term": normal_term,
-            "div_term": div_term,
-            "sal_term": sal_term,
-            "heat_term": heat_term,
-            "diff_term": nonmnfld_dists_loss,
+            "loss_terms": loss_terms,
+            "loss_terms_weighted": loss_terms_weighted,
         }, mnfld_grad
-
-    def update_weight(self, weight_index, current_iteration, n_iterations, params, decay_type):
-        if not hasattr(self, f"{weight_index}_decay_params_list"):
-            assert len(params) >= 2, params
-            assert len(params[1:-1]) % 2 == 0
-            setattr(
-                self,
-                f"weight[{weight_index}]_decay_params_list",
-                list(zip([params[0], *params[1:-1][1::2], params[-1]], [0, *params[1:-1][::2], 1])),
-            )
-
-        decay_params_list = getattr(self, f"weight[{weight_index}]_decay_params_list")
-        curr = current_iteration / n_iterations
-        we, e = min([tup for tup in decay_params_list if tup[1] >= curr], key=lambda tup: tup[1])
-        w0, s = max([tup for tup in decay_params_list if tup[1] <= curr], key=lambda tup: tup[1])
-
-        if decay_type == "linear":
-            if current_iteration < s * n_iterations:
-                self.weights[weight_index] = w0
-            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
-                self.weights[weight_index] = w0 + (we - w0) * (
-                    current_iteration / n_iterations - s
-                ) / (e - s)
-            else:
-                self.weights[weight_index] = we
-        elif decay_type == "quintic":
-            if current_iteration < s * n_iterations:
-                self.weights[weight_index] = w0
-            elif current_iteration >= s * n_iterations and current_iteration < e * n_iterations:
-                self.weights[weight_index] = w0 + (we - w0) * (
-                    1 - (1 - (current_iteration / n_iterations - s) / (e - s)) ** 5
-                )
-            else:
-                self.weights[weight_index] = we
-        elif decay_type == "step":
-            if current_iteration < s * n_iterations:
-                self.weights[weight_index] = w0
-            else:
-                self.weights[weight_index] = we
-        elif decay_type == "none":
-            pass
-        else:
-            raise Warning("unsupported decay value")
-
-    def update_div_weight(self, current_iteration, n_iterations, params=None):
-        self.update_weight(4, current_iteration, n_iterations, params, self.div_decay)
-
-    def update_heat_weight(self, current_iteration, n_iterations, params=None):
-        self.update_weight(6, current_iteration, n_iterations, params, self.heat_decay)
-
-    def update_eikonal_weight(self, current_iteration, n_iterations, params=None):
-        self.update_weight(3, current_iteration, n_iterations, params, self.eikonal_decay)
-
-    def update_boundary_coef(self, current_iteration, n_iterations, params=None):
-        self.update_weight(0, current_iteration, n_iterations, params, self.boundary_coef_decay)
-
-    def update_morse_weight(self, current_iteration, n_iterations, params=None):
-        self.update_weight(8, current_iteration, n_iterations, params, self.morse_decay)
-
-    def update_cad_weight(self, current_iteration, n_iterations, params=None):
-        self.update_weight(9, current_iteration, n_iterations, params, self.cad_decay)

@@ -518,8 +518,3 @@ def get_grid(grid_range, grid_res, in_dim=2):
         grid_points = np.concatenate([xx, yy, z], axis=-1)
 
     return grid_points
-
-
-if __name__ == "__main__":
-    file_path = "/home/sitzikbs/Datasets/Reconstruction_IKEA_sample/interior_room.xyz"
-    convert_xyz_to_ply_with_noise(file_path, noise=[0.01])

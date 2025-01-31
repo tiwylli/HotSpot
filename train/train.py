@@ -22,21 +22,6 @@ import copy
 import time
 
 
-def occupancy_to_sdf(occupancy, epsilon):
-    sdf = -(epsilon**0.5) * torch.log(1 - torch.abs(occupancy)) * torch.sign(occupancy)
-    return sdf
-
-
-def unpack_pred_dists(pred, args):
-    mnfld_pred = pred["manifold_pnts_pred"]
-    nonmnfld_pred = pred["nonmanifold_pnts_pred"]
-    if args.loss_type == "phase":
-        mnfld_pred = occupancy_to_sdf(mnfld_pred, args.phase_epsilon)
-        nonmnfld_pred = occupancy_to_sdf(nonmnfld_pred, args.phase_epsilon)
-
-    return mnfld_pred, nonmnfld_pred
-
-
 def visualize_model(
     x_grid,
     y_grid,
@@ -157,31 +142,6 @@ def visualize_model(
     utils.log_string("", log_file)
 
 
-def update_weights(args, criterion, batch_idx):
-    if "div" in args.loss_type:
-        criterion.update_div_weight(batch_idx, args.n_iterations, args.div_decay_params)
-    if args.heat_decay is not None:
-        criterion.update_heat_weight(
-            batch_idx, args.n_iterations, args.heat_decay_params
-        )
-    if args.eikonal_decay is not None:
-        criterion.update_eikonal_weight(
-            batch_idx, args.n_iterations, args.eikonal_decay_params
-        )
-    if args.boundary_coef_decay is not None:
-        criterion.update_boundary_coef(
-            batch_idx, args.n_iterations, args.boundary_coef_decay_params
-        )
-    if args.morse_decay is not None:
-        criterion.update_morse_weight(
-            batch_idx, args.n_iterations, args.morse_decay_params
-        )
-    if args.cad_decay is not None:
-        criterion.update_cad_weight(
-            batch_idx, args.n_iterations, args.cad_decay_params
-        )
-
-
 if __name__ == "__main__":
     args = parser.get_train_args()
 
@@ -191,7 +151,7 @@ if __name__ == "__main__":
     file_path = os.path.join(args.data_dir, args.file_name)
     log_dir = os.path.join(
         args.log_dir, args.file_name.split(".")[0]
-    )  # Concatenate the log directory with the file name if file name is given
+    ) # Concatenate the log directory with the file name if file name is given
 
     # Set up logging
     log_file, log_writer_train, log_writer_test, model_outdir = utils.setup_logdir(log_dir, args)
@@ -199,10 +159,10 @@ if __name__ == "__main__":
     os.system("cp %s %s" % ("./models/Net.py", log_dir))  # backup the models files
     os.system("cp %s %s" % ("./models/losses.py", log_dir))  # backup the losses files
 
-    # Set up dataloader
-    torch.manual_seed(0)
     # Change random seed for training set (so it will be different from test set)
+    torch.manual_seed(0)
     np.random.seed(0)
+    # Set up dataloader
     if args.task == "3d":
         train_set = shape_3d.ReconDataset(
             file_path=file_path,
@@ -248,29 +208,20 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_idx)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    if args.loss_type == "phase":
-        model = SkipNet.SkipNet(
-            in_dim=in_dim,
-            nl=args.nl,
-            ff_layers=[],
-            clamp=args.skipnet_clamp,
-        )
-    else:
-        model = Net.Network(
-            latent_size=args.latent_size,
-            in_dim=in_dim,
-            decoder_hidden_dim=args.decoder_hidden_dim,
-            nl=args.nl,
-            encoder_type=args.encoder_type,
-            decoder_n_hidden_layers=args.decoder_n_hidden_layers,
-            init_type=args.init_type,
-            neuron_type=args.neuron_type,
-            sphere_init_params=args.sphere_init_params,
-            n_repeat_period=args.n_repeat_period,
-        )
-
     # # Uncomment to use small model
     # model = heatModel.Net(radius_init=args.sphere_init_params[1])
+    model = Net.Network(
+        latent_size=args.latent_size,
+        in_dim=in_dim,
+        decoder_hidden_dim=args.decoder_hidden_dim,
+        nl=args.nl,
+        encoder_type=args.encoder_type,
+        decoder_n_hidden_layers=args.decoder_n_hidden_layers,
+        init_type=args.init_type,
+        neuron_type=args.neuron_type,
+        sphere_init_params=args.sphere_init_params,
+        n_repeat_period=args.n_repeat_period,
+    )
     model.to(device)
     if args.parallel:
         if device.type == "cuda":
@@ -285,18 +236,42 @@ if __name__ == "__main__":
     criterion = Loss(
         weights=args.loss_weights,
         loss_type=args.loss_type,
-        div_decay=args.div_decay,
-        div_type=args.div_type,
-        heat_lambda=args.heat_lambda,
-        phase_epsilon=args.phase_epsilon,
-        heat_decay=args.heat_decay,
-        eikonal_decay=args.eikonal_decay,
-        heat_lambda_decay=args.heat_lambda_decay,
-        boundary_coef_decay=args.boundary_coef_decay,
         importance_sampling=args.importance_sampling,
-        morse_decay=args.morse_decay,
-        cad_decay=args.cad_decay,
     )
+    criterion.register_loss_term(name="manifold", idx=0, weight=args.loss_weights[0])
+    criterion.register_loss_term(name="area", idx=1, weight=args.loss_weights[1])
+    criterion.register_loss_term(name="normal", idx=2, weight=args.loss_weights[2])
+    criterion.register_loss_term(
+        name="eikonal",
+        idx=3,
+        weight=args.loss_weights[3],
+        schedule_type=args.eikonal_decay,
+        schedule_params=args.eikonal_decay_params,
+    )
+    criterion.register_loss_term(
+        name="div",
+        idx=4,
+        weight=args.loss_weights[4],
+        schedule_type=args.div_decay,
+        schedule_params=args.div_decay_params,
+    )
+    criterion.register_loss_term(name="sal", idx=5, weight=args.loss_weights[5])
+    criterion.register_loss_term(
+        name="heat",
+        idx=6,
+        weight=args.loss_weights[6],
+        schedule_type=args.heat_decay,
+        schedule_params=args.heat_decay_params,
+    )
+
+    criterion.register_variable(name="div_type", value=args.div_type)
+    criterion.register_variable(
+        name="heat_lambda",
+        value=args.heat_lambda,
+        schedule_type=args.heat_lambda_decay,
+        schedule_params=args.heat_lambda_decay_params,
+    )
+
     num_batches = len(train_dataloader)
 
     scale = 1.0
@@ -324,24 +299,24 @@ if __name__ == "__main__":
     vis_grid_points.requires_grad_()
 
     if not args.vis_final:
-        train_start_time = time.perf_counter()
-        # Iteratively train the model
+        start_time = time.perf_counter()
+        # Iteratively train and/or evaluate the model
         for batch_idx, data in enumerate(train_dataloader):
             # Load data
             mnfld_points = data["mnfld_points"].to(device)
             mnfld_normals_gt = data.get("mnfld_normals_gt", None)
+            if mnfld_normals_gt is not None:
+                mnfld_normals_gt = mnfld_normals_gt.to(device)
             nonmnfld_points = data["nonmnfld_points"].to(device)
             nonmnfld_pdfs = data["nonmnfld_pdfs"].to(device)
-            # nonmnfld_dists_gt = data["nonmnfld_dists_gt"].to(device)
-            # grid_dists_gt = data["grid_dists_gt"].to(device)
 
-            # Conditionally load nonmnfld_dists_sal if it exists in the data
             nonmnfld_dists_sal = data.get("nonmnfld_dists_sal", None)
             if nonmnfld_dists_sal is not None:
                 nonmnfld_dists_sal = nonmnfld_dists_sal.to(device)
 
             mnfld_points.requires_grad_()
             nonmnfld_points.requires_grad_()
+
             # Save model before updating weights
             if args.train:
                 if batch_idx % args.log_interval == 0:
@@ -351,7 +326,7 @@ if __name__ == "__main__":
                     )
 
             # Visualize SDF
-            if not args.vis_final and args.eval and batch_idx % args.vis_interval == 0:
+            if args.eval and batch_idx % args.vis_interval == 0:
                 if not args.train:
                     model_path = os.path.join(log_dir, "trained_models", f"model_{batch_idx}.pth")
                     model.load_state_dict(torch.load(model_path, weights_only=True))
@@ -370,7 +345,8 @@ if __name__ == "__main__":
                         args.vis_grid_res, args.vis_grid_res
                     )
 
-                mnfld_points_pred, vis_grid_pred = unpack_pred_dists(vis_pred, args)
+                mnfld_points_pred = vis_pred["manifold_pnts_pred"]
+                vis_grid_pred = vis_pred["nonmanifold_pnts_pred"]
 
                 visualize_model(
                     x_grid=x_vis,
@@ -393,19 +369,19 @@ if __name__ == "__main__":
                 # Compute losses on samples
                 output_pred = model(nonmnfld_points, mnfld_points)
                 loss_dict, _ = criterion(
-                    output_pred,
-                    mnfld_points,
-                    nonmnfld_points,
-                    nonmnfld_pdfs,
-                    mnfld_normals_gt,
-                    None,
-                    nonmnfld_dists_sal,
+                    output_pred=output_pred,
+                    mnfld_points=mnfld_points,
+                    nonmnfld_points=nonmnfld_points,
+                    nonmnfld_pdfs=nonmnfld_pdfs,
+                    mnfld_normals_gt=mnfld_normals_gt,
+                    nonmnfld_dists_gt=None,
+                    nonmnfld_dists_sal=nonmnfld_dists_sal,
                 )
                 # Update learning rate
                 lr = torch.tensor(optimizer.param_groups[0]["lr"])
                 loss_dict["lr"] = lr
                 # Log losses on samples
-                utils.log_losses(log_writer_train, batch_idx, num_batches, loss_dict)
+                utils.log_losses(log_writer_train, batch_idx, num_batches, loss_dict["loss_terms"])
 
                 # Backpropagate and update weights
                 loss_dict["loss"].backward()
@@ -415,66 +391,47 @@ if __name__ == "__main__":
 
                 # Log training stats and save model
                 if batch_idx % args.log_interval == 0:
+                    # Log weights and learning rate
                     weights = criterion.weights
-                    # utils.log_string(f"Current heat lambda: {criterion.heat_lambda}", log_file)
                     utils.log_string("Weights: {}, lr={:.3e}".format(weights, lr), log_file)
                     # Log weighted losses
-                    utils.log_string(
-                        "Iteration: {:4d}/{} ({:.0f}%) Loss: {:.5f} = L_Mnfld: {:.5f} + "
-                        "L_NonMnfld: {:.5f} + L_Nrml: {:.5f} + L_Eknl: {:.5f} + L_Div: {:.5f} + L_SAL: {:.5f} + L_Heat: {:.5f}".format(
-                            batch_idx,
-                            len(train_set),
-                            100.0 * batch_idx / len(train_dataloader),
-                            loss_dict["loss"].item(),
-                            weights[0] * loss_dict["boundary_term"].item(),
-                            weights[1] * loss_dict["inter_term"].item(),
-                            weights[2] * loss_dict["normal_term"].item(),
-                            weights[3] * loss_dict["eikonal_term"].item(),
-                            weights[4] * loss_dict["div_term"].item(),
-                            weights[5] * loss_dict["sal_term"].item(),  # add SAL term here
-                            weights[6] * loss_dict["heat_term"].item(),
-                        ),
-                        log_file,
+                    loss_terms_weighted = loss_dict["loss_terms_weighted"]
+                    loss_str_weighted = "Iteration: {:4d}/{} ({:.0f}%) Loss: {:.5f} = ".format(
+                        batch_idx,
+                        len(train_set),
+                        100.0 * batch_idx / len(train_dataloader),
+                        loss_dict["loss"].item(),
                     )
+                    for key, val in loss_terms_weighted.items():
+                        loss_str_weighted += f"L_{key}: {val.item():.5f}"
+                        if key != list(loss_terms_weighted.keys())[-1]:
+                            loss_str_weighted += " + "
+                    utils.log_string(loss_str_weighted, log_file)
                     # Log unweighted losses
-                    utils.log_string(
-                        "Iteration: {:4d}/{} ({:.0f}%) Unweighted L_s : L_Mnfld: {:.5f},  "
-                        "L_NonMnfld: {:.5f},  L_Nrml: {:.5f},  L_Eknl: {:.5f},  L_Div: {:.5f},  L_SAL: {:.5f}, L_Heat: {:.5f},  L_Diff: {:.5f}".format(
-                            batch_idx,
-                            len(train_set),
-                            100.0 * batch_idx / len(train_dataloader),
-                            loss_dict["boundary_term"].item(),
-                            loss_dict["inter_term"].item(),
-                            loss_dict["normal_term"].item(),
-                            loss_dict["eikonal_term"].item(),
-                            loss_dict["div_term"].item(),
-                            loss_dict["sal_term"].item(),  # add SAL term here
-                            loss_dict["heat_term"].item(),
-                            loss_dict["diff_term"].item(),
-                        ),
-                        log_file,
+                    loss_terms = loss_dict["loss_terms"]
+                    loss_str_unweighted = "Iteration: {:4d}/{} ({:.0f}%) Unweighted: ".format(
+                        batch_idx,
+                        len(train_set),
+                        100.0 * batch_idx / len(train_dataloader),
                     )
+                    for key, val in loss_terms.items():
+                        loss_str_unweighted += f"L_{key}: {val.item():.5f}"
+                        if key != list(loss_terms.keys())[-1]:
+                            loss_str_unweighted += ", "
+                    utils.log_string(loss_str_unweighted, log_file)
                     utils.log_string("", log_file)
 
-            # Update lambda
-            if args.heat_lambda_decay is not None:
-                criterion.update_heat_lambda(
-                    batch_idx, args.n_iterations, args.heat_lambda_decay_params
+                criterion.update_all_hyper_parameters(
+                    current_iteration=batch_idx, n_iterations=args.n_iterations
                 )
-
-            # Update weights
-            if args.train:
-                update_weights(args, criterion, batch_idx)
                 scheduler.step()
 
-        train_end_time = time.perf_counter()
-
+        # Log training time
+        end_time = time.perf_counter()
         utils.log_string(
-            f"Training time: {train_end_time - train_start_time:.2f} seconds", log_file
+            f"Training time: {end_time - start_time:.2f} seconds", log_file
         )
 
-    # Save final model
-    if args.train and not args.vis_final:
         utils.log_string("Saving final model to file model.pth", log_file)
         torch.save(model.state_dict(), os.path.join(model_outdir, "model.pth"))
 
@@ -503,7 +460,8 @@ if __name__ == "__main__":
             vis_grid_points[0].detach().cpu().numpy()
         )  # (vis_grid_res * vis_grid_res, 1)
 
-        mnfld_points_pred, vis_grid_pred = unpack_pred_dists(vis_pred, args)
+        mnfld_points_pred = vis_pred["manifold_pnts_pred"]
+        vis_grid_pred = vis_pred["nonmanifold_pnts_pred"]
 
         visualize_model(
             x_grid=x_vis,
@@ -518,8 +476,8 @@ if __name__ == "__main__":
             shape=train_set,
         )
 
-    # Save video
     if args.eval:
+        # Save video
         if args.save_video and not args.vis_final:
             vis.save_video(output_dir, "sdf.mp4", "sdf_*.png")
             if args.vis_heat:
