@@ -1,13 +1,10 @@
-# ***SPIN***: Screened Poisson Informed Neural Networks for Sign Distance Function Optimization
+# ***HotSpot***: Screened Poisson Equation for Signed Distance Function Optimization
 
-## Introduction
-Instead of Eikonal equation, you should use screened Poisson equation to optimize SDFs.
+This repository contains the code for the paper [HotSpot: Screened Poisson Equation for Signed Distance Function Optimization](https://arxiv.org/abs/2411.14628).
 
 Please follow the installation instructions below.
 
-## Instructions
-
-### 1. Requirements
+## Installation
 
 Our codebase uses [PyTorch](https://pytorch.org/). The code was tested with Python 3.9.19, torch 2.4.1, tensorboardX 2.6.2.2, CUDA 11.8 on Ubuntu 20.04.6 LTS. 
 
@@ -36,8 +33,9 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 To compute metrics for ShapeNet, you will need to download
 
+## Usage
 
-###  2. Testing on 2D Shapes (No External Data required)
+### 1. Testing on 2D Shapes (No External Data required)
 
 We inherit from [StEik](https://github.com/sunyx523/StEik) a 2D shape dataset generator (`./dataset/shape_base.py` and `./dataset/shape_2d.py`) that includes three shapes: Circle, L shape polygon, and Koch snowflake. We also designed 10 more shapes with more complex topology to test our idea. The code generally allows any polygonal shape to be used and can be extended to other 2D shapes. 
 
@@ -51,64 +49,63 @@ After training, use the following script to compute the metrics
 bash ./scripts/run_metric_2d.sh PATH_TO_EXPERIMENT
 ```
 
-### 3. Surface Reconstruction (and Scene Reconstruction)
-#### 3.1 Data for Surface Reconstruction
-##### 3.1.1 Surface Reconstruction Benchamark data
+### 2. Surface Reconstruction (and Scene Reconstruction)
+#### 2.1 Data for Surface Reconstruction
+##### 2.1.1 Surface Reconstruction Benchamark data
 The Surface Reconstruction Benchmark (SRB) data is provided in the [Deep Geometric Prior repository](https://github.com/fwilliams/deep-geometric-prior).
-This can be downloaded via terminal into the data directory by running `data/scripts/download_srb.sh` (1.12GB download). We use the entire dataset (of 5 complex shapes).
+This can be downloaded via terminal into the data directory by running `scripts/download_srb.sh` (1.12GB download). We use the entire dataset (of 5 complex shapes).
 
 If you use this data in your research, make sure to cite the Deep Geometric Prior paper.
 
-##### 3.1.2 ShapeNet data
+##### 2.1.2 ShapeNet data
 We use a subset of the [ShapeNet](https://shapenet.org/) data as chosen by [Neural Splines](https://github.com/fwilliams/neural-splines). This data is first preprocessed to be watertight as per the pipeline in the [Occupancy Networks repository](https://github.com/autonomousvision/occupancy_networks), who provide both the pipleline and the entire preprocessed dataset (73.4GB). 
 
 The Neural Spline split uses the first 20 shapes from the test set of 13 shape classes from ShapeNet. We provide [a subset of the ShapeNet preprocessed data](https://drive.google.com/file/d/1h6TFHnza0axOZz5AuRkfyLMx_sFcu_Yf/view?usp=sharing) (the subset that corresponds to the split of Neural Splines) and [the resulting point clouds for that subset](https://drive.google.com/file/d/14CW_a0gS3ARJsIonyqPc5eKT3iVcCWZ0/view?usp=sharing).
 
 In addition to the above subset and resulting point clouds provided by DiGS and StEik, we ran the data preprocessing pipeline introduced in [Occupancy Networks](https://github.com/autonomousvision/occupancy_networks) and provide [the watertight ShapeNet meshes for this subset](https://drive.google.com/file/d/1HAZ41-rZQIw_pezj-ES-ZtgXO6JanU-V/view?usp=sharing) (376.1MB). This is for our distance metrics computation. Note that the watertight meshes are all translated and scaled to exactly match the point clouds provided by DiGS and StEik.
 
-These can be downloaded via terminal into the data directory by running `scripts/download_shapenet.sh`  (783.76MB download).
+These can be downloaded via terminal into the data directory by running `scripts/download_shapenet.sh` (783.76MB download).
 
 If you use this data in your research, make sure to cite the ShapeNet and Occupancy Network papers, and if you report on this split, compare and cite to the Neural Spline paper.
 
-##### 3.1.3 Scene Reconstruction data
-For scene reconstruction, we used the [scene from the SIREN paper](https://drive.google.com/drive/folders/1_iq__37-hw7FJOEUK1tX7mdp8SKB368K?usp=sharing). This can be downloaded via terminal into the data directory by running `data/scripts/download_scene.sh`  (56.2MBMB download).
+##### 2.1.3 Scene Reconstruction data
+For scene reconstruction, we used the [scene from the SIREN paper](https://drive.google.com/drive/folders/1_iq__37-hw7FJOEUK1tX7mdp8SKB368K?usp=sharing). This can be downloaded via terminal into the data directory by running `scripts/download_scene.sh`  (56.2MBMB download).
 
 If you use this data in your research, make sure to cite the SIREN paper.
 
-#### 3.2 Running Surface Reconstruction
-To train, test and evaluate on SRB run 
+#### 2.2 Running Surface Reconstruction
+To train, test and evaluate on ShapeNet run 
 
-```./surface_reconstruction/scripts/run_surf_recon_exp.sh```
+```bash scripts/run_hotspot_shapenet.sh```
 
-Similarly we provide a script for ShapeNet: 
+Similarly we provide a script for SRB: 
 
-```./surface_reconstruction/scripts/run_shapenet_recon.sh```
+```bash scripts/run_hotspot_srb.sh```
 
-and for scene reconstruction 
+and for scene reconstruction:
 
-```./surface_reconstruction/scripts/run_scene_recon_exp.sh``` 
+```bash scripts/run_hotspot_scene.sh``` 
 
-These scripts have bash variables for changing the input, major hyperparameters, and where saves/logs/meshes are made.
+These scripts take a config file located in `./configs/` as an argument. The config files are named `hotspot_shapenet.yaml`, `hotspot_srb.yaml`, and `hotspot_scene.yaml` respectively.
 
-## Thanks
+## Acknowledgements
 
-Thanks to the [StEik](https://github.com/sunyx523/StEik) codebase off whom we built upon. 
-
-Supported in part by 
+Our code is built on top of the code from [DiGS](https://github.com/Chumbyte/DiGS) and [StEik](https://github.com/sunyx523/StEik), but is significantly modified.
 
 ## License and Citation
 
 If you find our work useful in your research, please cite our paper:
 
-[Preprint](https://arxiv.org/abs/2305.18414):
+[Preprint](https://arxiv.org/abs/2411.14628):
 ```bibtex
-@misc{yang2023steik,
-      title={StEik: Stabilizing the Optimization of Neural Signed Distance Functions and Finer Shape Representation}, 
-      author={Huizong Yang and Yuxin Sun and Ganesh Sundaramoorthi and Anthony Yezzi},
-      year={2023},
-      eprint={2305.18414},
+@misc{wang2024hotspotscreenedpoissonequation,
+      title={HotSpot: Screened Poisson Equation for Signed Distance Function Optimization}, 
+      author={Zimo Wang and Cheng Wang and Taiki Yoshino and Sirui Tao and Ziyang Fu and Tzu-Mao Li},
+      year={2024},
+      eprint={2411.14628},
       archivePrefix={arXiv},
-      primaryClass={cs.CV}
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2411.14628}, 
 }
 ```
 

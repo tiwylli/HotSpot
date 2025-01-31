@@ -3,12 +3,10 @@ MODEL_DIR=$ROOT_DIR'models'
 THIS_FILE=$(basename "$0")
 TIMESTAMP=$(date +"-%Y-%m-%d-%H-%M-%S")
 IDENTIFIER='SPIN-all' # change to your desired identifier
-# IDENTIFIER='SPIN-all-2025-01-23-16-40-02'
 
-
-CONFIG_DIR=$ROOT_DIR"configs/spin_scene.toml" # change to your config file path
-DATASET_DIR=$ROOT_DIR'data/scene_reconstruction/'         # change to your dataset path
-LOG_DIR=$ROOT_DIR'log/3D/Scene/'              # change to your desired log path
+CONFIG_DIR=$ROOT_DIR"configs/hotspot_scene.toml"  # change to your config file path
+DATASET_DIR=$ROOT_DIR'data/scene_reconstruction/' # change to your dataset path
+LOG_DIR=$ROOT_DIR'log/3D/Scene/'                  # change to your desired log path
 EXP_DIR=$LOG_DIR$IDENTIFIER$TIMESTAMP/
 mkdir -p $EXP_DIR
 cp -r scripts/$THIS_FILE $EXP_DIR # Copy this script to the experiment directory
