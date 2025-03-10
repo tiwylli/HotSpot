@@ -117,6 +117,10 @@ if __name__ == "__main__":
     for shape_name in shape_names:
         gt_shape_weights_path = os.path.join(exp_path, shape_name, "trained_models", "model.pth")
 
+        if not os.path.exists(gt_shape_weights_path):
+            logging.info(f"{shape_name}: No trained model found")
+            continue
+
         test_set = dataset.get2D_dataset(
             n_points=args.n_points,
             n_samples=1,

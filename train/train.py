@@ -12,7 +12,6 @@ import torch.optim.lr_scheduler as lr_scheduler
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dataset import shape_2d, shape_3d
 import models.Net as Net
-import models.SkipNet as SkipNet
 from models.losses import Loss
 
 import utils.utils as utils
@@ -65,6 +64,11 @@ def visualize_model(
         grid_range=args.vis_grid_range,
         contour_interval=args.vis_contour_interval,
         contour_range=args.vis_contour_range,
+        gt_traces=(
+            shape.get_trace(color="rgb(128, 128, 128)")
+            if args.vis_gt_shape and shape is not None
+            else []
+        ),
         gt_traces=(
             shape.get_trace(color="rgb(128, 128, 128)")
             if args.vis_gt_shape and shape is not None
@@ -208,8 +212,6 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_idx)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # # Uncomment to use small model
-    # model = heatModel.Net(radius_init=args.sphere_init_params[1])
     model = Net.Network(
         latent_size=args.latent_size,
         in_dim=in_dim,

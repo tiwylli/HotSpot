@@ -5,7 +5,6 @@ import numpy as np
 import plotly.offline as offline
 import utils.utils as utils
 import torch
-import matplotlib.pyplot as plt
 from PIL import Image
 import os
 import glob

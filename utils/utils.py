@@ -11,7 +11,6 @@ from plyfile import PlyData
 from scipy.spatial import cKDTree as KDTree
 from tqdm import tqdm
 from skimage import measure
-import plotly.graph_objs as go
 import trimesh
 import time
 
