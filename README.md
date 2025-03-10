@@ -1,4 +1,4 @@
-# ***HotSpot***: Screened Poisson Equation for Signed Distance Function Optimization
+# ***HotSpot***: Signed Distance Function Optimization with an Asymptotically Sufficient Condition
 
 [Zimo Wang](https://zeamoxwang.github.io/homepage/)\*, [Cheng Wang](https://galaxeaaa.github.io/)\*, [Taiki Yoshino](https://www.linkedin.com/in/taiki-yoshino-167a60266), [Sirui Tao](https://dylantao.github.io/), [Ziyang Fu](https://fzy28.github.io/), [Tzu-Mao Li](https://cseweb.ucsd.edu/~tzli/) (* denotes equal contribution)
 
