@@ -1,6 +1,6 @@
 # ***HotSpot***: Screened Poisson Equation for Signed Distance Function Optimization
 
-[Zimo Wang*](https://zeamoxwang.github.io/homepage/), [Cheng Wang](https://galaxeaaa.github.io/), [Taiki Yoshino](https://www.linkedin.com/in/taiki-yoshino-167a60266), [Sirui Tao](https://dylantao.github.io/), [Ziyang Fu](https://fzy28.github.io/), [Tzu-Mao Li](https://cseweb.ucsd.edu/~tzli/) (* denotes equal contribution)
+[Zimo Wang](https://zeamoxwang.github.io/homepage/)\*, [Cheng Wang](https://galaxeaaa.github.io/)\*, [Taiki Yoshino](https://www.linkedin.com/in/taiki-yoshino-167a60266), [Sirui Tao](https://dylantao.github.io/), [Ziyang Fu](https://fzy28.github.io/), [Tzu-Mao Li](https://cseweb.ucsd.edu/~tzli/) (* denotes equal contribution)
 
 [Paper](https://arxiv.org/abs/2411.14628) | [Project Page](https://zeamoxwang.github.io/HotSpot-CVPR25/) | [Code](https://github.com/Galaxeaaa/HotSpot)
 
