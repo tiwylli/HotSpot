@@ -269,24 +269,24 @@ if __name__ == "__main__":
     criterion.register_loss_term(
         name="pull",
         idx=7,
-        weight=args.loss_weights[7],
+        weight=args.loss_weights[7] if len(args.loss_weights) > 7 else 0,
     )
     criterion.register_loss_term(
         name="relax_eikonal",
         idx=8,
-        weight=args.loss_weights[8],
+        weight=args.loss_weights[8] if len(args.loss_weights) > 8 else 0,
     )
     criterion.register_loss_term(
         name="singular_hessian",
         idx=9,
-        weight=args.loss_weights[9],
+        weight=args.loss_weights[9] if len(args.loss_weights) > 9 else 0,
         schedule_type=args.morse_decay,
         schedule_params=args.morse_decay_params,
     )
     criterion.register_loss_term(
         name="cad",
         idx=10,
-        weight=args.loss_weights[10],
+        weight=args.loss_weights[10] if len(args.loss_weights) > 10 else 0,
         schedule_type=args.cad_decay,
         schedule_params=args.cad_decay_params,
     )
