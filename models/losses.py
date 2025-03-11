@@ -25,7 +25,7 @@ def eikonal_loss(nonmnfld_grad, mnfld_grad, nonmnfld_pdfs, eikonal_type="abs"):
 
 
 def relaxing_eikonal_loss(
-    nonmnfld_grad, mnfld_grad, nonmnfld_pdfs, eikonal_type="abs", sigma_min=0.8
+    nonmnfld_grad, mnfld_grad, nonmnfld_pdfs=None, eikonal_type="abs", sigma_min=0.8
 ):
     if nonmnfld_grad is not None and mnfld_grad is not None:
         all_grads = torch.cat([nonmnfld_grad, mnfld_grad], dim=-2)
@@ -190,6 +190,9 @@ class Loss(nn.Module):
             "igr_wo_eik_w_heat": ["manifold", "heat"],
             "igr_w_heat": ["manifold", "eikonal", "heat"],
             "sal": ["manifold", "sal"],
+            "pull": ["pull"],
+            "nsh": ["manifold", "area", "relax_eikonal", "singular_hessian"],
+            "cad": ["manifold", "area", "eikonal", "cad"],
             "everything_including_div_heat_sal": [
                 "manifold",
                 "area",
@@ -304,6 +307,7 @@ class Loss(nn.Module):
         mnfld_normals_gt=None,
         nonmnfld_dists_gt=None,
         nonmnfld_dists_sal=None,
+        nearest_points=None, # (bs, n_nonmnfld_points, 3)
     ):
         dims = mnfld_points.shape[-1]
         device = mnfld_points.device
@@ -311,30 +315,36 @@ class Loss(nn.Module):
         nonmnfld_pred = output_pred["nonmanifold_pnts_pred"]
         mnfld_pred = output_pred["manifold_pnts_pred"]
 
-        nonmnfld_dist_pred = nonmnfld_pred
+        nonmnfld_sdf_pred = nonmnfld_pred
+        mnfld_sdf_pred = mnfld_pred
 
         # If nonmnfld_dist_pred has nan or inf, print and exit
-        if torch.isnan(nonmnfld_dist_pred).any():
+        if torch.isnan(nonmnfld_sdf_pred).any():
             raise ValueError("NaN in nonmnfld_dist_pred")
-        if torch.isinf(nonmnfld_dist_pred).any():
+        if torch.isinf(nonmnfld_sdf_pred).any():
             raise ValueError("Inf in nonmnfld_dist_pred")
 
-        # compute gradients for div (divergence), curl and curv (curvature)
-        if mnfld_pred is not None:
-            mnfld_dist_pred = mnfld_pred
-            mnfld_grad = utils.gradient(mnfld_points, mnfld_dist_pred)
+        # Compute gradients for div (divergence), curl and curv (curvature)
+        if mnfld_sdf_pred is not None:
+            mnfld_grad_pred = utils.gradient(mnfld_points, mnfld_sdf_pred)
         else:
-            mnfld_grad = None
+            mnfld_grad_pred = None
 
-        nonmnfld_grad = utils.gradient(nonmnfld_points, nonmnfld_dist_pred)
+        nonmnfld_grad_pred = utils.gradient(nonmnfld_points, nonmnfld_sdf_pred)
 
-        # if mnfld_grad or nonmnfld_grad is nan, print and exit
-        if torch.isnan(mnfld_grad).any():
-            print("mnfld_grad", mnfld_grad)
+        # If mnfld_grad or nonmnfld_grad is nan, print and exit
+        if torch.isnan(mnfld_grad_pred).any():
+            print("mnfld_grad", mnfld_grad_pred)
             raise ValueError("NaN in mnfld gradients")
-        if torch.isnan(nonmnfld_grad).any():
-            print("nonmnfld_grad", nonmnfld_grad)
+        if torch.isnan(nonmnfld_grad_pred).any():
+            print("nonmnfld_grad", nonmnfld_grad_pred)
             raise ValueError("NaN in nonmnfld gradients")
+
+        # Now we have
+        # mnfld_sdf_pred (bs, n_mnfld_points, dim)
+        # nonmnfld_sdf_pred (bs, n_nonmnfld_points, dim)
+        # mnfld_grad_pred (bs, n_mnfld_points)
+        # nonmnfld_grad_pred (bs, n_nonmnfld_points)
 
         # ===============================
         # Start to compute the loss terms
@@ -349,19 +359,19 @@ class Loss(nn.Module):
 
         # area loss
         if "area" in self.loss_type_to_terms[self.loss_type]:
-            area_loss = torch.exp(-1e2 * torch.abs(nonmnfld_dist_pred)).mean()
+            area_loss = torch.exp(-1e2 * torch.abs(nonmnfld_sdf_pred)).mean()
             loss_terms["area"] = area_loss
 
         # normal loss
         if "normal" in self.loss_type_to_terms[self.loss_type] and mnfld_normals_gt is not None:
             mnfld_normals_gt = mnfld_normals_gt.to(device)
             if "igr" in self.loss_type or "phase" in self.loss_type:
-                normal_loss = ((mnfld_grad - mnfld_normals_gt).abs()).norm(2, dim=1).mean()
+                normal_loss = ((mnfld_grad_pred - mnfld_normals_gt).abs()).norm(2, dim=1).mean()
             else:
                 normal_loss = (
                     1
                     - torch.abs(
-                        torch.nn.functional.cosine_similarity(mnfld_grad, mnfld_normals_gt, dim=-1)
+                        torch.nn.functional.cosine_similarity(mnfld_grad_pred, mnfld_normals_gt, dim=-1)
                     )
                 ).mean()
             loss_terms["normal"] = normal_loss
@@ -369,8 +379,8 @@ class Loss(nn.Module):
         # eikonal loss
         if "eikonal" in self.loss_type_to_terms[self.loss_type]:
             eikonal_term = eikonal_loss(
-                nonmnfld_grad,
-                mnfld_grad=mnfld_grad,
+                nonmnfld_grad_pred,
+                mnfld_grad=mnfld_grad_pred,
                 nonmnfld_pdfs=nonmnfld_pdfs,
                 eikonal_type="abs" if self.loss_type != "phase" else "squared",
             )
@@ -379,16 +389,16 @@ class Loss(nn.Module):
         # divergene loss
         if "div" in self.loss_type_to_terms[self.loss_type]:
             if self.div_type == "full_l2":
-                nonmnfld_divergence = full_div(nonmnfld_points, nonmnfld_grad)
+                nonmnfld_divergence = full_div(nonmnfld_points, nonmnfld_grad_pred)
                 nonmnfld_divergence_term = torch.clamp(torch.square(nonmnfld_divergence), 0.1, 50)
             elif self.div_type == "full_l1":
-                nonmnfld_divergence = full_div(nonmnfld_points, nonmnfld_grad)
+                nonmnfld_divergence = full_div(nonmnfld_points, nonmnfld_grad_pred)
                 nonmnfld_divergence_term = torch.clamp(torch.abs(nonmnfld_divergence), 0.1, 50)
             elif self.div_type == "dir_l2":
-                nonmnfld_divergence = directional_div(nonmnfld_points, nonmnfld_grad)
+                nonmnfld_divergence = directional_div(nonmnfld_points, nonmnfld_grad_pred)
                 nonmnfld_divergence_term = torch.square(nonmnfld_divergence)
             elif self.div_type == "dir_l1":
-                nonmnfld_divergence = directional_div(nonmnfld_points, nonmnfld_grad)
+                nonmnfld_divergence = directional_div(nonmnfld_points, nonmnfld_grad_pred)
                 nonmnfld_divergence_term = torch.abs(nonmnfld_divergence)
             else:
                 raise Warning(
@@ -409,8 +419,8 @@ class Loss(nn.Module):
         if "heat" in self.loss_type_to_terms[self.loss_type]:
             heat_term = heat_loss(
                 points=nonmnfld_points,
-                preds=nonmnfld_dist_pred,
-                grads=nonmnfld_grad,
+                preds=nonmnfld_sdf_pred,
+                grads=nonmnfld_grad_pred,
                 sample_pdfs=nonmnfld_pdfs if self.importance_sampling else None,
                 heat_lambda=self.heat_lambda,
                 in_mnfld=False,
@@ -426,6 +436,32 @@ class Loss(nn.Module):
             heat_term /= nonmnfld_points.reshape(-1, 2).shape[0]
             # heat_term /= nonmnfld_points.reshape(-1, 2).shape[0] + mnfld_points.reshape(-1, 2).shape[0]
             loss_terms["heat"] = heat_term
+
+        # pulling loss
+        if "pull" in self.loss_type_to_terms[self.loss_type]:
+            pulled_locations = nonmnfld_points - nonmnfld_sdf_pred[..., None] * nonmnfld_grad_pred / torch.norm(nonmnfld_grad_pred, dim=-1, keepdim=True)
+            pull_term = torch.mean(
+                torch.norm(pulled_locations - nearest_points, dim=-1)
+            )
+            loss_terms["pull"] = pull_term
+
+        if "relax_eikonal" in self.loss_type_to_terms[self.loss_type]:
+            relax_eikonal_term = relaxing_eikonal_loss(
+                nonmnfld_grad_pred, mnfld_grad_pred
+            )
+            loss_terms["relax_eikonal"] = relax_eikonal_term
+
+        if "singular_hessian" in self.loss_type_to_terms[self.loss_type]:
+            singular_hessian_term = singular_hessian_loss(
+                mnfld_points, nonmnfld_points, mnfld_grad_pred, nonmnfld_grad_pred
+            )
+            loss_terms["singular_hessian"] = singular_hessian_term
+
+        if "cad" in self.loss_type_to_terms[self.loss_type]:
+            cad_term = cad_loss(
+                mnfld_points, nonmnfld_points, mnfld_grad_pred, nonmnfld_grad_pred
+            )
+            loss_terms["cad"] = cad_term
 
         # ===============================
         # Compute the total loss
@@ -446,4 +482,4 @@ class Loss(nn.Module):
             "loss": loss,
             "loss_terms": loss_terms,
             "loss_terms_weighted": loss_terms_weighted,
-        }, mnfld_grad
+        }, mnfld_grad_pred

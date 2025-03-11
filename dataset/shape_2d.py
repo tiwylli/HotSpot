@@ -16,6 +16,7 @@ class Circle(ShapeBase):
         n_random_samples=1024,
         resample=True,
         compute_sal_dist_gt=False,
+        compute_nearest_points=False,
         outward_normal=True,
         r=0.5,
         center=(0, 0),
@@ -35,6 +36,7 @@ class Circle(ShapeBase):
             resample,
             2,
             compute_sal_dist_gt,
+            compute_nearest_points,
         )
 
     def get_mnfld_points(self):
@@ -78,6 +80,7 @@ class Polygon(ShapeBase):
         n_random_samples=1024,
         resample=True,
         compute_sal_dist_gt=False,
+        compute_nearest_points=False,
         outward_normal=True,  # Clockwise vertices is outward normal by default. This arg will reverse the normal direction
         vertices=[],
         line_sample_type="uniform",
@@ -99,6 +102,7 @@ class Polygon(ShapeBase):
             resample,
             2,
             compute_sal_dist_gt,
+            compute_nearest_points,
         )
 
     def get_mnfld_points(self):
@@ -266,6 +270,7 @@ class Union(ShapeBase):
         resample = shapes[0].resample
         dim = shapes[0].dim
         compute_sal_dist_gt = shapes[0].compute_sal_dist_gt
+        compute_nearest_points = shapes[0].compute_nearest_points
 
         ShapeBase.__init__(
             self,
@@ -279,6 +284,7 @@ class Union(ShapeBase):
             resample,
             dim,
             compute_sal_dist_gt,
+            compute_nearest_points,
         )
 
     def get_mnfld_points(self):
@@ -470,6 +476,7 @@ def get2D_dataset(
     n_random_samples=None,
     resample=True,
     compute_sal_dist_gt=False,
+    compute_nearest_points=False,
     shape_type="circle",
 ):
     args = [
@@ -482,6 +489,7 @@ def get2D_dataset(
         n_random_samples,
         resample,
         compute_sal_dist_gt,
+        compute_nearest_points,
     ]
 
     if shape_type == "circle":

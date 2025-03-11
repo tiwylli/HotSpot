@@ -16,7 +16,6 @@ Example installation code if you **are** using the docker image:
 ```sh
 /workspace/conda init <your_shell> # Change <your_shell> to your shell, e.g. bash, zsh, fish
 conda activate torch
-conda install pip
 pip install -r requirements.txt
 conda install -y -c plotly plotly plotly-orca 
 ```
@@ -25,7 +24,6 @@ Example installation code if you **are not** using the docker image:
 ```sh
 conda create -n torch python=3.9
 conda activate torch
-conda install pip
 pip install -r requirements.txt
 conda install -y -c plotly plotly plotly-orca
 # Install with instructions from https://pytorch.org/get-started/locally/

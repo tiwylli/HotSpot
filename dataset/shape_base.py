@@ -20,17 +20,8 @@ class ShapeBase(data.Dataset):
         resample=True,
         dim=3,
         compute_sal_dist_gt=False,
+        compute_nearest_points=False,
     ):
-        # print("n_points:", n_points)
-        # print("n_samples:", n_samples)
-        # print("grid_res:", grid_res)
-        # print("sample_type:", sample_type)
-        # print("sampling_std:", sampling_std)
-        # print("n_random_sample:", n_random_samples)
-        # print("grid_range:", grid_range)
-        # print("resample:", resample)
-        # print("dim:", dim)
-
         self.n_points = n_points
         self.n_samples = n_samples
         self.grid_res = grid_res
@@ -41,6 +32,7 @@ class ShapeBase(data.Dataset):
         self.resample = resample
         self.dim = dim
         self.compute_sal_dist_gt = compute_sal_dist_gt
+        self.compute_nearest_points = compute_nearest_points
 
         self._init_mnfld_and_grid_points()
         self._resample()
@@ -97,6 +89,13 @@ class ShapeBase(data.Dataset):
         distances = distances[..., None]
 
         return distances
+
+    def get_nearest_points(self, points):
+        kdtree = spatial.cKDTree(self.mnfld_points)
+        _, nn_idx = kdtree.query(points, k=1)
+        nearest_points = self.mnfld_points[nn_idx]
+
+        return nearest_points
 
     def _init_mnfld_and_grid_points(self):
         self.mnfld_points = self.get_mnfld_points()
@@ -336,6 +335,8 @@ class ShapeBase(data.Dataset):
             ret_dist["nonmnfld_normals_gt"] = self.nonmnfld_normals_gt
         if self.compute_sal_dist_gt:
             ret_dist["nonmnfld_dists_sal"] = self.get_points_distances_sal(self.nonmnfld_points)
+        if self.compute_nearest_points:
+            ret_dist["nearest_points"] = self.get_nearest_points(self.nonmnfld_points)
 
         return ret_dist
 

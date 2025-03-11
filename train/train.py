@@ -69,11 +69,6 @@ def visualize_model(
             if args.vis_gt_shape and shape is not None
             else []
         ),
-        gt_traces=(
-            shape.get_trace(color="rgb(128, 128, 128)")
-            if args.vis_gt_shape and shape is not None
-            else []
-        ),
     )
     img = Image.fromarray(sdf_contour_img)
     img.save(os.path.join(output_dir, "sdf_" + batch_idx_suffix + ".png"))
@@ -181,6 +176,9 @@ if __name__ == "__main__":
             compute_sal_dist_gt=(
                 True if "sal" in args.loss_type and args.loss_weights[5] > 0 else False
             ),
+            compute_nearest_points=(
+                True if "pull" in args.loss_type and args.loss_weights[7] > 0 else False
+            ),
             scale_method=args.pcd_scale_method,
         )
         in_dim = 3
@@ -197,6 +195,9 @@ if __name__ == "__main__":
             resample=True,
             compute_sal_dist_gt=(
                 True if "sal" in args.loss_type and args.loss_weights[5] > 0 else False
+            ),
+            compute_nearest_points=(
+                True if "pull" in args.loss_type and args.loss_weights[7] > 0 else False
             ),
         )
         in_dim = 2
@@ -265,6 +266,30 @@ if __name__ == "__main__":
         schedule_type=args.heat_decay,
         schedule_params=args.heat_decay_params,
     )
+    criterion.register_loss_term(
+        name="pull",
+        idx=7,
+        weight=args.loss_weights[7],
+    )
+    criterion.register_loss_term(
+        name="relax_eikonal",
+        idx=8,
+        weight=args.loss_weights[8],
+    )
+    criterion.register_loss_term(
+        name="singular_hessian",
+        idx=9,
+        weight=args.loss_weights[9],
+        schedule_type=args.morse_decay,
+        schedule_params=args.morse_decay_params,
+    )
+    criterion.register_loss_term(
+        name="cad",
+        idx=10,
+        weight=args.loss_weights[10],
+        schedule_type=args.cad_decay,
+        schedule_params=args.cad_decay_params,
+    )
 
     criterion.register_variable(name="div_type", value=args.div_type)
     criterion.register_variable(
@@ -315,6 +340,10 @@ if __name__ == "__main__":
             nonmnfld_dists_sal = data.get("nonmnfld_dists_sal", None)
             if nonmnfld_dists_sal is not None:
                 nonmnfld_dists_sal = nonmnfld_dists_sal.to(device)
+
+            nearest_points = data.get("nearest_points", None)
+            if nearest_points is not None:
+                nearest_points = nearest_points.to(device)
 
             mnfld_points.requires_grad_()
             nonmnfld_points.requires_grad_()
@@ -378,6 +407,7 @@ if __name__ == "__main__":
                     mnfld_normals_gt=mnfld_normals_gt,
                     nonmnfld_dists_gt=None,
                     nonmnfld_dists_sal=nonmnfld_dists_sal,
+                    nearest_points=nearest_points,
                 )
                 # Update learning rate
                 lr = torch.tensor(optimizer.param_groups[0]["lr"])

@@ -26,6 +26,7 @@ class ReconDataset(ShapeBase):
         requires_curvatures=False,
         grid_range=1.1,
         compute_sal_dist_gt=False,
+        compute_nearest_points=False,
         scale_method="default",
     ):
         self.file_path = file_path
@@ -48,6 +49,7 @@ class ReconDataset(ShapeBase):
             resample=resample,
             dim=3,
             compute_sal_dist_gt=compute_sal_dist_gt,
+            compute_nearest_points=compute_nearest_points,
         )
 
         # extract center and scale points and normals

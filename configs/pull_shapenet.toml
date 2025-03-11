@@ -1,0 +1,44 @@
+[paths]
+model_dir = "models"
+
+[network]
+decoder_n_hidden_layers = 5
+decoder_hidden_dim = 128
+nl = "sine"
+sphere_init_params = [1.6, 0.1]
+init_type = "mfgi"
+neuron_type = "quadratic"
+n_repeat_period = 30
+
+[loss]
+loss_type = "pull"
+loss_weights = [0, 0, 0, 0, 0, 0, 0, 1]
+
+[sampling]
+grid_res = 256
+nonmnfld_sample_type = "uniform"
+n_random_samples = 15000
+n_points = 15000
+grid_range = 1.1
+nonmnfld_sample_std = 0.5
+pcd_scale_method = "mean"
+
+[training]
+train = true
+eval = true
+task = "3d"
+n_iterations = 10001
+gpu_idx = 0
+lr = 1e-4
+grad_clip_norm = 10.0
+vis_interval = 1000
+log_interval = 100
+
+[visualization]
+vis_grid_res = 256
+vis_grid_range = 1.0
+vis_contour_interval = 0.025
+# vis_heat = true
+# save_video = true
+# video_fps = 6
+# vis_final = true
