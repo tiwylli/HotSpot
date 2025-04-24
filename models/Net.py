@@ -87,12 +87,14 @@ class Network(nn.Module):
             non_mnfld_pnts.view(-1, non_mnfld_pnts.shape[-1])
         ).reshape(batch_size, -1)
 
-        return {
-            "manifold_pnts_pred": manifold_pnts_pred,
-            "nonmanifold_pnts_pred": nonmanifold_pnts_pred,
-            "latent_reg": latent_reg,
-            "latent": latent,
-        }
+        # Replaced the return statement as DCCVT does not need the keys
+        # return {
+        #     "manifold_pnts_pred": manifold_pnts_pred,
+        #     "nonmanifold_pnts_pred": nonmanifold_pnts_pred,
+        #     "latent_reg": latent_reg,
+        #     "latent": latent,
+        # }
+        return nonmanifold_pnts_pred
 
 
 class QuaNet(nn.Module):
